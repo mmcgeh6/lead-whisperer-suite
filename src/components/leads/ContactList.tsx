@@ -1,0 +1,98 @@
+
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useAppContext } from "@/context/AppContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatDistanceToNow } from "date-fns";
+
+interface ContactListProps {
+  companyId?: string;
+}
+
+export const ContactList = ({ companyId }: ContactListProps) => {
+  const { contacts, companies, setSelectedContact } = useAppContext();
+  const navigate = useNavigate();
+  
+  // Filter contacts by company if companyId is provided
+  const filteredContacts = companyId 
+    ? contacts.filter(contact => contact.companyId === companyId) 
+    : contacts;
+  
+  const getCompanyName = (companyId: string) => {
+    const company = companies.find(c => c.id === companyId);
+    return company ? company.name : "Unknown Company";
+  };
+  
+  const handleContactClick = (contactId: string) => {
+    const contact = contacts.find(c => c.id === contactId);
+    if (contact) {
+      setSelectedContact(contact);
+      navigate(`/contacts/${contactId}`);
+    }
+  };
+  
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Contacts</CardTitle>
+        <Button 
+          size="sm" 
+          onClick={() => navigate(companyId ? `/contacts/new?companyId=${companyId}` : "/contacts/new")}
+        >
+          Add Contact
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {filteredContacts.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No contacts found.</p>
+            <Button 
+              className="mt-4" 
+              onClick={() => navigate(companyId ? `/contacts/new?companyId=${companyId}` : "/contacts/new")}
+            >
+              Add Contact
+            </Button>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Title</TableHead>
+                {!companyId && <TableHead>Company</TableHead>}
+                <TableHead>Email</TableHead>
+                <TableHead>Added</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredContacts.map((contact) => (
+                <TableRow key={contact.id} className="cursor-pointer hover:bg-gray-50">
+                  <TableCell className="font-medium">
+                    {contact.firstName} {contact.lastName}
+                  </TableCell>
+                  <TableCell>{contact.title}</TableCell>
+                  {!companyId && (
+                    <TableCell>{getCompanyName(contact.companyId)}</TableCell>
+                  )}
+                  <TableCell>{contact.email}</TableCell>
+                  <TableCell>{formatDistanceToNow(new Date(contact.createdAt), { addSuffix: true })}</TableCell>
+                  <TableCell className="text-right">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleContactClick(contact.id)}
+                    >
+                      View
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
