@@ -88,7 +88,18 @@ export const ContactForm = ({ initialData }: ContactFormProps) => {
         ...values,
       });
     } else {
-      addContact(values);
+      // Ensure all required fields are provided
+      const newContact = {
+        firstName: values.firstName, // Required field
+        lastName: values.lastName, // Required field
+        email: values.email, // Required field
+        phone: values.phone || "", // Providing default value for potentially undefined field
+        title: values.title || "", // Providing default value for potentially undefined field
+        companyId: values.companyId, // Required field
+        notes: values.notes || "", // Providing default value for potentially undefined field
+      };
+      
+      addContact(newContact);
     }
     
     setIsSubmitting(false);

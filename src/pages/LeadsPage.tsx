@@ -34,7 +34,8 @@ const LeadsPage = () => {
         
         <LeadSearch onLeadsFound={handleLeadsFound} />
         
-        <CompanyList newLeads={newLeads} />
+        {/* Pass newLeads as a proper prop that the component expects */}
+        <CompanyList newCompanies={newLeads} />
       </div>
     </Layout>
   );

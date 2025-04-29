@@ -67,7 +67,17 @@ export const CompanyForm = ({ initialData }: CompanyFormProps) => {
         ...values,
       });
     } else {
-      addCompany(values);
+      // Ensure all required fields are provided
+      const newCompany = {
+        name: values.name, // Required field
+        website: values.website, // Required field  
+        industry: values.industry, // Required field
+        size: values.size || "", // Providing default value for potentially undefined field
+        location: values.location || "", // Providing default value for potentially undefined field
+        description: values.description || "", // Providing default value for potentially undefined field
+      };
+      
+      addCompany(newCompany);
     }
     
     setIsSubmitting(false);
