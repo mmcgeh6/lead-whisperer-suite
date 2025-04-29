@@ -6,9 +6,9 @@ import { Layout } from "@/components/Layout";
 import { ContactList } from "@/components/leads/ContactList";
 import { CompanyInsights } from "@/components/insights/CompanyInsights";
 import { PersonalizedOutreach } from "@/components/outreach/PersonalizedOutreach";
+import { FacebookAdsInsight } from "@/components/insights/FacebookAdsInsight";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, MapPin, Users, Globe, Mail, Phone } from "lucide-react";
 
 const CompanyDetailPage = () => {
@@ -37,8 +37,8 @@ const CompanyDetailPage = () => {
   
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Company Header */}
+      <div className="space-y-8">
+        {/* Company Banner */}
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -84,158 +84,141 @@ const CompanyDetailPage = () => {
           </CardContent>
         </Card>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Contacts and Personalization */}
-          <div className="lg:col-span-2">
-            <Tabs defaultValue="contacts">
-              <TabsList className="w-full">
-                <TabsTrigger value="contacts" className="flex-1">
-                  Contacts ({companyContacts.length})
-                </TabsTrigger>
-                <TabsTrigger value="outreach" className="flex-1">
-                  Personalized Outreach
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="contacts" className="mt-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pt-6 pb-3">
-                    <CardTitle>Contacts</CardTitle>
-                    <Button 
-                      size="sm" 
-                      onClick={() => navigate(`/contacts/new?companyId=${company.id}`)}
-                    >
-                      Add Contact
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <ContactList companyId={company.id} onContactSelect={setSelectedContactId} />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="outreach" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      {selectedContact 
-                        ? `Personalized Outreach for ${selectedContact.firstName} ${selectedContact.lastName}`
-                        : "Personalized Outreach"
-                      }
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {selectedContact ? (
-                      <PersonalizedOutreach contact={selectedContact} companyName={company.name} />
-                    ) : (
-                      <div className="text-center py-12 bg-gray-50 rounded-lg">
-                        <h3 className="text-lg font-medium mb-2">Select a Contact</h3>
-                        <p className="text-gray-500 mb-6">
-                          Please select a contact from the Contacts tab to generate personalized outreach content.
-                        </p>
-                        {companyContacts.length === 0 ? (
-                          <Button onClick={() => navigate(`/contacts/new?companyId=${company.id}`)}>
-                            Add Your First Contact
-                          </Button>
-                        ) : (
-                          <Button onClick={() => navigate(`?tab=contacts`)}>
-                            View Contacts
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-            
-            {/* Selected Contact Card - Shows when contact is selected */}
-            {selectedContact && (
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle className="text-xl">Contact Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">
-                        {selectedContact.firstName} {selectedContact.lastName}
-                      </h3>
-                      <p className="text-gray-600 mb-4">{selectedContact.title}</p>
-                      
-                      <div className="space-y-3">
-                        <div className="flex items-center">
-                          <Mail className="h-4 w-4 mr-3 text-gray-500" />
-                          <a href={`mailto:${selectedContact.email}`} className="text-blue-500 hover:underline">
-                            {selectedContact.email}
-                          </a>
-                        </div>
-                        
-                        {selectedContact.phone && (
-                          <div className="flex items-center">
-                            <Phone className="h-4 w-4 mr-3 text-gray-500" />
-                            <a href={`tel:${selectedContact.phone}`} className="text-blue-500 hover:underline">
-                              {selectedContact.phone}
-                            </a>
-                          </div>
-                        )}
-                      </div>
+        {/* Module 1: About Company */}
+        <Card>
+          <CardHeader>
+            <CardTitle>About {company.name}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-line">
+              {company.description || "No description available"}
+            </p>
+          </CardContent>
+        </Card>
+        
+        {/* Module 2: Contacts */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Contacts</CardTitle>
+            <Button 
+              size="sm" 
+              onClick={() => navigate(`/contacts/new?companyId=${company.id}`)}
+            >
+              Add Contact
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <ContactList companyId={company.id} onContactSelect={setSelectedContactId} />
+          </CardContent>
+        </Card>
+        
+        {/* Selected Contact Card - Shows when contact is selected */}
+        {selectedContact && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">
+                    {selectedContact.firstName} {selectedContact.lastName}
+                  </h3>
+                  <p className="text-gray-600 mb-4">{selectedContact.title}</p>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <Mail className="h-4 w-4 mr-3 text-gray-500" />
+                      <a href={`mailto:${selectedContact.email}`} className="text-blue-500 hover:underline">
+                        {selectedContact.email}
+                      </a>
                     </div>
                     
-                    <div>
-                      <h4 className="font-medium mb-2">Notes</h4>
-                      <p className="text-gray-600 whitespace-pre-line">
-                        {selectedContact.notes || "No notes available for this contact."}
-                      </p>
-                    </div>
+                    {selectedContact.phone && (
+                      <div className="flex items-center">
+                        <Phone className="h-4 w-4 mr-3 text-gray-500" />
+                        <a href={`tel:${selectedContact.phone}`} className="text-blue-500 hover:underline">
+                          {selectedContact.phone}
+                        </a>
+                      </div>
+                    )}
                   </div>
-                  
-                  <div className="flex gap-3 mt-6 justify-end">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => navigate(`/outreach/email?contactId=${selectedContact.id}`)}
-                    >
-                      Send Email
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      onClick={() => navigate(`/outreach/call-script?contactId=${selectedContact.id}`)}
-                    >
-                      Generate Call Script
-                    </Button>
-                    <Button onClick={() => navigate(`/contacts/edit/${selectedContact.id}`)}>
-                      Edit Contact
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-          
-          {/* Right Column - Insights and Description */}
-          <div>
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>About {company.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-line">
-                  {company.description || "No description available"}
+                </div>
+                
+                <div>
+                  <h4 className="font-medium mb-2">Notes</h4>
+                  <p className="text-gray-600 whitespace-pre-line">
+                    {selectedContact.notes || "No notes available for this contact."}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 mt-6 justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate(`/outreach/email?contactId=${selectedContact.id}`)}
+                >
+                  Send Email
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate(`/outreach/call-script?contactId=${selectedContact.id}`)}
+                >
+                  Generate Call Script
+                </Button>
+                <Button onClick={() => navigate(`/contacts/edit/${selectedContact.id}`)}>
+                  Edit Contact
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Module 3: Personalized Outreach */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Personalized Outreach</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {selectedContact ? (
+              <PersonalizedOutreach contact={selectedContact} companyName={company.name} />
+            ) : (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <h3 className="text-lg font-medium mb-2">Select a Contact</h3>
+                <p className="text-gray-500 mb-6">
+                  Please select a contact from the Contacts section to generate personalized outreach content.
                 </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Insights</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CompanyInsights companyId={company.id} />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                {companyContacts.length === 0 ? (
+                  <Button onClick={() => navigate(`/contacts/new?companyId=${company.id}`)}>
+                    Add Your First Contact
+                  </Button>
+                ) : (
+                  <p className="text-sm text-gray-400">Click on a contact in the Contacts section above</p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        
+        {/* Module 4: Company Insights */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Company Insights</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CompanyInsights companyId={company.id} />
+          </CardContent>
+        </Card>
+        
+        {/* Module 5: Facebook Ads */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Facebook Ads</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FacebookAdsInsight company={company} />
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );
