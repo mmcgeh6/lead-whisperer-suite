@@ -18,6 +18,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Company } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const companySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -38,6 +40,7 @@ export const CompanyForm = ({ initialData }: CompanyFormProps) => {
   const { addCompany, updateCompany } = useAppContext();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
   
   const form = useForm<CompanyFormValues>({
     resolver: zodResolver(companySchema),
@@ -58,30 +61,78 @@ export const CompanyForm = ({ initialData }: CompanyFormProps) => {
     },
   });
   
-  const onSubmit = (values: CompanyFormValues) => {
+  const onSubmit = async (values: CompanyFormValues) => {
     setIsSubmitting(true);
     
-    if (initialData) {
-      updateCompany({
-        ...initialData,
-        ...values,
-      });
-    } else {
-      // Ensure all required fields are provided
-      const newCompany = {
-        name: values.name, // Required field
-        website: values.website, // Required field  
-        industry: values.industry, // Required field
-        size: values.size || "", // Providing default value for potentially undefined field
-        location: values.location || "", // Providing default value for potentially undefined field
-        description: values.description || "", // Providing default value for potentially undefined field
-      };
+    try {
+      if (initialData) {
+        // Update company in Supabase
+        const { error } = await supabase
+          .from('companies')
+          .update({
+            name: values.name,
+            website: values.website,
+            industry: values.industry,
+            size: values.size,
+            location: values.location,
+            description: values.description,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', initialData.id);
+        
+        if (error) throw error;
+        
+        // Update local state
+        updateCompany({
+          ...initialData,
+          ...values,
+        });
+        
+        toast({
+          title: "Company Updated",
+          description: `${values.name} has been updated.`
+        });
+      } else {
+        // Add new company to Supabase
+        const { data, error } = await supabase
+          .from('companies')
+          .insert({
+            name: values.name,
+            website: values.website,
+            industry: values.industry,
+            size: values.size || "",
+            location: values.location || "",
+            description: values.description || ""
+          })
+          .select();
+        
+        if (error) throw error;
+        
+        if (data && data[0]) {
+          // Add to local state with the id from Supabase
+          addCompany({
+            ...values,
+            id: data[0].id
+          });
+          
+          toast({
+            title: "Company Added",
+            description: `${values.name} has been added to your leads.`
+          });
+        }
+      }
       
-      addCompany(newCompany);
+      navigate("/leads");
+    } catch (error) {
+      console.error("Error saving company:", error);
+      toast({
+        title: "Error",
+        description: `Failed to save company. Please try again.`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    setIsSubmitting(false);
-    navigate("/leads");
   };
   
   return (

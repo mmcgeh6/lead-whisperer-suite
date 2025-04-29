@@ -1,8 +1,9 @@
-
-import { createContext, useState, useContext, ReactNode } from "react";
+import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { Company, Contact, EmailTemplate, EmailConfig } from "../types";
-import { mockCompanies, mockContacts, mockEmailTemplates } from "../data/mockData";
+import { mockContacts, mockEmailTemplates } from "../data/mockData";
 import { toast } from "../components/ui/use-toast";
+import { supabase } from "../integrations/supabase/client";
+import { useAuth } from "./AuthContext";
 
 interface AppContextType {
   companies: Company[];
@@ -27,12 +28,54 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [companies, setCompanies] = useState<Company[]>(mockCompanies);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [contacts, setContacts] = useState<Contact[]>(mockContacts);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(mockEmailTemplates);
   const [emailConfig, setEmailConfig] = useState<EmailConfig | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const { user } = useAuth();
+  
+  // Fetch companies from Supabase when the component mounts or when the user changes
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          throw error;
+        }
+        
+        // Transform the data to match the Company type
+        const formattedCompanies = data.map(company => ({
+          id: company.id,
+          name: company.name,
+          website: company.website,
+          industry: company.industry,
+          size: company.size,
+          location: company.location,
+          description: company.description,
+          createdAt: company.created_at,
+          updatedAt: company.updated_at,
+          insights: company.insights || {}
+        }));
+        
+        setCompanies(formattedCompanies);
+      } catch (error) {
+        console.error('Error fetching companies:', error);
+        toast({
+          title: "Failed to load companies",
+          description: "Please try again later",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    fetchCompanies();
+  }, [user]);
 
   const addCompany = (companyData: Omit<Company, "id" | "createdAt" | "updatedAt">) => {
     const now = new Date().toISOString();
