@@ -25,6 +25,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Contact } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const contactSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -34,6 +36,7 @@ const contactSchema = z.object({
   title: z.string(),
   companyId: z.string().min(1, "Company is required"),
   notes: z.string(),
+  linkedin_url: z.string().optional(),
 });
 
 type ContactFormValues = z.infer<typeof contactSchema>;
@@ -47,6 +50,7 @@ export const ContactForm = ({ initialData }: ContactFormProps) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
   
   // Get companyId from URL parameters if provided
   const companyIdFromUrl = searchParams.get("companyId");
@@ -61,6 +65,7 @@ export const ContactForm = ({ initialData }: ContactFormProps) => {
       title: initialData.title,
       companyId: initialData.companyId,
       notes: initialData.notes,
+      linkedin_url: initialData.linkedin_url || '',
     } : {
       firstName: "",
       lastName: "",
@@ -69,6 +74,7 @@ export const ContactForm = ({ initialData }: ContactFormProps) => {
       title: "",
       companyId: companyIdFromUrl || "",
       notes: "",
+      linkedin_url: "",
     },
   });
   
@@ -79,31 +85,95 @@ export const ContactForm = ({ initialData }: ContactFormProps) => {
     }
   }, [companyIdFromUrl, form, initialData]);
   
-  const onSubmit = (values: ContactFormValues) => {
+  const onSubmit = async (values: ContactFormValues) => {
     setIsSubmitting(true);
     
-    if (initialData) {
-      updateContact({
-        ...initialData,
-        ...values,
-      });
-    } else {
-      // Ensure all required fields are provided
-      const newContact = {
-        firstName: values.firstName, // Required field
-        lastName: values.lastName, // Required field
-        email: values.email, // Required field
-        phone: values.phone || "", // Providing default value for potentially undefined field
-        title: values.title || "", // Providing default value for potentially undefined field
-        companyId: values.companyId, // Required field
-        notes: values.notes || "", // Providing default value for potentially undefined field
-      };
+    try {
+      if (initialData) {
+        // Update contact in Supabase
+        const { error } = await supabase
+          .from('contacts')
+          .update({
+            first_name: values.firstName,
+            last_name: values.lastName,
+            email: values.email,
+            phone: values.phone,
+            position: values.title,
+            company_id: values.companyId,
+            notes: values.notes,
+            linkedin_url: values.linkedin_url,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', initialData.id);
+        
+        if (error) throw error;
+        
+        // Update in local state
+        updateContact({
+          ...initialData,
+          ...values,
+          updatedAt: new Date().toISOString()
+        });
+        
+        toast({
+          title: "Contact Updated",
+          description: `${values.firstName} ${values.lastName} has been updated.`
+        });
+      } else {
+        // Insert new contact into Supabase
+        const { data, error } = await supabase
+          .from('contacts')
+          .insert({
+            first_name: values.firstName,
+            last_name: values.lastName,
+            email: values.email,
+            phone: values.phone,
+            position: values.title,
+            company_id: values.companyId,
+            notes: values.notes,
+            linkedin_url: values.linkedin_url
+          })
+          .select();
+        
+        if (error) throw error;
+        
+        if (data && data[0]) {
+          // Add to local state
+          const newContact: Contact = {
+            id: data[0].id,
+            firstName: values.firstName,
+            lastName: values.lastName,
+            email: values.email,
+            phone: values.phone || "",
+            title: values.title || "",
+            companyId: values.companyId,
+            notes: values.notes || "",
+            linkedin_url: values.linkedin_url,
+            createdAt: data[0].created_at,
+            updatedAt: data[0].updated_at
+          };
+          
+          addContact(newContact);
+          
+          toast({
+            title: "Contact Added",
+            description: `${values.firstName} ${values.lastName} has been added.`
+          });
+        }
+      }
       
-      addContact(newContact);
+      // Redirect back to company detail or leads page
+      navigate(companyIdFromUrl ? `/leads/${companyIdFromUrl}` : "/leads");
+    } catch (error) {
+      console.error("Error saving contact:", error);
+      toast({
+        title: "Failed to save contact",
+        description: "There was an error saving your contact. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    setIsSubmitting(false);
-    navigate(companyIdFromUrl ? `/leads/${companyIdFromUrl}` : "/leads");
   };
   
   return (
@@ -187,9 +257,23 @@ export const ContactForm = ({ initialData }: ContactFormProps) => {
               
               <FormField
                 control={form.control}
-                name="companyId"
+                name="linkedin_url"
                 render={({ field }) => (
                   <FormItem>
+                    <FormLabel>LinkedIn URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://www.linkedin.com/in/johnsmith" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="companyId"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
                     <FormLabel>Company</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 

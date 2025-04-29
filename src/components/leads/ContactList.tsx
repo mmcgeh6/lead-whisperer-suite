@@ -2,9 +2,12 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/AppContext";
-import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Contact } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 
 interface ContactListProps {
   companyId?: string;
@@ -12,8 +15,61 @@ interface ContactListProps {
 }
 
 export const ContactList = ({ companyId, onContactSelect }: ContactListProps) => {
-  const { contacts, companies, setSelectedContact } = useAppContext();
+  const { contacts, companies, setSelectedContact, setContacts } = useAppContext();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Fetch contacts from Supabase when the component mounts or when companyId changes
+  useEffect(() => {
+    const fetchContacts = async () => {
+      setIsLoading(true);
+      try {
+        let query = supabase
+          .from('contacts')
+          .select('*');
+        
+        // Filter by company if companyId is provided
+        if (companyId) {
+          query = query.eq('company_id', companyId);
+        }
+        
+        const { data, error } = await query.order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (data) {
+          // Transform contacts from Supabase schema to app schema
+          const formattedContacts: Contact[] = data.map(contact => ({
+            id: contact.id,
+            firstName: contact.first_name,
+            lastName: contact.last_name,
+            email: contact.email || "",
+            phone: contact.phone || "",
+            title: contact.position || "",
+            companyId: contact.company_id,
+            notes: contact.notes || "",
+            linkedin_url: contact.linkedin_url,
+            createdAt: contact.created_at,
+            updatedAt: contact.updated_at
+          }));
+          
+          setContacts(formattedContacts);
+        }
+      } catch (error) {
+        console.error('Error fetching contacts:', error);
+        toast({
+          title: "Failed to load contacts",
+          description: "There was an error loading contacts. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchContacts();
+  }, [companyId, setContacts, toast]);
   
   // Filter contacts by company if companyId is provided
   const filteredContacts = companyId 
@@ -39,7 +95,11 @@ export const ContactList = ({ companyId, onContactSelect }: ContactListProps) =>
   
   return (
     <div>
-      {filteredContacts.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-8">
+          <p className="text-gray-500">Loading contacts...</p>
+        </div>
+      ) : filteredContacts.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-500">No contacts found.</p>
           <Button 

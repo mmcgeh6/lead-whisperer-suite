@@ -1,7 +1,6 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { Company, Contact, EmailTemplate, EmailConfig } from "../types";
-import { mockContacts, mockEmailTemplates } from "../data/mockData";
+import { mockEmailTemplates } from "../data/mockData";
 import { toast } from "../components/ui/use-toast";
 import { supabase } from "../integrations/supabase/client";
 import { useAuth } from "./AuthContext";
@@ -15,6 +14,7 @@ interface AppContextType {
   selectedContact: Contact | null;
   setSelectedCompany: (company: Company | null) => void;
   setSelectedContact: (contact: Contact | null) => void;
+  setContacts: (contacts: Contact[]) => void;
   addCompany: (company: Company) => void;
   updateCompany: (company: Company) => void;
   addContact: (contact: Omit<Contact, "id" | "createdAt" | "updatedAt">) => void;
@@ -30,7 +30,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>(mockContacts);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(mockEmailTemplates);
   const [emailConfig, setEmailConfig] = useState<EmailConfig | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -107,6 +107,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
+  // Keep the addContact function for local state management
   const addContact = (contactData: Omit<Contact, "id" | "createdAt" | "updatedAt">) => {
     const now = new Date().toISOString();
     const newContact: Contact = {
@@ -116,10 +117,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       updatedAt: now,
     };
     setContacts([...contacts, newContact]);
-    toast({
-      title: "Contact Added",
-      description: `${newContact.firstName} ${newContact.lastName} has been added to your contacts.`,
-    });
+    // Note: The actual saving to Supabase is now handled in the ContactForm component
   };
 
   const updateContact = (updatedContact: Contact) => {
@@ -130,10 +128,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           : contact
       )
     );
-    toast({
-      title: "Contact Updated",
-      description: `${updatedContact.firstName} ${updatedContact.lastName} has been updated.`,
-    });
+    // Note: The actual updating in Supabase is now handled in the ContactForm component
   };
 
   const saveEmailConfig = (config: EmailConfig) => {
@@ -369,6 +364,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       selectedContact,
       setSelectedCompany,
       setSelectedContact,
+      setContacts,
       addCompany,
       updateCompany,
       addContact,
