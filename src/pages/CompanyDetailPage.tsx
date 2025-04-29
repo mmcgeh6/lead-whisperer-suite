@@ -6,16 +6,19 @@ import { Layout } from "@/components/Layout";
 import { ContactList } from "@/components/leads/ContactList";
 import { CompanyInsights } from "@/components/insights/CompanyInsights";
 import { PersonalizedOutreach } from "@/components/outreach/PersonalizedOutreach";
-import { FacebookAdsInsight } from "@/components/insights/FacebookAdsInsight";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, MapPin, Users, Globe, Mail, Phone } from "lucide-react";
+import { Building2, MapPin, Users, Globe, Mail, Phone, X, Linkedin } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 
 const CompanyDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { companies, contacts } = useAppContext();
   const navigate = useNavigate();
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [researchSheetOpen, setResearchSheetOpen] = useState(false);
   
   const company = companies.find((c) => c.id === id);
   const companyContacts = contacts.filter((c) => c.companyId === id);
@@ -34,6 +37,11 @@ const CompanyDetailPage = () => {
       </Layout>
     );
   }
+  
+  const handleContactSelect = (contactId: string) => {
+    setSelectedContactId(contactId);
+    setContactDialogOpen(true);
+  };
   
   return (
     <Layout>
@@ -108,40 +116,49 @@ const CompanyDetailPage = () => {
             </Button>
           </CardHeader>
           <CardContent>
-            <ContactList companyId={company.id} onContactSelect={setSelectedContactId} />
+            <ContactList companyId={company.id} onContactSelect={handleContactSelect} />
           </CardContent>
         </Card>
-        
-        {/* Selected Contact Card - Shows when contact is selected */}
-        {selectedContact && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* Contact Dialog - Shows when contact is selected */}
+        <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl">Contact Details</DialogTitle>
+            </DialogHeader>
+            {selectedContact && (
+              <div className="grid gap-4">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">
+                  <h3 className="text-lg font-semibold">
                     {selectedContact.firstName} {selectedContact.lastName}
                   </h3>
-                  <p className="text-gray-600 mb-4">{selectedContact.title}</p>
+                  <p className="text-gray-600">{selectedContact.title}</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="flex items-center">
+                    <Mail className="h-4 w-4 mr-3 text-gray-500" />
+                    <a href={`mailto:${selectedContact.email}`} className="text-blue-500 hover:underline">
+                      {selectedContact.email}
+                    </a>
+                  </div>
                   
-                  <div className="space-y-3">
+                  {selectedContact.phone && (
                     <div className="flex items-center">
-                      <Mail className="h-4 w-4 mr-3 text-gray-500" />
-                      <a href={`mailto:${selectedContact.email}`} className="text-blue-500 hover:underline">
-                        {selectedContact.email}
+                      <Phone className="h-4 w-4 mr-3 text-gray-500" />
+                      <a href={`tel:${selectedContact.phone}`} className="text-blue-500 hover:underline">
+                        {selectedContact.phone}
                       </a>
                     </div>
-                    
-                    {selectedContact.phone && (
-                      <div className="flex items-center">
-                        <Phone className="h-4 w-4 mr-3 text-gray-500" />
-                        <a href={`tel:${selectedContact.phone}`} className="text-blue-500 hover:underline">
-                          {selectedContact.phone}
-                        </a>
-                      </div>
-                    )}
+                  )}
+
+                  <div className="flex items-center">
+                    <Linkedin className="h-4 w-4 mr-3 text-gray-500" />
+                    <input 
+                      type="text" 
+                      placeholder="Add LinkedIn URL" 
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                    />
                   </div>
                 </div>
                 
@@ -151,74 +168,117 @@ const CompanyDetailPage = () => {
                     {selectedContact.notes || "No notes available for this contact."}
                   </p>
                 </div>
+
+                <div className="flex justify-end gap-3 mt-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate(`/outreach/email?contactId=${selectedContact.id}`)}
+                  >
+                    Send Email
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => navigate(`/outreach/call-script?contactId=${selectedContact.id}`)}
+                  >
+                    Generate Call Script
+                  </Button>
+                  <Button onClick={() => navigate(`/contacts/edit/${selectedContact.id}`)}>
+                    Edit Contact
+                  </Button>
+                </div>
               </div>
-              
-              <div className="flex gap-3 mt-6 justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate(`/outreach/email?contactId=${selectedContact.id}`)}
-                >
-                  Send Email
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => navigate(`/outreach/call-script?contactId=${selectedContact.id}`)}
-                >
-                  Generate Call Script
-                </Button>
-                <Button onClick={() => navigate(`/contacts/edit/${selectedContact.id}`)}>
-                  Edit Contact
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </DialogContent>
+        </Dialog>
         
-        {/* Module 3: Personalized Outreach */}
+        {/* Module 3: Personalized Outreach (Now at Company Level) */}
         <Card>
           <CardHeader>
             <CardTitle>Personalized Outreach</CardTitle>
           </CardHeader>
           <CardContent>
-            {selectedContact ? (
-              <PersonalizedOutreach contact={selectedContact} companyName={company.name} />
-            ) : (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                <h3 className="text-lg font-medium mb-2">Select a Contact</h3>
-                <p className="text-gray-500 mb-6">
-                  Please select a contact from the Contacts section to generate personalized outreach content.
-                </p>
-                {companyContacts.length === 0 ? (
-                  <Button onClick={() => navigate(`/contacts/new?companyId=${company.id}`)}>
-                    Add Your First Contact
-                  </Button>
-                ) : (
-                  <p className="text-sm text-gray-400">Click on a contact in the Contacts section above</p>
-                )}
-              </div>
-            )}
+            <PersonalizedOutreach companyName={company.name} />
           </CardContent>
         </Card>
         
-        {/* Module 4: Company Insights */}
+        {/* Module 4: Company Insights with Research Generation */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Company Insights</CardTitle>
+            <Button onClick={() => setResearchSheetOpen(true)}>
+              Generate Research
+            </Button>
           </CardHeader>
           <CardContent>
             <CompanyInsights companyId={company.id} />
           </CardContent>
         </Card>
-        
-        {/* Module 5: Facebook Ads */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Facebook Ads</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FacebookAdsInsight company={company} />
-          </CardContent>
-        </Card>
+
+        {/* Research Generation Sheet */}
+        <Sheet open={researchSheetOpen} onOpenChange={setResearchSheetOpen}>
+          <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle className="text-xl">Research Generator</SheetTitle>
+              <SheetClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </SheetClose>
+            </SheetHeader>
+            <div className="py-6">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Generate Company Research</h3>
+                  <p className="text-gray-600 mb-4">
+                    Generate detailed research about {company.name} to better understand their business,
+                    challenges, and opportunities. This will help you create more targeted outreach.
+                  </p>
+                </div>
+
+                <div className="grid gap-4">
+                  <Button
+                    onClick={() => {
+                      // Implementation for competitive analysis webhook call
+                      // Similar to the existing webhook calls in PersonalizedOutreach
+                    }}
+                  >
+                    Competitive Analysis
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      // Implementation for market challenges webhook call
+                    }}
+                  >
+                    Market Challenges
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      // Implementation for growth opportunities webhook call
+                    }}
+                  >
+                    Growth Opportunities
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      // Implementation for technology stack webhook call
+                    }}
+                  >
+                    Technology Stack
+                  </Button>
+                </div>
+                
+                <div className="bg-muted p-4 rounded-md mt-4">
+                  <h4 className="font-medium mb-2">Research Results</h4>
+                  <p className="text-sm text-gray-600">
+                    Select one of the options above to generate research results.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </Layout>
   );

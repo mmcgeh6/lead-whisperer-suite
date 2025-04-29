@@ -67,7 +67,6 @@ export const ContactList = ({ companyId, onContactSelect }: ContactListProps) =>
                 <TableRow 
                   key={contact.id} 
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => handleContactClick(contact.id)}
                 >
                   <TableCell className="font-medium">
                     {contact.firstName} {contact.lastName}
@@ -80,14 +79,14 @@ export const ContactList = ({ companyId, onContactSelect }: ContactListProps) =>
                   <TableCell>{formatDistanceToNow(new Date(contact.createdAt), { addSuffix: true })}</TableCell>
                   <TableCell className="text-right">
                     <Button 
-                      variant={onContactSelect ? "default" : "ghost"}
+                      variant="outline"
                       size="sm" 
                       onClick={(e) => {
                         e.stopPropagation();
                         handleContactClick(contact.id);
                       }}
                     >
-                      {onContactSelect ? "Select" : "View"}
+                      View Details
                     </Button>
                   </TableCell>
                 </TableRow>
