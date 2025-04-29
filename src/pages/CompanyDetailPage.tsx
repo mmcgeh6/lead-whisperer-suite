@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -8,9 +9,10 @@ import { CompanyResearch } from "@/components/research/CompanyResearch";
 import { PersonalizedOutreach } from "@/components/outreach/PersonalizedOutreach";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, MapPin, Users, Globe, Mail, Phone, X, Linkedin } from "lucide-react";
+import { Building2, MapPin, Users, Globe, Mail, Phone, Briefcase, Hash } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 
 const CompanyDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -57,14 +59,26 @@ const CompanyDetailPage = () => {
                     <Building2 className="h-4 w-4 mr-2" /> 
                     <span>{company.industry || "Unknown industry"}</span>
                   </div>
+                  {company.industry_vertical && (
+                    <div className="flex items-center text-gray-600">
+                      <Briefcase className="h-4 w-4 mr-2" /> 
+                      <span>{company.industry_vertical}</span>
+                    </div>
+                  )}
                   <div className="flex items-center text-gray-600">
                     <MapPin className="h-4 w-4 mr-2" /> 
-                    <span>{company.location || "Unknown location"}</span>
+                    <span>{company.city && company.state ? `${company.city}, ${company.state}` : company.location || "Unknown location"}</span>
                   </div>
                   <div className="flex items-center text-gray-600">
                     <Users className="h-4 w-4 mr-2" /> 
                     <span>{company.size || "Unknown size"}</span>
                   </div>
+                  {company.phone && (
+                    <div className="flex items-center text-gray-600">
+                      <Phone className="h-4 w-4 mr-2" /> 
+                      <span>{company.phone}</span>
+                    </div>
+                  )}
                   {company.website && (
                     <div className="flex items-center text-gray-600">
                       <Globe className="h-4 w-4 mr-2" /> 
@@ -76,6 +90,18 @@ const CompanyDetailPage = () => {
                       >
                         {company.website.replace(/^https?:\/\//, '')}
                       </a>
+                    </div>
+                  )}
+                  {company.keywords && company.keywords.length > 0 && (
+                    <div className="flex items-center text-gray-600 col-span-3 flex-wrap">
+                      <Hash className="h-4 w-4 mr-2 flex-shrink-0" /> 
+                      <div className="flex flex-wrap gap-2">
+                        {company.keywords.map((keyword, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {keyword}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -98,9 +124,50 @@ const CompanyDetailPage = () => {
             <CardTitle>About {company.name}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="whitespace-pre-line">
-              {company.description || "No description available"}
-            </p>
+            <div className="space-y-6">
+              <p className="whitespace-pre-line">
+                {company.description || "No description available"}
+              </p>
+              
+              {/* Social Links */}
+              {(company.linkedin_url || company.facebook_url || company.twitter_url) && (
+                <div className="pt-4">
+                  <h4 className="text-sm font-medium mb-2">Social Media Profiles</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {company.linkedin_url && (
+                      <a href={company.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center">
+                        LinkedIn
+                      </a>
+                    )}
+                    {company.facebook_url && (
+                      <a href={company.facebook_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center">
+                        Facebook
+                      </a>
+                    )}
+                    {company.twitter_url && (
+                      <a href={company.twitter_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center">
+                        Twitter
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Complete Address */}
+              {(company.street || company.city || company.state || company.zip || company.country) && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Address</h4>
+                  <address className="not-italic text-gray-600">
+                    {company.street && <p>{company.street}</p>}
+                    {company.city && company.state && <p>{company.city}, {company.state} {company.zip}</p>}
+                    {!company.city && company.state && <p>{company.state} {company.zip}</p>}
+                    {company.city && !company.state && <p>{company.city} {company.zip}</p>}
+                    {!company.city && !company.state && company.zip && <p>{company.zip}</p>}
+                    {company.country && <p>{company.country}</p>}
+                  </address>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
         
@@ -151,15 +218,6 @@ const CompanyDetailPage = () => {
                       </a>
                     </div>
                   )}
-
-                  <div className="flex items-center">
-                    <Linkedin className="h-4 w-4 mr-3 text-gray-500" />
-                    <input 
-                      type="text" 
-                      placeholder="Add LinkedIn URL" 
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    />
-                  </div>
                 </div>
                 
                 <div>
@@ -206,8 +264,6 @@ const CompanyDetailPage = () => {
         
         {/* Module 5: Company Research (New section) */}
         <CompanyResearch companyId={company.id} />
-
-        {/* Research Generation Sheet - removed since we now have a dedicated section */}
       </div>
     </Layout>
   );

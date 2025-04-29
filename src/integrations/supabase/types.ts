@@ -11,39 +11,187 @@ export type Database = {
     Tables: {
       companies: {
         Row: {
+          call_script: string | null
+          city: string | null
+          country: string | null
           created_at: string
           description: string | null
+          email_script: string | null
+          facebook_url: string | null
           id: string
           industry: string | null
+          industry_vertical: string | null
+          keywords: string[] | null
+          linkedin_url: string | null
           location: string | null
           name: string
+          phone: string | null
+          research_notes: string | null
           size: string | null
+          social_dm_script: string | null
+          state: string | null
+          street: string | null
+          text_script: string | null
+          twitter_url: string | null
           updated_at: string
           website: string | null
+          zip: string | null
         }
         Insert: {
+          call_script?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
+          email_script?: string | null
+          facebook_url?: string | null
           id?: string
           industry?: string | null
+          industry_vertical?: string | null
+          keywords?: string[] | null
+          linkedin_url?: string | null
           location?: string | null
           name: string
+          phone?: string | null
+          research_notes?: string | null
           size?: string | null
+          social_dm_script?: string | null
+          state?: string | null
+          street?: string | null
+          text_script?: string | null
+          twitter_url?: string | null
           updated_at?: string
           website?: string | null
+          zip?: string | null
         }
         Update: {
+          call_script?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
+          email_script?: string | null
+          facebook_url?: string | null
           id?: string
           industry?: string | null
+          industry_vertical?: string | null
+          keywords?: string[] | null
+          linkedin_url?: string | null
           location?: string | null
           name?: string
+          phone?: string | null
+          research_notes?: string | null
           size?: string | null
+          social_dm_script?: string | null
+          state?: string | null
+          street?: string | null
+          text_script?: string | null
+          twitter_url?: string | null
           updated_at?: string
           website?: string | null
+          zip?: string | null
         }
         Relationships: []
+      }
+      company_insights: {
+        Row: {
+          ad_details: string | null
+          awards: string[] | null
+          company_id: string
+          content_audit: Json | null
+          created_at: string
+          id: string
+          ideal_client: boolean | null
+          job_postings: Json | null
+          running_facebook_ads: boolean | null
+          suggested_approach: string | null
+          updated_at: string
+        }
+        Insert: {
+          ad_details?: string | null
+          awards?: string[] | null
+          company_id: string
+          content_audit?: Json | null
+          created_at?: string
+          id?: string
+          ideal_client?: boolean | null
+          job_postings?: Json | null
+          running_facebook_ads?: boolean | null
+          suggested_approach?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ad_details?: string | null
+          awards?: string[] | null
+          company_id?: string
+          content_audit?: Json | null
+          created_at?: string
+          id?: string
+          ideal_client?: boolean | null
+          job_postings?: Json | null
+          running_facebook_ads?: boolean | null
+          suggested_approach?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_insights_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          company_id: string
+          created_at: string
+          email: string | null
+          first_name: string
+          id: string
+          last_name: string
+          linkedin_url: string | null
+          notes: string | null
+          phone: string | null
+          position: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          email?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          linkedin_url?: string | null
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          email?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          linkedin_url?: string | null
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       list_companies: {
         Row: {

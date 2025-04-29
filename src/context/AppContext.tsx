@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { Company, Contact, EmailTemplate, EmailConfig } from "../types";
 import { mockContacts, mockEmailTemplates } from "../data/mockData";
@@ -55,9 +56,25 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           name: company.name,
           website: company.website || "",
           industry: company.industry || "",
+          industry_vertical: company.industry_vertical || "",
           size: company.size || "",
           location: company.location || "",
+          street: company.street || "",
+          city: company.city || "",
+          state: company.state || "",
+          zip: company.zip || "",
+          country: company.country || "",
+          phone: company.phone || "",
           description: company.description || "",
+          facebook_url: company.facebook_url || "",
+          twitter_url: company.twitter_url || "",
+          linkedin_url: company.linkedin_url || "",
+          keywords: company.keywords || [],
+          call_script: company.call_script || "",
+          email_script: company.email_script || "",
+          text_script: company.text_script || "",
+          social_dm_script: company.social_dm_script || "",
+          research_notes: company.research_notes || "",
           createdAt: company.created_at,
           updatedAt: company.updated_at,
           insights: {} // Initialize with empty insights object

@@ -4,12 +4,28 @@ export interface Company {
   name: string;
   website: string;
   industry: string;
+  industry_vertical?: string;
   size: string;
   location: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  phone?: string;
   description: string;
+  facebook_url?: string;
+  twitter_url?: string;
+  linkedin_url?: string;
+  keywords?: string[];
   createdAt: string;
   updatedAt: string;
   insights?: CompanyInsights;
+  call_script?: string;
+  email_script?: string;
+  text_script?: string;
+  social_dm_script?: string;
+  research_notes?: string;
 }
 
 export interface Contact {
@@ -23,6 +39,7 @@ export interface Contact {
   createdAt: string;
   updatedAt: string;
   notes: string;
+  linkedin_url?: string;
 }
 
 export interface CompanyInsights {
