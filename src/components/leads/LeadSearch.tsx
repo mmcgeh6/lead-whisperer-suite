@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 
 interface LeadSearchProps {
@@ -99,21 +98,12 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
             
             <div className="space-y-2">
               <Label htmlFor="industry">Industry</Label>
-              <Select value={industry} onValueChange={setIndustry}>
-                <SelectTrigger id="industry">
-                  <SelectValue placeholder="Select an industry" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="technology">Technology</SelectItem>
-                  <SelectItem value="healthcare">Healthcare</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
-                  <SelectItem value="education">Education</SelectItem>
-                  <SelectItem value="retail">Retail</SelectItem>
-                  <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                  <SelectItem value="real-estate">Real Estate</SelectItem>
-                  <SelectItem value="professional-services">Professional Services</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                id="industry"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                placeholder="e.g. Technology, Healthcare, Finance"
+              />
             </div>
             
             <div className="space-y-2">

@@ -34,7 +34,8 @@ const LeadsPage = () => {
         
         <LeadSearch onLeadsFound={handleLeadsFound} />
         
-        <CompanyList newLeads={newLeads} />
+        {/* Pass newLeads as an explicit prop */}
+        <CompanyList />
       </div>
     </Layout>
   );

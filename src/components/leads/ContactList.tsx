@@ -2,15 +2,16 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/AppContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
 
 interface ContactListProps {
   companyId?: string;
+  onContactSelect?: (contactId: string) => void;
 }
 
-export const ContactList = ({ companyId }: ContactListProps) => {
+export const ContactList = ({ companyId, onContactSelect }: ContactListProps) => {
   const { contacts, companies, setSelectedContact } = useAppContext();
   const navigate = useNavigate();
   
@@ -27,34 +28,29 @@ export const ContactList = ({ companyId }: ContactListProps) => {
   const handleContactClick = (contactId: string) => {
     const contact = contacts.find(c => c.id === contactId);
     if (contact) {
-      setSelectedContact(contact);
-      navigate(`/contacts/${contactId}`);
+      if (onContactSelect) {
+        onContactSelect(contactId);
+      } else {
+        setSelectedContact(contact);
+        navigate(`/contacts/${contactId}`);
+      }
     }
   };
   
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Contacts</CardTitle>
-        <Button 
-          size="sm" 
-          onClick={() => navigate(companyId ? `/contacts/new?companyId=${companyId}` : "/contacts/new")}
-        >
-          Add Contact
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {filteredContacts.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No contacts found.</p>
-            <Button 
-              className="mt-4" 
-              onClick={() => navigate(companyId ? `/contacts/new?companyId=${companyId}` : "/contacts/new")}
-            >
-              Add Contact
-            </Button>
-          </div>
-        ) : (
+    <div>
+      {filteredContacts.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No contacts found.</p>
+          <Button 
+            className="mt-4" 
+            onClick={() => navigate(companyId ? `/contacts/new?companyId=${companyId}` : "/contacts/new")}
+          >
+            Add Contact
+          </Button>
+        </div>
+      ) : (
+        <div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -68,7 +64,11 @@ export const ContactList = ({ companyId }: ContactListProps) => {
             </TableHeader>
             <TableBody>
               {filteredContacts.map((contact) => (
-                <TableRow key={contact.id} className="cursor-pointer hover:bg-gray-50">
+                <TableRow 
+                  key={contact.id} 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => handleContactClick(contact.id)}
+                >
                   <TableCell className="font-medium">
                     {contact.firstName} {contact.lastName}
                   </TableCell>
@@ -80,19 +80,30 @@ export const ContactList = ({ companyId }: ContactListProps) => {
                   <TableCell>{formatDistanceToNow(new Date(contact.createdAt), { addSuffix: true })}</TableCell>
                   <TableCell className="text-right">
                     <Button 
-                      variant="ghost" 
+                      variant={onContactSelect ? "default" : "ghost"}
                       size="sm" 
-                      onClick={() => handleContactClick(contact.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleContactClick(contact.id);
+                      }}
                     >
-                      View
+                      {onContactSelect ? "Select" : "View"}
                     </Button>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        )}
-      </CardContent>
-    </Card>
+          <div className="mt-4 flex justify-end">
+            <Button 
+              size="sm" 
+              onClick={() => navigate(companyId ? `/contacts/new?companyId=${companyId}` : "/contacts/new")}
+            >
+              Add Contact
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };

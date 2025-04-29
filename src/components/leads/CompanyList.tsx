@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Company } from "@/types";
+import { Search } from "lucide-react";
 
 export const CompanyList = () => {
   const { companies, setSelectedCompany } = useAppContext();
@@ -34,49 +35,46 @@ export const CompanyList = () => {
             </Button>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Industry</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Ideal Client</TableHead>
-                <TableHead>Added</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {companies.map((company) => (
-                <TableRow key={company.id} onClick={() => handleCompanyClick(company)} className="cursor-pointer hover:bg-gray-50">
-                  <TableCell className="font-medium">{company.name}</TableCell>
-                  <TableCell>{company.industry}</TableCell>
-                  <TableCell>{company.location}</TableCell>
-                  <TableCell>
-                    {company.insights?.idealClient !== undefined ? (
-                      <Badge variant={company.insights.idealClient ? "default" : "outline"}>
-                        {company.insights.idealClient ? "Yes" : "No"}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">Unknown</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{formatDistanceToNow(new Date(company.createdAt), { addSuffix: true })}</TableCell>
-                  <TableCell className="text-right">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {companies.map((company) => (
+              <Card 
+                key={company.id} 
+                className="hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleCompanyClick(company)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-lg truncate">{company.name}</h3>
+                    <Badge variant={company.insights?.idealClient ? "default" : "outline"}>
+                      {company.insights?.idealClient ? "Ideal" : "Potential"}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-gray-500 mb-3">
+                    {company.industry} • {company.location}
+                  </div>
+                  <div className="text-sm mb-4 line-clamp-2 text-gray-600">
+                    {company.description || "No description available"}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-400">
+                      Added {formatDistanceToNow(new Date(company.createdAt), { addSuffix: true })}
+                    </span>
                     <Button 
                       variant="ghost" 
-                      size="sm" 
+                      size="sm"
+                      className="flex items-center gap-1"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCompanyClick(company);
                       }}
                     >
-                      View
+                      <Search className="h-4 w-4" /> View Details
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>
