@@ -69,7 +69,6 @@ export const CallScriptGenerator = ({ contactId }: CallScriptGeneratorProps) => 
         
         {selectedContact && selectedCompany && (
           <PersonalizedOutreach 
-            contact={selectedContact} 
             companyName={selectedCompany.name} 
           />
         )}
