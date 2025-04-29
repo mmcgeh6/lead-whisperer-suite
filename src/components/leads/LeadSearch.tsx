@@ -3,27 +3,25 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { Search } from "lucide-react";
 
 interface LeadSearchProps {
   onLeadsFound?: (leads: any[]) => void;
 }
 
 export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
-  const [businessType, setBusinessType] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [location, setLocation] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!businessType && !industry && !location) {
+    if (!searchQuery.trim()) {
       toast({
-        title: "Search criteria required",
-        description: "Please enter at least one search criterion",
+        title: "Search query required",
+        description: "Please enter a search term",
         variant: "destructive",
       });
       return;
@@ -45,9 +43,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          businessType,
-          industry,
-          location,
+          industry: searchQuery,
           action: "findLeads"
         }),
       });
@@ -85,41 +81,24 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSearch} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="business-type">Business Type/Vertical</Label>
-              <Input
-                id="business-type"
-                value={businessType}
-                onChange={(e) => setBusinessType(e.target.value)}
-                placeholder="e.g. Software, Healthcare"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="industry">Industry</Label>
-              <Input
-                id="industry"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                placeholder="e.g. Technology, Healthcare, Finance"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. New York, Remote"
-              />
-            </div>
-          </div>
-          
-          <div className="flex justify-end">
-            <Button type="submit" disabled={isSearching} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              {isSearching ? "Searching..." : "Find Leads"}
+          <div className="flex gap-4">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for companies by industry, e.g. Software, Healthcare, Finance..."
+              className="flex-1"
+            />
+            <Button 
+              type="submit" 
+              disabled={isSearching}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {isSearching ? "Searching..." : (
+                <>
+                  <Search className="h-4 w-4 mr-2" />
+                  Find Leads
+                </>
+              )}
             </Button>
           </div>
         </form>
