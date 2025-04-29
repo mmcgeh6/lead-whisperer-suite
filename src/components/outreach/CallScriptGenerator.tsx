@@ -14,17 +14,17 @@ import { Label } from "@/components/ui/label";
 import { useAppContext } from "@/context/AppContext";
 import { useToast } from "@/components/ui/use-toast";
 import { Contact, Company } from "@/types";
+import { PersonalizedOutreach } from "./PersonalizedOutreach";
 
 interface CallScriptGeneratorProps {
   contactId?: string;
 }
 
 export const CallScriptGenerator = ({ contactId }: CallScriptGeneratorProps) => {
-  const { contacts, companies, generateCallScript } = useAppContext();
+  const { contacts, companies } = useAppContext();
   const { toast } = useToast();
   
   const [selectedContactId, setSelectedContactId] = useState(contactId || "");
-  const [callScript, setCallScript] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   
   const selectedContact = contacts.find((c) => c.id === selectedContactId);
@@ -32,49 +32,10 @@ export const CallScriptGenerator = ({ contactId }: CallScriptGeneratorProps) => 
     ? companies.find((c) => c.id === selectedContact.companyId) 
     : null;
   
-  const handleGenerateScript = () => {
-    if (!selectedContactId) {
-      toast({
-        title: "Cannot Generate Script",
-        description: "Please select a contact.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsGenerating(true);
-    
-    try {
-      const script = generateCallScript(selectedContactId);
-      setCallScript(script);
-      toast({
-        title: "Script Generated",
-        description: "Call script has been generated and saved to contact notes.",
-      });
-    } catch (error) {
-      console.error("Failed to generate call script:", error);
-      toast({
-        title: "Failed to Generate Script",
-        description: "There was an error generating the call script. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-  
-  const handleCopyScript = () => {
-    navigator.clipboard.writeText(callScript);
-    toast({
-      title: "Script Copied",
-      description: "Call script has been copied to clipboard.",
-    });
-  };
-  
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Generate Call Script</CardTitle>
+        <CardTitle>Generate Outreach Content</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
@@ -106,31 +67,11 @@ export const CallScriptGenerator = ({ contactId }: CallScriptGeneratorProps) => 
           </div>
         )}
         
-        <div className="flex justify-center">
-          <Button 
-            onClick={handleGenerateScript} 
-            disabled={isGenerating || !selectedContactId}
-          >
-            {isGenerating ? "Generating..." : "Generate Call Script"}
-          </Button>
-        </div>
-        
-        {callScript && (
-          <div className="space-y-3">
-            <Label htmlFor="script">Generated Script</Label>
-            <Textarea
-              id="script"
-              value={callScript}
-              readOnly
-              rows={12}
-              className="font-mono text-sm"
-            />
-            <div className="flex justify-end">
-              <Button variant="outline" onClick={handleCopyScript}>
-                Copy to Clipboard
-              </Button>
-            </div>
-          </div>
+        {selectedContact && selectedCompany && (
+          <PersonalizedOutreach 
+            contact={selectedContact} 
+            companyName={selectedCompany.name} 
+          />
         )}
       </CardContent>
     </Card>

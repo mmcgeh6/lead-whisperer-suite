@@ -11,7 +11,10 @@ const EmailComposerPage = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        <h1 className="text-3xl font-bold">Compose Email</h1>
+        <h1 className="text-3xl font-bold">Compose Personalized Email</h1>
+        <p className="text-gray-500">
+          Use templates and contact information to create highly personalized emails.
+        </p>
         
         <EmailComposer contactId={contactId} templateId={templateId} />
       </div>

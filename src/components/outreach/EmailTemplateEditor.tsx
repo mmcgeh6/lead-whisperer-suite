@@ -66,7 +66,7 @@ export const EmailTemplateEditor = ({ template, onSave }: EmailTemplateEditorPro
             className="mt-1"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Use variables like {{firstName}} or {{company}} in your subject line.
+            Use variables like {"{{firstName}}"} or {"{{company}}"} in your subject line.
           </p>
         </div>
         
@@ -80,7 +80,7 @@ export const EmailTemplateEditor = ({ template, onSave }: EmailTemplateEditorPro
             className="mt-1 font-mono text-sm"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Use variables like {{firstName}}, {{company}}, etc. in your email body.
+            Use variables like {"{{firstName}}"}, {"{{company}}"}, etc. in your email body.
           </p>
         </div>
         
@@ -93,6 +93,7 @@ export const EmailTemplateEditor = ({ template, onSave }: EmailTemplateEditorPro
                 <button 
                   onClick={() => handleRemoveVariable(variable)} 
                   className="ml-1 text-gray-500 hover:text-gray-700"
+                  type="button"
                 >
                   &times;
                 </button>
