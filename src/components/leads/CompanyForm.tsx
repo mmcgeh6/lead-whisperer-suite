@@ -110,10 +110,21 @@ export const CompanyForm = ({ initialData }: CompanyFormProps) => {
         
         if (data && data[0]) {
           // Add to local state with the id from Supabase
-          addCompany({
-            ...values,
-            id: data[0].id
-          });
+          // Convert the data structure to match our Company type
+          const newCompany: Company = {
+            id: data[0].id,
+            name: data[0].name,
+            website: data[0].website || "",
+            industry: data[0].industry || "",
+            size: data[0].size || "",
+            location: data[0].location || "",
+            description: data[0].description || "",
+            createdAt: data[0].created_at,
+            updatedAt: data[0].updated_at,
+            insights: {}
+          };
+          
+          addCompany(newCompany);
           
           toast({
             title: "Company Added",

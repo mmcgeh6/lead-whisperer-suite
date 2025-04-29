@@ -14,7 +14,7 @@ interface AppContextType {
   selectedContact: Contact | null;
   setSelectedCompany: (company: Company | null) => void;
   setSelectedContact: (contact: Contact | null) => void;
-  addCompany: (company: Omit<Company, "id" | "createdAt" | "updatedAt">) => void;
+  addCompany: (company: Company) => void;
   updateCompany: (company: Company) => void;
   addContact: (contact: Omit<Contact, "id" | "createdAt" | "updatedAt">) => void;
   updateContact: (contact: Contact) => void;
@@ -53,14 +53,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const formattedCompanies = data.map(company => ({
           id: company.id,
           name: company.name,
-          website: company.website,
-          industry: company.industry,
-          size: company.size,
-          location: company.location,
-          description: company.description,
+          website: company.website || "",
+          industry: company.industry || "",
+          size: company.size || "",
+          location: company.location || "",
+          description: company.description || "",
           createdAt: company.created_at,
           updatedAt: company.updated_at,
-          insights: company.insights || {}
+          insights: {} // Initialize with empty insights object
         }));
         
         setCompanies(formattedCompanies);
@@ -77,33 +77,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     fetchCompanies();
   }, [user]);
 
-  const addCompany = (companyData: Omit<Company, "id" | "createdAt" | "updatedAt">) => {
-    const now = new Date().toISOString();
-    const newCompany: Company = {
-      ...companyData,
-      id: `company-${Date.now()}`,
-      createdAt: now,
-      updatedAt: now,
-    };
-    setCompanies([...companies, newCompany]);
-    toast({
-      title: "Company Added",
-      description: `${newCompany.name} has been added to your leads.`,
-    });
+  // Update the addCompany function to accept a Company type instead of Omit<Company>
+  const addCompany = (company: Company) => {
+    setCompanies(prevCompanies => [...prevCompanies, company]);
   };
 
   const updateCompany = (updatedCompany: Company) => {
     setCompanies(
       companies.map((company) =>
-        company.id === updatedCompany.id
-          ? { ...updatedCompany, updatedAt: new Date().toISOString() }
-          : company
+        company.id === updatedCompany.id ? updatedCompany : company
       )
     );
-    toast({
-      title: "Company Updated",
-      description: `${updatedCompany.name} has been updated.`,
-    });
   };
 
   const addContact = (contactData: Omit<Contact, "id" | "createdAt" | "updatedAt">) => {
