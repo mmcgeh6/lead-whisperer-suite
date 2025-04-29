@@ -23,138 +23,141 @@ import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
+// Create a new client instance - make sure it's outside of the component
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <AppProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/leads" 
-                element={
-                  <ProtectedRoute>
-                    <LeadsPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/leads/:id" 
-                element={
-                  <ProtectedRoute>
-                    <CompanyDetailPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/leads/new" 
-                element={
-                  <ProtectedRoute>
-                    <CompanyFormPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/leads/edit/:id" 
-                element={
-                  <ProtectedRoute>
-                    <CompanyFormPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/contacts/new" 
-                element={
-                  <ProtectedRoute>
-                    <ContactFormPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/contacts/edit/:id" 
-                element={
-                  <ProtectedRoute>
-                    <ContactFormPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/contacts/:id" 
-                element={
-                  <ProtectedRoute>
-                    <ContactDetailPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/outreach" 
-                element={
-                  <ProtectedRoute>
-                    <OutreachPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/outreach/email" 
-                element={
-                  <ProtectedRoute>
-                    <EmailComposerPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/outreach/call-script" 
-                element={
-                  <ProtectedRoute>
-                    <CallScriptPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/outreach/templates" 
-                element={
-                  <ProtectedRoute>
-                    <EmailTemplatesPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/settings" 
-                element={
-                  <ProtectedRoute>
-                    <SettingsPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AppProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AppProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/leads" 
+                  element={
+                    <ProtectedRoute>
+                      <LeadsPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/leads/:id" 
+                  element={
+                    <ProtectedRoute>
+                      <CompanyDetailPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/leads/new" 
+                  element={
+                    <ProtectedRoute>
+                      <CompanyFormPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/leads/edit/:id" 
+                  element={
+                    <ProtectedRoute>
+                      <CompanyFormPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/contacts/new" 
+                  element={
+                    <ProtectedRoute>
+                      <ContactFormPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/contacts/edit/:id" 
+                  element={
+                    <ProtectedRoute>
+                      <ContactFormPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/contacts/:id" 
+                  element={
+                    <ProtectedRoute>
+                      <ContactDetailPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/outreach" 
+                  element={
+                    <ProtectedRoute>
+                      <OutreachPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/outreach/email" 
+                  element={
+                    <ProtectedRoute>
+                      <EmailComposerPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/outreach/call-script" 
+                  element={
+                    <ProtectedRoute>
+                      <CallScriptPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/outreach/templates" 
+                  element={
+                    <ProtectedRoute>
+                      <EmailTemplatesPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/settings" 
+                  element={
+                    <ProtectedRoute>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/profile" 
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AppProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
