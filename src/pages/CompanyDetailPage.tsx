@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import { Layout } from "@/components/Layout";
 import { ContactList } from "@/components/leads/ContactList";
 import { CompanyInsights } from "@/components/insights/CompanyInsights";
+import { CompanyResearch } from "@/components/research/CompanyResearch";
 import { PersonalizedOutreach } from "@/components/outreach/PersonalizedOutreach";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -201,84 +201,13 @@ const CompanyDetailPage = () => {
           </CardContent>
         </Card>
         
-        {/* Module 4: Company Insights with Research Generation */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Company Insights</CardTitle>
-            <Button onClick={() => setResearchSheetOpen(true)}>
-              Generate Research
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <CompanyInsights companyId={company.id} />
-          </CardContent>
-        </Card>
+        {/* Module 4: Company Insights */}
+        <CompanyInsights companyId={company.id} />
+        
+        {/* Module 5: Company Research (New section) */}
+        <CompanyResearch companyId={company.id} />
 
-        {/* Research Generation Sheet */}
-        <Sheet open={researchSheetOpen} onOpenChange={setResearchSheetOpen}>
-          <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle className="text-xl">Research Generator</SheetTitle>
-              <SheetClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </SheetClose>
-            </SheetHeader>
-            <div className="py-6">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Generate Company Research</h3>
-                  <p className="text-gray-600 mb-4">
-                    Generate detailed research about {company.name} to better understand their business,
-                    challenges, and opportunities. This will help you create more targeted outreach.
-                  </p>
-                </div>
-
-                <div className="grid gap-4">
-                  <Button
-                    onClick={() => {
-                      // Implementation for competitive analysis webhook call
-                      // Similar to the existing webhook calls in PersonalizedOutreach
-                    }}
-                  >
-                    Competitive Analysis
-                  </Button>
-                  
-                  <Button
-                    onClick={() => {
-                      // Implementation for market challenges webhook call
-                    }}
-                  >
-                    Market Challenges
-                  </Button>
-                  
-                  <Button
-                    onClick={() => {
-                      // Implementation for growth opportunities webhook call
-                    }}
-                  >
-                    Growth Opportunities
-                  </Button>
-                  
-                  <Button
-                    onClick={() => {
-                      // Implementation for technology stack webhook call
-                    }}
-                  >
-                    Technology Stack
-                  </Button>
-                </div>
-                
-                <div className="bg-muted p-4 rounded-md mt-4">
-                  <h4 className="font-medium mb-2">Research Results</h4>
-                  <p className="text-sm text-gray-600">
-                    Select one of the options above to generate research results.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
+        {/* Research Generation Sheet - removed since we now have a dedicated section */}
       </div>
     </Layout>
   );
