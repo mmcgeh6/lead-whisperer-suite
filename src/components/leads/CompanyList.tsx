@@ -1,148 +1,119 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useAppContext } from "@/context/AppContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { formatDistanceToNow } from "date-fns";
-import { Badge } from "@/components/ui/badge";
+import { useAppContext } from "@/context/AppContext";
 import { Company } from "@/types";
-import { Search, Building2, MapPin, Tag, Users } from "lucide-react";
+import { Eye, Edit, Building2, MapPin, Users } from "lucide-react";
 
 interface CompanyListProps {
   newLeads?: Partial<Company>[];
   selectedCompanies?: string[];
-  onCompanySelect?: (id: string, isSelected: boolean) => void;
+  onCompanySelect?: (id: string, selected: boolean) => void;
+  hideOptions?: boolean;
 }
 
 export const CompanyList = ({ 
-  newLeads = [],
-  selectedCompanies = [],
-  onCompanySelect
+  newLeads = [], 
+  selectedCompanies = [], 
+  onCompanySelect,
+  hideOptions = false
 }: CompanyListProps) => {
-  const { companies, setSelectedCompany } = useAppContext();
+  const { companies } = useAppContext();
+  const [displayCompanies, setDisplayCompanies] = useState<(Company | Partial<Company>)[]>([]);
   const navigate = useNavigate();
   
-  const handleCompanyClick = (company: Company) => {
-    setSelectedCompany(company);
-    navigate(`/leads/${company.id}`);
+  useEffect(() => {
+    // Combine existing companies with any new leads
+    const allCompanies = [...companies];
+    
+    if (newLeads && newLeads.length > 0) {
+      allCompanies.unshift(...newLeads);
+    }
+    
+    setDisplayCompanies(allCompanies);
+  }, [companies, newLeads]);
+
+  const handleViewCompany = (id: string) => {
+    navigate(`/leads/company/${id}`);
   };
 
-  const handleCheckboxChange = (company: Company, checked: boolean) => {
-    if (onCompanySelect) {
-      onCompanySelect(company.id, checked);
-    }
+  const handleEditCompany = (id: string) => {
+    navigate(`/leads/company/${id}/edit`);
   };
   
-  const displayCompanies = [
-    ...newLeads.map(lead => ({ 
-      ...lead,
-      id: lead.id || `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-    })),
-    ...companies
-  ];
+  if (displayCompanies.length === 0) {
+    return (
+      <Card className="p-6 text-center">
+        <p className="text-gray-500 mb-4">No companies found</p>
+        <Button onClick={() => navigate("/leads/company/new")}>
+          Add Your First Company
+        </Button>
+      </Card>
+    );
+  }
   
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Companies</CardTitle>
-        <Button size="sm" onClick={() => navigate("/leads/new")}>
-          Add Company
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {displayCompanies.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No companies found.</p>
-            <Button className="mt-4" onClick={() => navigate("/leads/new")}>
-              Add Your First Company
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {displayCompanies.map((company: any) => (
-              <Card 
-                key={company.id} 
-                className={`hover:shadow-md transition-shadow border-l-4 ${
-                  company.insights?.idealClient ? "border-l-green-500" : "border-l-gray-200"
-                }`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    {onCompanySelect && (
-                      <Checkbox
-                        checked={selectedCompanies.includes(company.id)}
-                        onCheckedChange={(checked: boolean) => 
-                          handleCheckboxChange(company as Company, checked)
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-1"
-                      />
-                    )}
-                    
-                    <div 
-                      className="flex-1 cursor-pointer" 
-                      onClick={() => company.id && handleCompanyClick(company as Company)}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-semibold text-lg">{company.name}</h3>
-                        {company.insights?.idealClient && (
-                          <Badge className="ml-2">Ideal Client</Badge>
-                        )}
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 mt-3">
-                        <div className="flex items-center text-sm">
-                          <Building2 className="h-4 w-4 mr-2 text-gray-500" />
-                          <span>{company.industry || "Unknown industry"}</span>
-                        </div>
-                        
-                        <div className="flex items-center text-sm">
-                          <MapPin className="h-4 w-4 mr-2 text-gray-500" />
-                          <span>{company.location || "Unknown location"}</span>
-                        </div>
-                        
-                        <div className="flex items-center text-sm">
-                          <Users className="h-4 w-4 mr-2 text-gray-500" />
-                          <span>{company.size || "Unknown size"}</span>
-                        </div>
-                        
-                        <div className="flex items-center text-sm">
-                          <Tag className="h-4 w-4 mr-2 text-gray-500" />
-                          {company.createdAt && (
-                            <span>Added {formatDistanceToNow(new Date(company.createdAt), { addSuffix: true })}</span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {company.description && (
-                        <div className="mt-3 text-sm text-gray-600 line-clamp-2">
-                          {company.description}
-                        </div>
-                      )}
-                      
-                      <div className="flex justify-end mt-3">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (company.id) handleCompanyClick(company as Company);
-                          }}
-                        >
-                          <Search className="h-4 w-4" /> View Details
-                        </Button>
-                      </div>
+    <div className="space-y-4">
+      {displayCompanies.map((company) => (
+        <Card key={company.id} className="shadow-sm">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center space-x-4">
+              {!hideOptions && onCompanySelect && (
+                <Checkbox
+                  id={`company-${company.id}`}
+                  checked={selectedCompanies?.includes(company.id as string) || false}
+                  onCheckedChange={(checked) => {
+                    onCompanySelect(company.id as string, checked);
+                  }}
+                />
+              )}
+              <div>
+                <h3 className="text-lg font-semibold">{company.name}</h3>
+                <div className="text-gray-500 flex items-center space-x-2">
+                  {company.industry && (
+                    <div className="flex items-center">
+                      <Building2 className="h-4 w-4 mr-1" />
+                      <span>{company.industry}</span>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  )}
+                  {company.location && (
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-1" />
+                      <span>{company.location}</span>
+                    </div>
+                  )}
+                  {company.size && (
+                    <div className="flex items-center">
+                      <Users className="h-4 w-4 mr-1" />
+                      <span>{company.size}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            {!hideOptions && (
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleViewCompany(company.id as string)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleEditCompany(company.id as string)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </Card>
+      ))}
+    </div>
   );
 };

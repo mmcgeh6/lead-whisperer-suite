@@ -75,6 +75,16 @@ function App() {
               }
             />
             
+            {/* Add additional route to handle /leads/:id -> redirect to /leads/company/:id */}
+            <Route
+              path="/leads/:id"
+              element={
+                <ProtectedRoute>
+                  <CompanyDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            
             <Route
               path="/leads/company/:id/edit"
               element={
