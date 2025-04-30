@@ -1,17 +1,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue 
-} from "@/components/ui/select";
 import {
   Accordion,
   AccordionContent,
@@ -33,7 +24,6 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
   const [departments, setDepartments] = useState<string[]>([]);
   const [seniorities, setSeniorities] = useState<string[]>([]);
   const [employeeRanges, setEmployeeRanges] = useState<string[]>([]);
-  const [keywordFields, setKeywordFields] = useState<string[]>(["tags", "name", "seo_description"]);
   const [emailStatus, setEmailStatus] = useState<string[]>([]);
 
   // Department options
@@ -80,13 +70,6 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
     { value: "unverified", label: "Unverified" },
   ];
 
-  // Keyword field options
-  const keywordFieldOptions = [
-    { value: "tags", label: "Tags" },
-    { value: "name", label: "Name" },
-    { value: "seo_description", label: "Description" },
-  ];
-
   const handleToggleDepartment = (value: string) => {
     setDepartments(prev => 
       prev.includes(value) 
@@ -119,14 +102,6 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
     );
   };
 
-  const handleToggleKeywordField = (value: string) => {
-    setKeywordFields(prev => 
-      prev.includes(value) 
-        ? prev.filter(item => item !== value)
-        : [...prev, value]
-    );
-  };
-
   const handleSearch = () => {
     const keywordArray = keywords
       .split(',')
@@ -140,7 +115,6 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
       departments,
       seniorities,
       employeeRanges,
-      keywordFields,
       emailStatus,
     };
 
@@ -153,7 +127,6 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
     setDepartments([]);
     setSeniorities([]);
     setEmployeeRanges([]);
-    setKeywordFields(["tags", "name", "seo_description"]);
     setEmailStatus([]);
   };
 
@@ -179,23 +152,6 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
             onChange={(e) => setLocation(e.target.value)}
             placeholder="Country or region e.g., United States"
           />
-        </div>
-        
-        {/* Keyword fields checkboxes */}
-        <div>
-          <Label className="block mb-2">Where to look for keywords</Label>
-          <div className="flex flex-wrap gap-4">
-            {keywordFieldOptions.map((option) => (
-              <div key={option.value} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`keyword-field-${option.value}`}
-                  checked={keywordFields.includes(option.value)}
-                  onCheckedChange={() => handleToggleKeywordField(option.value)}
-                />
-                <Label htmlFor={`keyword-field-${option.value}`}>{option.label}</Label>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
       

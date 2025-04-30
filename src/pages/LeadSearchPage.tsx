@@ -10,9 +10,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
-import { LeadSearch } from "@/components/leads/LeadSearch";
 import { Company, Contact } from "@/types";
-import { SearchType } from "@/services/apifyService";
+import { SearchType, searchForLeads, transformApifyResults } from "@/services/apifyService";
 
 // Result types
 export interface SearchResult {
@@ -42,101 +41,132 @@ const LeadSearchPage = () => {
   const { toast } = useToast();
   const { addCompany, addContact } = useAppContext();
   
-  // Handler for when LeadSearch component finds leads
-  const handleLeadsFound = (leads: any[]) => {
-    if (!Array.isArray(leads) || leads.length === 0) {
-      return;
-    }
-    
-    // If leads have company and contact structure from Apify transformation
-    if (leads[0]?.company) {
-      const transformedResults: SearchResult[] = leads.map((item, index) => {
-        const isPersonSearch = !!item.contact;
-        
-        return {
-          id: `result-${Date.now()}-${index}`,
-          type: isPersonSearch ? 'person' : 'company',
-          name: isPersonSearch 
-            ? `${item.contact.firstName || ""} ${item.contact.lastName || ""}`.trim() || "Unknown"
-            : item.company.name || "Unknown",
-          title: isPersonSearch ? item.contact.title || "N/A" : undefined,
-          company: isPersonSearch ? item.company.name : undefined,
-          industry: item.company.industry || "N/A",
-          location: item.company.location || "N/A",
-          website: item.company.website || "",
-          linkedin_url: isPersonSearch ? item.contact.linkedin_url || "" : item.company.linkedin_url || "",
-          email: isPersonSearch ? item.contact.email || "" : undefined,
-          phone: isPersonSearch ? item.contact.phone || "" : undefined,
-          description: item.company.description || "",
-          selected: false,
-          archived: false,
-          raw_data: item
-        };
-      });
-      
-      setSearchResults(transformedResults);
-      return;
-    }
-    
-    // Legacy format - convert to SearchResult type
-    const convertedResults: SearchResult[] = leads.map((lead, index) => ({
-      id: `result-${Date.now()}-${index}`,
-      type: lead.type || 'person',
-      name: lead.name || "Unknown",
-      title: lead.title || "N/A",
-      company: lead.company || "N/A",
-      industry: lead.industry || "N/A",
-      location: lead.location || "N/A",
-      website: lead.website || "",
-      linkedin_url: lead.linkedin_url || "",
-      email: lead.email || "",
-      phone: lead.phone || "",
-      description: lead.description || "",
-      selected: false,
-      archived: false,
-      raw_data: lead
-    }));
-    
-    setSearchResults(convertedResults);
-  };
-
   const handleSearch = async (searchParams: any) => {
+    if (!searchParams.keywords || searchParams.keywords.length === 0) {
+      toast({
+        title: "Search query required",
+        description: "Please enter search keywords",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSearching(true);
     
     try {
-      // Determine which endpoint to use based on active tab
-      const endpoint = activeTab === 'people' ? 
-        '/api/search/people' : 
-        '/api/search/companies';
+      // First check if we should use the Apify API
+      const leadProvider = localStorage.getItem('leadProvider') || 'apollo';
       
-      // In a production app, this would call your API endpoint
-      // For now, simulate a search with setTimeout
-      setTimeout(() => {
-        // Mock data for testing
-        const mockResults: SearchResult[] = Array(10).fill(null).map((_, i) => ({
-          id: `result-${Date.now()}-${i}`,
-          type: activeTab as 'person' | 'company',
-          name: activeTab === 'people' ? `Person ${i+1}` : `Company ${i+1}`,
-          title: activeTab === 'people' ? `Job Title ${i+1}` : undefined,
-          company: activeTab === 'people' ? `Company ${i+1}` : undefined,
-          industry: `Industry ${i % 5}`,
-          location: `Location ${i % 3}`,
-          website: `https://example${i}.com`,
-          linkedin_url: `https://linkedin.com/in/profile-${i}`,
-          email: activeTab === 'people' ? `person${i}@example.com` : undefined,
-          selected: false,
-          archived: false,
-          raw_data: { /* Full response data would go here */ }
-        }));
+      if (leadProvider === 'apify-apollo') {
+        // Check for API key
+        const apiKey = localStorage.getItem('apifyApolloApiKey');
+        if (!apiKey) {
+          toast({
+            title: "API Key Not Configured",
+            description: "Please set up your Apify API key in API Settings",
+            variant: "destructive",
+          });
+          setIsSearching(false);
+          return;
+        }
         
-        setSearchResults(mockResults);
-        setIsSearching(false);
+        // Use the Apify service
+        const results = await searchForLeads({
+          searchType: activeTab,
+          industry: searchParams.keywords.join(','),
+          location: searchParams.location,
+          limit: 20
+        });
+        
+        // Transform results
+        const transformedLeads = transformApifyResults(results, activeTab);
+        
+        setSearchResults(transformedLeads.map((item, index) => {
+          const isPersonSearch = !!item.contact;
+          
+          return {
+            id: `result-${Date.now()}-${index}`,
+            type: isPersonSearch ? 'person' : 'company',
+            name: isPersonSearch 
+              ? `${item.contact?.firstName || ""} ${item.contact?.lastName || ""}`.trim() || "Unknown"
+              : item.company.name || "Unknown",
+            title: isPersonSearch ? item.contact?.title || "N/A" : undefined,
+            company: isPersonSearch ? item.company.name : undefined,
+            industry: item.company.industry || "N/A",
+            location: item.company.location || "N/A",
+            website: item.company.website || "",
+            linkedin_url: isPersonSearch ? item.contact?.linkedin_url || "" : item.company.linkedin_url || "",
+            email: isPersonSearch ? item.contact?.email || "" : undefined,
+            phone: isPersonSearch ? item.contact?.phone || "" : undefined,
+            description: item.company.description || "",
+            selected: false,
+            archived: false,
+            raw_data: item
+          };
+        }));
         
         toast({
           title: "Search Complete",
-          description: `Found ${mockResults.length} results.`
+          description: `Found ${transformedLeads.length} results.`
         });
-      }, 1500);
+      } else {
+        // Fallback to using n8n webhook
+        const webhookUrl = import.meta.env.VITE_N8N_LEAD_SEARCH_WEBHOOK || "";
+        
+        if (!webhookUrl) {
+          throw new Error("N8N webhook URL not configured");
+        }
+
+        const response = await fetch(webhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            industry: searchParams.keywords.join(','),
+            location: searchParams.location,
+            action: "findLeads",
+            searchType: activeTab,
+            // Add other parameters
+            departments: searchParams.departments,
+            seniorities: searchParams.seniorities,
+            employeeRanges: searchParams.employeeRanges,
+            emailStatus: searchParams.emailStatus
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch leads");
+        }
+
+        const data = await response.json();
+        
+        // Convert to SearchResult type
+        const convertedResults: SearchResult[] = (data.leads || []).map((lead: any, index: number) => ({
+          id: `result-${Date.now()}-${index}`,
+          type: lead.type || activeTab === 'people' ? 'person' : 'company',
+          name: lead.name || "Unknown",
+          title: lead.title || "N/A",
+          company: lead.company || "N/A",
+          industry: lead.industry || "N/A",
+          location: lead.location || "N/A",
+          website: lead.website || "",
+          linkedin_url: lead.linkedin_url || "",
+          email: lead.email || "",
+          phone: lead.phone || "",
+          description: lead.description || "",
+          selected: false,
+          archived: false,
+          raw_data: lead
+        }));
+        
+        setSearchResults(convertedResults);
+        
+        toast({
+          title: "Search Complete",
+          description: `Found ${convertedResults.length} results.`
+        });
+      }
     } catch (error) {
       console.error("Search error:", error);
       toast({
@@ -144,6 +174,7 @@ const LeadSearchPage = () => {
         description: "There was an error performing your search.",
         variant: "destructive"
       });
+    } finally {
       setIsSearching(false);
     }
   };
@@ -286,9 +317,6 @@ const LeadSearchPage = () => {
           </Button>
         </div>
         
-        {/* Basic Lead Search */}
-        <LeadSearch onLeadsFound={handleLeadsFound} />
-        
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left sidebar with saved searches */}
           <div className="lg:col-span-1">
@@ -306,7 +334,7 @@ const LeadSearchPage = () => {
           <div className="lg:col-span-3">
             <Card>
               <CardHeader>
-                <CardTitle>Advanced Search</CardTitle>
+                <CardTitle>Search Leads</CardTitle>
               </CardHeader>
               <CardContent>
                 <Tabs 
