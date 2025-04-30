@@ -2,12 +2,14 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { signOut as authSignOut } from "@/lib/auth";
 
 interface AuthContextProps {
   session: Session | null;
   user: User | null;
   profile: any | null;
   isLoading: boolean;
+  signOut: () => Promise<void>; // Added signOut method
   refreshProfile: () => Promise<void>;
 }
 
@@ -16,6 +18,7 @@ const AuthContext = createContext<AuthContextProps>({
   user: null,
   profile: null,
   isLoading: true,
+  signOut: async () => {}, // Default implementation
   refreshProfile: async () => {},
 });
 
@@ -52,6 +55,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (user?.id) {
       const profile = await fetchProfile(user.id);
       setProfile(profile);
+    }
+  };
+  
+  // Add signOut method implementation
+  const handleSignOut = async () => {
+    const { error } = await authSignOut();
+    if (error) {
+      console.error("Error signing out:", error);
+      throw error;
     }
   };
 
@@ -93,7 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, isLoading, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, isLoading, signOut: handleSignOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

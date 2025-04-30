@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { useParams } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import { Layout } from "@/components/Layout";
@@ -18,7 +19,7 @@ const CompanyFormPage = () => {
           {isEditing ? "Edit Company" : "Add New Company"}
         </h1>
         
-        <CompanyForm initialData={company} />
+        <CompanyForm company={company} />
       </div>
     </Layout>
   );
