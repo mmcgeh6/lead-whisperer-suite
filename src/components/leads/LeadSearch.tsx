@@ -85,14 +85,27 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       });
       
       console.log("Search results:", results);
-      console.log("First result sample:", results && results.length > 0 ? JSON.stringify(results[0]) : "No results");
+      if (results && results.length > 0) {
+        console.log("First result sample:", JSON.stringify(results[0]));
+      }
       
       // Transform results
       const transformedLeads = transformApifyResults(results, searchType);
       
       console.log("Transformed leads:", transformedLeads);
-      console.log("First transformed lead:", transformedLeads && transformedLeads.length > 0 ? 
-        JSON.stringify(transformedLeads[0]) : "No transformed leads");
+      if (transformedLeads && transformedLeads.length > 0) {
+        console.log("First transformed lead:", JSON.stringify(transformedLeads[0]));
+        
+        // Log detailed information about the first company
+        if (transformedLeads[0].company) {
+          console.log("Company data extracted:", {
+            name: transformedLeads[0].company.name,
+            industry: transformedLeads[0].company.industry,
+            location: transformedLeads[0].company.location,
+            website: transformedLeads[0].company.website
+          });
+        }
+      }
       
       toast({
         title: "Lead Search Complete",
@@ -100,6 +113,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       });
       
       if (onLeadsFound && transformedLeads.length > 0) {
+        console.log("Calling onLeadsFound with transformed leads:", transformedLeads.length);
         onLeadsFound(transformedLeads);
       } else if (transformedLeads.length === 0) {
         toast({

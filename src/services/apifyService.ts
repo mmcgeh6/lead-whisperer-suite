@@ -1,3 +1,4 @@
+
 /**
  * Service to handle interactions with the Apify API for lead searches
  */
@@ -350,14 +351,14 @@ export const transformApifyResults = (results: any[], searchType: SearchType = '
     return results.map(item => {
       console.log("Processing people item:", JSON.stringify(item).substring(0, 300));
       
-      // Extract company data - with improved field extraction
+      // Extract company data with improved field extraction - fixed to use the correct fields
       const company: Company = {
         id: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: item.organization_name || item.company_name || item.company || "Unknown Company",
-        website: item.organization_website || item.company_website || item.website || "",
-        industry: item.organization_industry || item.industry || "",
+        name: item.organization || item.organization_name || item.company_name || item.company || "Unknown Company",
+        website: item.website_url || item.organization_website || item.company_website || item.website || "",
+        industry: item.industry || item.organization_industry || "",
         size: item.organization_size || item.company_size || item.size || "Unknown",
-        location: item.organization_location || item.company_location || item.location || "",
+        location: item.city || item.location || item.organization_location || "",
         description: item.organization_description || item.company_description || item.description || "",
         linkedin_url: item.organization_linkedin_url || item.company_linkedin_url || "",
         createdAt: new Date().toISOString(),
@@ -385,16 +386,16 @@ export const transformApifyResults = (results: any[], searchType: SearchType = '
     return results.map(item => {
       console.log("Processing company item:", JSON.stringify(item).substring(0, 300));
       
-      // Extract company data only with improved field extraction
+      // Extract company data only with improved field extraction - fixed to use the correct fields
       const company: Company = {
         id: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: item.name || item.organization_name || item.company_name || "Unknown Company",
-        website: item.website || item.organization_website || item.company_website || "",
+        name: item.organization || item.name || item.organization_name || item.company_name || "Unknown Company",
+        website: item.website_url || item.website || item.organization_website || "",
         industry: item.industry || item.organization_industry || "",
         size: item.size || item.organization_size || item.company_size || "Unknown",
-        location: item.location || item.organization_location || item.company_location || "",
-        description: item.description || item.organization_description || item.company_description || "",
-        linkedin_url: item.linkedin_url || item.organization_linkedin_url || item.company_linkedin_url || "",
+        location: item.city || item.location || item.organization_location || "",
+        description: item.description || item.organization_description || "",
+        linkedin_url: item.linkedin_url || item.organization_linkedin_url || "",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

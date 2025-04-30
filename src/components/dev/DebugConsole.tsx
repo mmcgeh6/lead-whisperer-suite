@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
  */
 const DebugConsole: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
-  const [isVisible, setIsVisible] = useState(true); // Default to visible
+  const [isVisible, setIsVisible] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
   
   useEffect(() => {
@@ -17,9 +17,16 @@ const DebugConsole: React.FC = () => {
                       window.location.hostname === 'localhost' ||
                       window.location.hostname.includes('lovableproject.com');
     
-    setIsVisible(isDevMode);
+    // Check if debug mode is explicitly enabled
+    const debugEnabled = localStorage.getItem('debugConsoleEnabled') === 'true';
     
-    if (!isDevMode) return;
+    setIsVisible(isDevMode || debugEnabled);
+    
+    // Always restore minimized state from localStorage
+    const minimizedState = localStorage.getItem('debugConsoleMinimized') === 'true';
+    setIsMinimized(minimizedState);
+    
+    if (!(isDevMode || debugEnabled)) return;
     
     // Store the original console methods
     const originalConsole = {
@@ -71,7 +78,27 @@ const DebugConsole: React.FC = () => {
     }
   }, [logs]);
   
-  if (!isVisible) return null;
+  // Save minimized state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('debugConsoleMinimized', isMinimized.toString());
+  }, [isMinimized]);
+  
+  const toggleDebugConsole = () => {
+    const newState = !isVisible;
+    setIsVisible(newState);
+    localStorage.setItem('debugConsoleEnabled', newState.toString());
+  };
+  
+  if (!isVisible) {
+    return (
+      <Button 
+        className="fixed bottom-4 right-4 z-50 bg-gray-800 text-white"
+        onClick={toggleDebugConsole}
+      >
+        Show Debug Console
+      </Button>
+    );
+  }
   
   return (
     <div className="fixed bottom-4 right-4 z-50">
@@ -91,9 +118,13 @@ const DebugConsole: React.FC = () => {
         <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg w-[600px] max-h-[500px] overflow-auto">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-bold">Debug Console</h3>
-            <div className="space-x-2">
+            <div className="space-x-2 flex">
               <Button variant="ghost" size="sm" onClick={() => setLogs([])}>
+                <RotateCcw className="h-4 w-4 mr-1" />
                 Clear
+              </Button>
+              <Button variant="ghost" size="sm" onClick={toggleDebugConsole}>
+                <X className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setIsMinimized(true)}>
                 <ChevronDown className="h-4 w-4" />
