@@ -10,6 +10,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import LeadsPage from "./pages/LeadsPage";
+import LeadSearchPage from "./pages/LeadSearchPage";
 import CompanyDetailPage from "./pages/CompanyDetailPage";
 import CompanyFormPage from "./pages/CompanyFormPage";
 import ContactFormPage from "./pages/ContactFormPage";
@@ -51,6 +52,14 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <LeadsPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/lead-search" 
+                  element={
+                    <ProtectedRoute>
+                      <LeadSearchPage />
                     </ProtectedRoute>
                   } 
                 />

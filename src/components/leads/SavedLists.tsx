@@ -29,13 +29,17 @@ interface SavedListsProps {
   selectedListId: string | null;
   onAddCompaniesToList: (listId: string, companyIds: string[]) => void;
   selectedCompanies: string[];
+  hideActionButtons?: boolean;
+  dialogMode?: boolean;
 }
 
 export const SavedLists = ({ 
   onSelectList, 
   selectedListId,
   onAddCompaniesToList,
-  selectedCompanies 
+  selectedCompanies,
+  hideActionButtons = false,
+  dialogMode = false
 }: SavedListsProps) => {
   const [lists, setLists] = useState<List[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,6 +103,11 @@ export const SavedLists = ({
       setNewListDescription("");
       setIsCreateDialogOpen(false);
       fetchLists();
+
+      // If in dialog mode, select the newly created list automatically
+      if (dialogMode && data && data[0]) {
+        onSelectList(data[0].id);
+      }
     } catch (error) {
       console.error('Error creating list:', error);
       toast({
@@ -123,6 +132,99 @@ export const SavedLists = ({
     setIsAddToListDialogOpen(false);
   };
 
+  // Render the list of lists with appropriate styling for dialog mode
+  const renderLists = () => {
+    if (isLoading) {
+      return <div className="py-2 text-center text-sm text-gray-500">Loading lists...</div>;
+    }
+    
+    if (lists.length === 0) {
+      return <div className="py-2 text-center text-sm text-gray-500">No saved lists yet</div>;
+    }
+    
+    return lists.map((list) => (
+      <Button
+        key={list.id}
+        variant={selectedListId === list.id ? "default" : "outline"}
+        className={`w-full justify-start text-left mb-2 ${dialogMode ? 'h-auto py-3' : ''}`}
+        onClick={() => onSelectList(list.id)}
+      >
+        <Folder className="h-4 w-4 mr-2 flex-shrink-0" />
+        <div className={dialogMode ? 'text-left' : ''}>
+          <span className="truncate">{list.name}</span>
+          {dialogMode && list.description && (
+            <p className="text-xs text-muted-foreground mt-1 truncate">{list.description}</p>
+          )}
+        </div>
+      </Button>
+    ));
+  };
+
+  // If in dialog mode, render a simplified version
+  if (dialogMode) {
+    return (
+      <div className="space-y-3">
+        {renderLists()}
+        
+        <Button
+          variant="outline"
+          className="w-full justify-start"
+          onClick={() => setIsCreateDialogOpen(true)}
+        >
+          <PlusCircle className="h-4 w-4 mr-2" /> Create New List
+        </Button>
+        
+        {/* Create List Dialog */}
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New List</DialogTitle>
+              <DialogDescription>
+                Create a new list to organize your leads
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium">
+                  List Name
+                </label>
+                <Input
+                  id="name"
+                  placeholder="e.g., Tech Companies"
+                  value={newListName}
+                  onChange={(e) => setNewListName(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="description" className="text-sm font-medium">
+                  Description (Optional)
+                </label>
+                <Textarea
+                  id="description"
+                  placeholder="Brief description of this list"
+                  value={newListDescription}
+                  onChange={(e) => setNewListDescription(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateList} disabled={!newListName.trim()}>
+                Create List
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // Original component for sidebar use
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -141,26 +243,10 @@ export const SavedLists = ({
           <Folder className="h-4 w-4 mr-2" /> All Leads
         </Button>
         
-        {isLoading ? (
-          <div className="py-2 text-center text-sm text-gray-500">Loading lists...</div>
-        ) : lists.length === 0 ? (
-          <div className="py-2 text-center text-sm text-gray-500">No saved lists yet</div>
-        ) : (
-          lists.map((list) => (
-            <Button
-              key={list.id}
-              variant={selectedListId === list.id ? "default" : "outline"}
-              className="w-full justify-start text-left"
-              onClick={() => onSelectList(list.id)}
-            >
-              <Folder className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span className="truncate">{list.name}</span>
-            </Button>
-          ))
-        )}
+        {renderLists()}
       </div>
 
-      {selectedCompanies.length > 0 && (
+      {!hideActionButtons && selectedCompanies.length > 0 && (
         <Button 
           className="w-full mt-4" 
           onClick={() => setIsAddToListDialogOpen(true)}
