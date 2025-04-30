@@ -64,6 +64,7 @@ const LeadSearchPage = () => {
     try {
       // Get settings from Supabase
       const settings = await getAppSettings();
+      console.log("Search page retrieved settings:", settings);
       
       // Get the lead provider from settings
       const leadProvider = settings.leadProvider || 'apify-apollo';
@@ -79,6 +80,8 @@ const LeadSearchPage = () => {
         apiKeyLabel = 'Apify';
         apiKey = settings.apifyApolloApiKey || null;
       }
+      
+      console.log(`Using ${apiKeyLabel} API key:`, apiKey ? `[Present, length: ${apiKey.length}]` : "Missing");
       
       if (!apiKey) {
         toast({
@@ -101,6 +104,11 @@ const LeadSearchPage = () => {
       });
       
       console.log("Raw search results:", results);
+      console.log("Results type:", Array.isArray(results) ? `Array with ${results.length} items` : typeof results);
+      
+      if (results && Array.isArray(results) && results.length > 0) {
+        console.log("First result sample:", JSON.stringify(results[0]).substring(0, 200));
+      }
       
       // Transform results
       const transformedLeads = transformApifyResults(results, activeTab);

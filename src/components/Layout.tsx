@@ -1,22 +1,29 @@
 
-import { ReactNode } from "react";
-import { Header } from "./Header";
-import { Footer } from "./Footer";
+import React from 'react';
+import { Header } from './Header';
+import { Footer } from './Footer';
+import { useTheme } from 'next-themes';
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from '@/components/ui/sonner';
+import DebugConsole from './dev/DebugConsole';
 
 interface LayoutProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
-export const Layout = ({ children }: LayoutProps) => {
+export const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { theme } = useTheme();
+  
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 bg-gray-50 p-6">
-        <div className="container mx-auto">
-          {children}
-        </div>
+      <main className="flex-grow container mx-auto px-4 py-8">
+        {children}
       </main>
       <Footer />
+      <Toaster />
+      <SonnerToaster />
+      <DebugConsole />
     </div>
   );
 };

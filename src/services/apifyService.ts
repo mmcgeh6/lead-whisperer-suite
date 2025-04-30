@@ -186,6 +186,8 @@ const searchWithApifyApollo = async (
   console.log("API request body:", body);
   
   try {
+    console.log(`Starting API call to Apify with key (first few chars): ${apiKey.substring(0, 5)}...`);
+    
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -197,7 +199,8 @@ const searchWithApifyApollo = async (
     });
     
     const responseText = await response.text();
-    console.log("Raw API response:", responseText);
+    console.log("API Response Status:", response.status, response.statusText);
+    console.log("Raw API response (first 500 chars):", responseText.substring(0, 500));
     
     if (!response.ok) {
       console.error("API response error:", response.status, responseText);
@@ -207,7 +210,21 @@ const searchWithApifyApollo = async (
     // Try to parse the JSON response
     try {
       const data = JSON.parse(responseText);
-      console.log("API parsed response:", data);
+      console.log("API parsed response type:", Array.isArray(data) ? "Array" : typeof data);
+      console.log("API parsed response items count:", Array.isArray(data) ? data.length : "N/A");
+      
+      // Check if we have a valid array with some items
+      if (!Array.isArray(data)) {
+        console.error("Expected array response but got:", typeof data);
+        return [];
+      }
+      
+      if (data.length === 0) {
+        console.log("API returned empty array - no results found");
+      } else {
+        console.log("First item sample:", JSON.stringify(data[0]).substring(0, 200));
+      }
+      
       return data;
     } catch (error) {
       console.error("Error parsing JSON response:", error);

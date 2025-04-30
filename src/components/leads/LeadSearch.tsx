@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
     try {
       // Get settings from Supabase
       const settings = await getAppSettings();
+      console.log("Retrieved settings:", settings);
       
       // Get the lead provider from settings
       const leadProvider = settings.leadProvider || 'apify-apollo';
@@ -55,6 +57,8 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
         apiKey = settings.apifyApolloApiKey || null;
       }
       
+      console.log(`Using ${apiKeyLabel} API key:`, apiKey ? `[Present, length: ${apiKey.length}]` : "Missing");
+      
       if (!apiKey) {
         toast({
           title: "API Key Not Configured",
@@ -71,7 +75,8 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       const results = await searchForLeads({
         searchType,
         industry: searchQuery,
-        limit: parseInt(resultCount, 10)
+        limit: parseInt(resultCount, 10),
+        location: "tampa fl" // Adding a default location to make the search more specific
       });
       
       console.log("Search results:", results);

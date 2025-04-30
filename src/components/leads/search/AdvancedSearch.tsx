@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,6 +123,12 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
       .split(',')
       .map(k => k.trim())
       .filter(k => k.length > 0);
+    
+    console.log("Search keywords:", keywordArray);
+    console.log("Search location:", location);
+    console.log("Search result count:", resultCount);
+    console.log("Search departments:", departments);
+    console.log("Search seniorities:", seniorities);
 
     const searchParams = {
       type,
