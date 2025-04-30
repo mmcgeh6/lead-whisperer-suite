@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContext } from "@/context/AppContext";
 import { useToast } from "@/components/ui/use-toast";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CompanyResearchProps {
   companyId: string;
@@ -30,21 +32,21 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
     setResearchType(type);
     setIsGeneratingResearch(true);
     
-    // Determine which webhook to use based on research type
+    // Get webhook URL from localStorage based on research type
     let webhookUrl = "";
     
     switch (type) {
       case "competitive":
-        webhookUrl = import.meta.env.VITE_N8N_COMPETITIVE_RESEARCH_WEBHOOK || "";
+        webhookUrl = localStorage.getItem('companyResearchWebhook') || "";
         break;
       case "market":
-        webhookUrl = import.meta.env.VITE_N8N_MARKET_RESEARCH_WEBHOOK || "";
+        webhookUrl = localStorage.getItem('marketResearchWebhook') || "";
         break;
       case "growth":
-        webhookUrl = import.meta.env.VITE_N8N_GROWTH_RESEARCH_WEBHOOK || "";
+        webhookUrl = localStorage.getItem('growthResearchWebhook') || "";
         break;
       case "tech":
-        webhookUrl = import.meta.env.VITE_N8N_TECH_RESEARCH_WEBHOOK || "";
+        webhookUrl = localStorage.getItem('techResearchWebhook') || "";
         break;
       default:
         webhookUrl = "";
@@ -53,7 +55,7 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
     if (!webhookUrl) {
       toast({
         title: "Webhook Not Configured",
-        description: `N8N webhook URL for ${type} research not configured`,
+        description: `Webhook URL for ${type} research not configured in API settings`,
         variant: "destructive"
       });
       setIsGeneratingResearch(false);
@@ -117,6 +119,22 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
     });
   };
   
+  // Check if webhooks are configured
+  const isWebhookConfigured = (type: string) => {
+    switch (type) {
+      case "competitive":
+        return !!localStorage.getItem('companyResearchWebhook');
+      case "market":
+        return !!localStorage.getItem('marketResearchWebhook');
+      case "growth":
+        return !!localStorage.getItem('growthResearchWebhook');
+      case "tech":
+        return !!localStorage.getItem('techResearchWebhook');
+      default:
+        return false;
+    }
+  };
+  
   return (
     <Card>
       <CardHeader>
@@ -127,11 +145,21 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         <div className="space-y-4">
           <h3 className="font-medium">Generate Research</h3>
           
+          {!isWebhookConfigured("competitive") && !isWebhookConfigured("market") && 
+           !isWebhookConfigured("growth") && !isWebhookConfigured("tech") && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                No research webhooks are configured. Please set up webhooks in API Settings to use this feature.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button
               variant="outline"
               className="justify-start"
-              disabled={isGeneratingResearch}
+              disabled={isGeneratingResearch || !isWebhookConfigured("competitive")}
               onClick={() => generateResearch("competitive")}
             >
               {isGeneratingResearch && researchType === "competitive" 
@@ -142,7 +170,7 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
             <Button
               variant="outline"
               className="justify-start"
-              disabled={isGeneratingResearch}
+              disabled={isGeneratingResearch || !isWebhookConfigured("market")}
               onClick={() => generateResearch("market")}
             >
               {isGeneratingResearch && researchType === "market" 
@@ -153,7 +181,7 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
             <Button
               variant="outline"
               className="justify-start"
-              disabled={isGeneratingResearch}
+              disabled={isGeneratingResearch || !isWebhookConfigured("growth")}
               onClick={() => generateResearch("growth")}
             >
               {isGeneratingResearch && researchType === "growth" 
@@ -164,7 +192,7 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
             <Button
               variant="outline"
               className="justify-start"
-              disabled={isGeneratingResearch}
+              disabled={isGeneratingResearch || !isWebhookConfigured("tech")}
               onClick={() => generateResearch("tech")}
             >
               {isGeneratingResearch && researchType === "tech" 

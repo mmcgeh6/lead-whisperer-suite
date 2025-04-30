@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ export const CompanyList = ({
   hideOptions = false
 }: CompanyListProps) => {
   const { companies } = useAppContext();
-  const [displayCompanies, setDisplayCompanies] = useState<(Company | Partial<Company>)[]>([]);
+  const [displayCompanies, setDisplayCompanies] = useState<Array<Company | (Partial<Company> & {id: string})>>([]);
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -29,7 +30,9 @@ export const CompanyList = ({
     const allCompanies = [...companies];
     
     if (newLeads && newLeads.length > 0) {
-      allCompanies.unshift(...newLeads);
+      // Only add leads that have an id field
+      const validNewLeads = newLeads.filter(lead => lead.id) as Array<Partial<Company> & {id: string}>;
+      allCompanies.unshift(...validNewLeads);
     }
     
     setDisplayCompanies(allCompanies);
@@ -63,9 +66,9 @@ export const CompanyList = ({
               {!hideOptions && onCompanySelect && (
                 <Checkbox
                   id={`company-${company.id}`}
-                  checked={selectedCompanies?.includes(company.id as string) || false}
+                  checked={selectedCompanies?.includes(company.id)}
                   onCheckedChange={(checked) => {
-                    onCompanySelect(company.id as string, checked);
+                    onCompanySelect(company.id, !!checked);
                   }}
                 />
               )}
@@ -98,14 +101,14 @@ export const CompanyList = ({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => handleViewCompany(company.id as string)}
+                  onClick={() => handleViewCompany(company.id)}
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => handleEditCompany(company.id as string)}
+                  onClick={() => handleEditCompany(company.id)}
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
