@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,80 +32,41 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
     setIsSearching(true);
 
     try {
-      // First check if we should use the Apify API or fallback to n8n webhook
-      const leadProvider = localStorage.getItem('leadProvider') || 'apollo';
+      // Check for API key
+      const apiKey = localStorage.getItem('apifyApolloApiKey');
+      if (!apiKey || apiKey.trim() === '') {
+        toast({
+          title: "API Key Not Configured",
+          description: "Please set up your Apify API key in API Settings",
+          variant: "destructive",
+        });
+        setIsSearching(false);
+        return;
+      }
       
-      if (leadProvider === 'apify-apollo') {
-        // Check for API key
-        const apiKey = localStorage.getItem('apifyApolloApiKey');
-        if (!apiKey) {
-          toast({
-            title: "API Key Not Configured",
-            description: "Please set up your Apify API key in API Settings",
-            variant: "destructive",
-          });
-          setIsSearching(false);
-          return;
-        }
-        
-        // Use the Apify service
-        const results = await searchForLeads({
-          searchType,
-          industry: searchQuery,
-          limit: 20
-        });
-        
-        // Transform results
-        const transformedLeads = transformApifyResults(results, searchType);
-        
-        toast({
-          title: "Lead Search Complete",
-          description: `Found ${transformedLeads.length} potential leads.`,
-        });
-        
-        if (onLeadsFound && transformedLeads.length > 0) {
-          onLeadsFound(transformedLeads);
-        }
-      } else {
-        // Fallback to using n8n webhook
-        const webhookUrl = import.meta.env.VITE_N8N_LEAD_SEARCH_WEBHOOK || "";
-        
-        if (!webhookUrl) {
-          throw new Error("N8N webhook URL not configured");
-        }
-
-        const response = await fetch(webhookUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            industry: searchQuery,
-            action: "findLeads",
-            searchType
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch leads");
-        }
-
-        const data = await response.json();
-        
-        toast({
-          title: "Lead Search Complete",
-          description: `Found ${data.leads?.length || 0} potential leads.`,
-        });
-        
-        if (onLeadsFound && data.leads) {
-          onLeadsFound(data.leads);
-        }
+      // Use the Apify service
+      const results = await searchForLeads({
+        searchType,
+        industry: searchQuery,
+        limit: 20
+      });
+      
+      // Transform results
+      const transformedLeads = transformApifyResults(results, searchType);
+      
+      toast({
+        title: "Lead Search Complete",
+        description: `Found ${transformedLeads.length} potential leads.`,
+      });
+      
+      if (onLeadsFound && transformedLeads.length > 0) {
+        onLeadsFound(transformedLeads);
       }
     } catch (error) {
       console.error("Error searching for leads:", error);
       toast({
         title: "Search Failed",
-        description: "Failed to search for leads. Please try again later.",
+        description: error instanceof Error ? error.message : "Failed to search for leads. Please try again later.",
         variant: "destructive",
       });
     } finally {

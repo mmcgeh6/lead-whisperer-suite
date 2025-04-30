@@ -34,8 +34,8 @@ export const searchForLeads = async (params: {
     // Get the API key from localStorage
     const apiKey = localStorage.getItem('apifyApolloApiKey');
     
-    if (!apiKey) {
-      throw new Error("Apify API key is not configured");
+    if (!apiKey || apiKey.trim() === '') {
+      throw new Error("Apify API key is not configured. Please set up your API key in API Settings.");
     }
     
     // Default limit if not provided
@@ -60,7 +60,7 @@ export const searchForLeads = async (params: {
       // Format the search URL for Apollo.io company search
       const apolloUrl = `https://app.apollo.io/#/companies?page=1&organizationLocations[]=${encodeURIComponent(location)}&organizationIndustryTagIds[]=${encodeURIComponent(params.industry)}`;
       
-      endpoint = `https://api.apify.com/v2/acts/patXsmIVzLafH9GKD/run-sync-get-dataset-items?timeout=300`;
+      endpoint = `https://api.apify.com/v2/acts/patXsmIVzLafH9GKD/run-sync-get-dataset-items?timeout=300&limit=${limit}`;
       
       body = JSON.stringify({
         searchUrl: apolloUrl,
@@ -91,7 +91,7 @@ export const searchForLeads = async (params: {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("API response error:", errorText);
-      throw new Error(`API request failed with status ${response.status}`);
+      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
     }
     
     const data = await response.json();
