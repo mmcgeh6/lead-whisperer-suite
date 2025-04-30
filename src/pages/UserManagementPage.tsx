@@ -136,7 +136,7 @@ const UserManagementPage = () => {
       if (newRole === 'admin') {
         // First delete any existing roles
         const { error: deleteError } = await supabase
-          .rpc('has_role', { role: 'admin' }, { head: true });
+          .rpc('has_role', { role: 'admin' });
         
         // Then insert admin role using raw SQL
         const { error: insertError } = await supabase.rpc(
