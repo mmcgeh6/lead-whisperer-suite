@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Search } from "lucide-react";
-import { searchForLeads, transformApifyResults } from "@/services/apifyService";
+import { searchForLeads, transformApifyResults, SearchType } from "@/services/apifyService";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface LeadSearchProps {
   onLeadsFound?: (leads: any[]) => void;
@@ -14,6 +15,7 @@ interface LeadSearchProps {
 export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [searchType, setSearchType] = useState<SearchType>("people");
   const { toast } = useToast();
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -49,12 +51,13 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
         
         // Use the Apify service
         const results = await searchForLeads({
+          searchType,
           industry: searchQuery,
           limit: 20
         });
         
         // Transform results
-        const transformedLeads = transformApifyResults(results);
+        const transformedLeads = transformApifyResults(results, searchType);
         
         toast({
           title: "Lead Search Complete",
@@ -79,7 +82,8 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
           },
           body: JSON.stringify({
             industry: searchQuery,
-            action: "findLeads"
+            action: "findLeads",
+            searchType
           }),
         });
 
@@ -116,28 +120,62 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
         <CardTitle>Find New Leads</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSearch} className="space-y-4">
-          <div className="flex gap-4">
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for companies by industry, e.g. Software, Healthcare, Finance..."
-              className="flex-1"
-            />
-            <Button 
-              type="submit" 
-              disabled={isSearching}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {isSearching ? "Searching..." : (
-                <>
-                  <Search className="h-4 w-4 mr-2" />
-                  Find Leads
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+        <Tabs value={searchType} onValueChange={(value) => setSearchType(value as SearchType)}>
+          <TabsList className="mb-4 w-full md:w-auto">
+            <TabsTrigger value="people">People Search</TabsTrigger>
+            <TabsTrigger value="companies">Company Search</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="people">
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="flex gap-4">
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for people by industry, e.g. Software, Healthcare, Finance..."
+                  className="flex-1"
+                />
+                <Button 
+                  type="submit" 
+                  disabled={isSearching}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {isSearching ? "Searching..." : (
+                    <>
+                      <Search className="h-4 w-4 mr-2" />
+                      Find People
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+          
+          <TabsContent value="companies">
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="flex gap-4">
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for companies by industry, e.g. Software, Healthcare, Finance..."
+                  className="flex-1"
+                />
+                <Button 
+                  type="submit" 
+                  disabled={isSearching}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {isSearching ? "Searching..." : (
+                    <>
+                      <Search className="h-4 w-4 mr-2" />
+                      Find Companies
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import { LeadSearch } from "@/components/leads/LeadSearch";
+import { Company, Contact } from "@/types";
+import { SearchType } from "@/services/apifyService";
 
 // Result types
 export interface SearchResult {
@@ -34,7 +35,7 @@ export interface SearchResult {
 }
 
 const LeadSearchPage = () => {
-  const [activeTab, setActiveTab] = useState<'people' | 'companies'>('people');
+  const [activeTab, setActiveTab] = useState<SearchType>('people');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedResults, setSelectedResults] = useState<string[]>([]);
@@ -48,24 +49,30 @@ const LeadSearchPage = () => {
     }
     
     // If leads have company and contact structure from Apify transformation
-    if (leads[0]?.company && leads[0]?.contact) {
-      const transformedResults: SearchResult[] = leads.map((item, index) => ({
-        id: `result-${Date.now()}-${index}`,
-        type: 'person',
-        name: `${item.contact.firstName || ""} ${item.contact.lastName || ""}`.trim() || "Unknown",
-        title: item.contact.title || "N/A",
-        company: item.company.name,
-        industry: item.company.industry || "N/A",
-        location: item.company.location || "N/A",
-        website: item.company.website || "",
-        linkedin_url: item.contact.linkedin_url || "",
-        email: item.contact.email || "",
-        phone: item.contact.phone || "",
-        description: item.company.description || "",
-        selected: false,
-        archived: false,
-        raw_data: item
-      }));
+    if (leads[0]?.company) {
+      const transformedResults: SearchResult[] = leads.map((item, index) => {
+        const isPersonSearch = !!item.contact;
+        
+        return {
+          id: `result-${Date.now()}-${index}`,
+          type: isPersonSearch ? 'person' : 'company',
+          name: isPersonSearch 
+            ? `${item.contact.firstName || ""} ${item.contact.lastName || ""}`.trim() || "Unknown"
+            : item.company.name || "Unknown",
+          title: isPersonSearch ? item.contact.title || "N/A" : undefined,
+          company: isPersonSearch ? item.company.name : undefined,
+          industry: item.company.industry || "N/A",
+          location: item.company.location || "N/A",
+          website: item.company.website || "",
+          linkedin_url: isPersonSearch ? item.contact.linkedin_url || "" : item.company.linkedin_url || "",
+          email: isPersonSearch ? item.contact.email || "" : undefined,
+          phone: isPersonSearch ? item.contact.phone || "" : undefined,
+          description: item.company.description || "",
+          selected: false,
+          archived: false,
+          raw_data: item
+        };
+      });
       
       setSearchResults(transformedResults);
       return;
@@ -172,31 +179,37 @@ const LeadSearchPage = () => {
     }
     
     try {
-      // Determine which format we're working with
-      if (selectedLeads[0].raw_data?.company && selectedLeads[0].raw_data?.contact) {
-        // Process Apify format
-        for (const lead of selectedLeads) {
-          const { company, contact } = lead.raw_data;
+      // Process each selected lead
+      for (const lead of selectedLeads) {
+        if (lead.raw_data?.company) {
+          // Process Apify format
+          const companyData: Company = {
+            ...lead.raw_data.company,
+            // Ensure all required fields are present
+            size: lead.raw_data.company.size || "Unknown",
+          };
           
-          // Add company to state
-          addCompany(company);
+          // Add company
+          addCompany(companyData);
           
-          // Add contact to state
-          addContact({
-            ...contact,
-            companyId: company.id
-          });
-        }
-      } else {
-        // Process legacy format
-        for (const lead of selectedLeads) {
+          // Add contact if this is a person search result
+          if (lead.raw_data.contact) {
+            addContact({
+              ...lead.raw_data.contact,
+              companyId: companyData.id
+            });
+          }
+        } else {
+          // Process legacy format
           // Create a company first
           const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          const company = {
+          
+          const companyData: Company = {
             id: companyId,
-            name: lead.company || "Unknown Company",
+            name: lead.company || lead.name || "Unknown Company",
             website: lead.website || "",
             industry: lead.industry || "",
+            size: "Unknown", // Default size value for legacy format
             location: lead.location || "",
             description: lead.description || "",
             linkedin_url: lead.linkedin_url?.includes("company") ? lead.linkedin_url : "",
@@ -205,7 +218,7 @@ const LeadSearchPage = () => {
           };
           
           // Add company
-          addCompany(company);
+          addCompany(companyData);
           
           // Only create contact for person type
           if (lead.type === 'person') {
@@ -298,7 +311,7 @@ const LeadSearchPage = () => {
               <CardContent>
                 <Tabs 
                   value={activeTab} 
-                  onValueChange={(value) => setActiveTab(value as 'people' | 'companies')}
+                  onValueChange={(value) => setActiveTab(value as SearchType)}
                 >
                   <TabsList className="mb-6">
                     <TabsTrigger value="people">People Search</TabsTrigger>
