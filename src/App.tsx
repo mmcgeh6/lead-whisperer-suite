@@ -1,9 +1,9 @@
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
-import { AppContextProvider } from "@/context/AppContext";
+import { AppProvider } from "@/context/AppContext";
 import { Toaster } from "@/components/ui/toaster";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "@/pages/Index";
 import Dashboard from "@/pages/Dashboard";
 import AuthPage from "@/pages/AuthPage";
@@ -25,7 +25,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContextProvider>
+        <AppProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
@@ -168,7 +168,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
-        </AppContextProvider>
+        </AppProvider>
       </AuthProvider>
     </BrowserRouter>
   );
