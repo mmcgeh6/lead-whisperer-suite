@@ -22,7 +22,7 @@ export interface CompanySearchResult {
 export type SearchResult = PeopleSearchResult | CompanySearchResult;
 
 // Define an interface for the app settings
-interface AppSettings {
+export interface AppSettings {
   leadProvider: LeadProvider;
   apolloApiKey: string;
   apifyApolloApiKey: string;
@@ -41,7 +41,8 @@ export const getAppSettings = async (): Promise<Partial<AppSettings>> => {
     const { data, error } = await supabase
       .from('app_settings')
       .select('*')
-      .maybeSingle();
+      .eq('id', 'default')
+      .single();
     
     if (error) {
       console.error("Error fetching settings from Supabase:", error);
@@ -51,7 +52,17 @@ export const getAppSettings = async (): Promise<Partial<AppSettings>> => {
     
     if (data) {
       console.log("Using settings from Supabase:", data);
-      return data as AppSettings;
+      // Cast the data to the expected type
+      const settings: Partial<AppSettings> = {
+        leadProvider: data.leadprovider as LeadProvider,
+        apolloApiKey: data.apolloapikey || '',
+        apifyApolloApiKey: data.apifyapolloapikey || '',
+        companyResearchWebhook: data.companyresearchwebhook || '',
+        marketResearchWebhook: data.marketresearchwebhook || '',
+        growthResearchWebhook: data.growthresearchwebhook || '',
+        techResearchWebhook: data.techresearchwebhook || '',
+      };
+      return settings;
     } else {
       // Fallback to localStorage if no data in Supabase
       return getLocalStorageSettings();

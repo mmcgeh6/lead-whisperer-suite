@@ -100,18 +100,18 @@ export const ApiConnectionsManager = () => {
     setIsLoading(true);
     
     try {
-      // Save to Supabase
+      // Save to Supabase - match column names with the database schema
       const { error } = await supabase
         .from('app_settings')
         .upsert({
           id: 'default', // Use a constant ID to ensure we only have one row
-          leadProvider: data.leadProvider,
-          apolloApiKey: data.apolloApiKey,
-          apifyApolloApiKey: data.apifyApolloApiKey,
-          companyResearchWebhook: data.companyResearchWebhook,
-          marketResearchWebhook: data.marketResearchWebhook,
-          growthResearchWebhook: data.growthResearchWebhook,
-          techResearchWebhook: data.techResearchWebhook,
+          leadprovider: data.leadProvider,
+          apolloapikey: data.apolloApiKey,
+          apifyapolloapikey: data.apifyApolloApiKey,
+          companyresearchwebhook: data.companyResearchWebhook,
+          marketresearchwebhook: data.marketResearchWebhook,
+          growthresearchwebhook: data.growthResearchWebhook,
+          techresearchwebhook: data.techResearchWebhook,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       

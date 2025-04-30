@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          apifyapolloapikey: string | null
+          apolloapikey: string | null
+          companyresearchwebhook: string | null
+          created_at: string | null
+          growthresearchwebhook: string | null
+          id: string
+          leadprovider: string | null
+          marketresearchwebhook: string | null
+          techresearchwebhook: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          apifyapolloapikey?: string | null
+          apolloapikey?: string | null
+          companyresearchwebhook?: string | null
+          created_at?: string | null
+          growthresearchwebhook?: string | null
+          id: string
+          leadprovider?: string | null
+          marketresearchwebhook?: string | null
+          techresearchwebhook?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          apifyapolloapikey?: string | null
+          apolloapikey?: string | null
+          companyresearchwebhook?: string | null
+          created_at?: string | null
+          growthresearchwebhook?: string | null
+          id?: string
+          leadprovider?: string | null
+          marketresearchwebhook?: string | null
+          techresearchwebhook?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           call_script: string | null
@@ -302,7 +341,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
