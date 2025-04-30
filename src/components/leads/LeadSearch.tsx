@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Search } from "lucide-react";
+import { searchForLeads, transformApifyResults } from "@/services/apifyService";
 
 interface LeadSearchProps {
   onLeadsFound?: (leads: any[]) => void;
@@ -30,37 +31,72 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
     setIsSearching(true);
 
     try {
-      // Get the webhook URL from environment or config
-      const webhookUrl = import.meta.env.VITE_N8N_LEAD_SEARCH_WEBHOOK || "";
+      // First check if we should use the Apify API or fallback to n8n webhook
+      const leadProvider = localStorage.getItem('leadProvider') || 'apollo';
       
-      if (!webhookUrl) {
-        throw new Error("N8N webhook URL not configured");
-      }
-
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      if (leadProvider === 'apify-apollo') {
+        // Check for API key
+        const apiKey = localStorage.getItem('apifyApolloApiKey');
+        if (!apiKey) {
+          toast({
+            title: "API Key Not Configured",
+            description: "Please set up your Apify API key in API Settings",
+            variant: "destructive",
+          });
+          setIsSearching(false);
+          return;
+        }
+        
+        // Use the Apify service
+        const results = await searchForLeads({
           industry: searchQuery,
-          action: "findLeads"
-        }),
-      });
+          limit: 20
+        });
+        
+        // Transform results
+        const transformedLeads = transformApifyResults(results);
+        
+        toast({
+          title: "Lead Search Complete",
+          description: `Found ${transformedLeads.length} potential leads.`,
+        });
+        
+        if (onLeadsFound && transformedLeads.length > 0) {
+          onLeadsFound(transformedLeads);
+        }
+      } else {
+        // Fallback to using n8n webhook
+        const webhookUrl = import.meta.env.VITE_N8N_LEAD_SEARCH_WEBHOOK || "";
+        
+        if (!webhookUrl) {
+          throw new Error("N8N webhook URL not configured");
+        }
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch leads");
-      }
+        const response = await fetch(webhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            industry: searchQuery,
+            action: "findLeads"
+          }),
+        });
 
-      const data = await response.json();
-      
-      toast({
-        title: "Lead Search Complete",
-        description: `Found ${data.leads?.length || 0} potential leads.`,
-      });
-      
-      if (onLeadsFound && data.leads) {
-        onLeadsFound(data.leads);
+        if (!response.ok) {
+          throw new Error("Failed to fetch leads");
+        }
+
+        const data = await response.json();
+        
+        toast({
+          title: "Lead Search Complete",
+          description: `Found ${data.leads?.length || 0} potential leads.`,
+        });
+        
+        if (onLeadsFound && data.leads) {
+          onLeadsFound(data.leads);
+        }
       }
     } catch (error) {
       console.error("Error searching for leads:", error);
