@@ -60,21 +60,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Function to fetch user role
+  // Function to fetch user role using RPC
   const fetchUserRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .single();
-
-      if (error) {
-        console.error("Error fetching user role:", error);
+      // Use the has_role RPC function to check if the user is an admin
+      const { data: isAdminResult, error: roleError } = await supabase
+        .rpc('has_role', { role: 'admin' });
+      
+      if (roleError) {
+        console.error("Error checking admin role:", roleError);
         return 'user' as UserRole; // Default role
       }
       
-      return data?.role as UserRole;
+      return isAdminResult ? 'admin' as UserRole : 'user' as UserRole;
     } catch (error) {
       console.error("Error in fetchUserRole:", error);
       return 'user' as UserRole; // Default role

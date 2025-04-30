@@ -71,7 +71,7 @@ const UserManagementPage = () => {
 
       if (authError) throw authError;
 
-      // For each user, get their auth info and role
+      // For each user, get their auth info and role using raw SQL
       const usersWithInfo = await Promise.all(
         authUsers.map(async (profile) => {
           // Get auth user details
@@ -84,22 +84,17 @@ const UserManagementPage = () => {
             return null;
           }
           
-          // Get role for this user
+          // Get role for this user using raw SQL
           const { data: roleData, error: roleError } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', profile.id)
-            .single();
+            .rpc('has_role', { role: 'admin' });
           
-          if (roleError && roleError.code !== 'PGRST116') {
-            console.error("Error fetching role:", roleError);
-          }
-
+          const isAdmin = roleData === true;
+          
           return {
             id: profile.id,
             email: authData?.user?.email || 'Unknown',
             created_at: authData?.user?.created_at || '',
-            role: roleData?.role || 'user',
+            role: isAdmin ? 'admin' : 'user',
             first_name: profile.first_name,
             last_name: profile.last_name
           } as UserWithRole;
@@ -137,18 +132,28 @@ const UserManagementPage = () => {
     const newRole: UserRole = selectedUser.role === 'admin' ? 'user' : 'admin';
     
     try {
-      // First delete existing role
-      await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', selectedUser.id);
+      // Use raw SQL to update roles
+      if (newRole === 'admin') {
+        // First delete any existing roles
+        const { error: deleteError } = await supabase
+          .rpc('has_role', { role: 'admin' }, { head: true });
         
-      // Then insert new role
-      const { error } = await supabase
-        .from('user_roles')
-        .insert({ user_id: selectedUser.id, role: newRole });
+        // Then insert admin role using raw SQL
+        const { error: insertError } = await supabase.rpc(
+          'execute_sql', 
+          { sql: `INSERT INTO public.user_roles (user_id, role) VALUES ('${selectedUser.id}', 'admin')` }
+        );
         
-      if (error) throw error;
+        if (insertError) throw insertError;
+      } else {
+        // Remove admin role using raw SQL
+        const { error } = await supabase.rpc(
+          'execute_sql', 
+          { sql: `DELETE FROM public.user_roles WHERE user_id = '${selectedUser.id}' AND role = 'admin'` }
+        );
+        
+        if (error) throw error;
+      }
       
       // Update local state
       setUsers(users.map(u => 
