@@ -2,13 +2,15 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { CompanyList } from "@/components/leads/CompanyList";
-import { LeadSearch } from "@/components/leads/LeadSearch";
 import { SavedLists } from "@/components/leads/SavedLists";
 import { Company } from "@/types";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Search, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { Link } from "react-router-dom";
 
 const LeadsPage = () => {
   const [newLeads, setNewLeads] = useState<Partial<Company>[]>([]);
@@ -17,20 +19,6 @@ const LeadsPage = () => {
   const [companiesInSelectedList, setCompaniesInSelectedList] = useState<string[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
-
-  const handleLeadsFound = (leads: any[]) => {
-    // Transform n8n/scraper data into company format
-    const formattedLeads = leads.map(lead => ({
-      name: lead.companyName,
-      website: lead.website,
-      industry: lead.industry,
-      size: lead.size || "Unknown",
-      location: lead.location || "Unknown",
-      description: lead.description || ""
-    }));
-
-    setNewLeads(formattedLeads);
-  };
 
   const handleSelectCompany = (id: string, isSelected: boolean) => {
     if (isSelected) {
@@ -118,25 +106,44 @@ const LeadsPage = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Lead Generation</h1>
-          <p className="text-gray-500 mt-2">
-            Search for new leads or manage your existing company leads.
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Lead Management</h1>
+            <p className="text-gray-500 mt-2">
+              Manage your existing company leads and contacts.
+            </p>
+          </div>
+          <div className="flex space-x-4">
+            <Button asChild>
+              <Link to="/leads/company/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Company
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/leads/search">
+                <Search className="h-4 w-4 mr-2" />
+                Find New Leads
+              </Link>
+            </Button>
+          </div>
         </div>
-        
-        <LeadSearch onLeadsFound={handleLeadsFound} />
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Lists Sidebar */}
           <div className="lg:col-span-1">
-            <Card className="p-4">
-              <SavedLists 
-                onSelectList={handleSelectList}
-                selectedListId={selectedListId}
-                onAddCompaniesToList={handleAddCompaniesToList}
-                selectedCompanies={selectedCompanies}
-              />
+            <Card className="sticky top-4">
+              <CardHeader>
+                <CardTitle>Saved Lists</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SavedLists 
+                  onSelectList={handleSelectList}
+                  selectedListId={selectedListId}
+                  onAddCompaniesToList={handleAddCompaniesToList}
+                  selectedCompanies={selectedCompanies}
+                />
+              </CardContent>
             </Card>
           </div>
           

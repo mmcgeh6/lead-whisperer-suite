@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,6 +48,9 @@ export const Header = () => {
           </Link>
           <Link to="/leads" className="text-gray-600 hover:text-gray-800">
             Leads
+          </Link>
+          <Link to="/leads/search" className="text-gray-600 hover:text-gray-800">
+            Lead Search
           </Link>
           <Link to="/outreach" className="text-gray-600 hover:text-gray-800">
             Outreach

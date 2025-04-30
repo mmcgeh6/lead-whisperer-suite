@@ -7,6 +7,9 @@ import { AdvancedSearch } from "@/components/leads/search/AdvancedSearch";
 import { SearchResults } from "@/components/leads/search/SearchResults";
 import { SavedSearches } from "@/components/leads/search/SavedSearches";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 // Result types
 export interface SearchResult {
@@ -146,11 +149,19 @@ const LeadSearchPage = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Lead Search</h1>
-          <p className="text-gray-500 mt-2">
-            Search for potential leads based on your criteria
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Lead Search</h1>
+            <p className="text-gray-500 mt-2">
+              Search for potential leads based on your criteria
+            </p>
+          </div>
+          <Button variant="outline" asChild>
+            <Link to="/leads">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Leads
+            </Link>
+          </Button>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

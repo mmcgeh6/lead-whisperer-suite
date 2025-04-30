@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -53,6 +54,18 @@ export const CompanyForm = ({ company, isEditing }: CompanyFormProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Convert potential array of keywords to string for form display
+  const convertKeywordsToString = (keywords?: string[] | null): string => {
+    if (!keywords || !Array.isArray(keywords)) return '';
+    return keywords.join(', ');
+  };
+  
+  // Parse string of keywords back to array
+  const parseKeywords = (keywordString: string): string[] => {
+    if (!keywordString) return [];
+    return keywordString.split(',').map(k => k.trim()).filter(k => k);
+  };
 
   const form = useForm<CompanyFormValues>({
     resolver: zodResolver(companySchema),
@@ -124,6 +137,8 @@ export const CompanyForm = ({ company, isEditing }: CompanyFormProps) => {
         facebook_url: values.facebook_url === '' ? null : values.facebook_url,
         twitter_url: values.twitter_url === '' ? null : values.twitter_url,
         linkedin_url: values.linkedin_url === '' ? null : values.linkedin_url,
+        // Ensure name is included and not null
+        name: values.name,
         keywords: values.keywords || [],
       };
 
@@ -145,8 +160,8 @@ export const CompanyForm = ({ company, isEditing }: CompanyFormProps) => {
         const { error } = await supabase
           .from('companies')
           .insert({
-            id: crypto.randomUUID(),
-            ...companyData
+            ...companyData,
+            id: crypto.randomUUID()
           });
 
         if (error) throw error;

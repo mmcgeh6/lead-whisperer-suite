@@ -8,32 +8,22 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 export const ApiConnectionsManager = () => {
-  const [activeTab, setActiveTab] = useState<string>("company-search");
+  const [activeTab, setActiveTab] = useState<string>("api-keys");
   const { toast } = useToast();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>API Connections</CardTitle>
+        <CardTitle>API Management</CardTitle>
         <CardDescription>
-          Configure external services for lead generation and data enrichment
+          Configure API keys and credentials for external services
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
-            <TabsTrigger value="company-search">Company Search</TabsTrigger>
-            <TabsTrigger value="people-search">People Search</TabsTrigger>
             <TabsTrigger value="api-keys">API Keys</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="company-search">
-            <CompanySearchConfig />
-          </TabsContent>
-          
-          <TabsContent value="people-search">
-            <PeopleSearchConfig />
-          </TabsContent>
           
           <TabsContent value="api-keys">
             <div className="space-y-4">
