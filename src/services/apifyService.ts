@@ -1,4 +1,3 @@
-
 /**
  * Service to handle interactions with the Apify API for lead searches
  */
@@ -91,14 +90,104 @@ const getLocalStorageSettings = (): Partial<AppSettings> => {
 };
 
 /**
+ * Build the Apollo.io URL for search based on provided parameters
+ */
+export const buildApolloSearchUrl = (params: {
+  searchType: SearchType;
+  keywords: string[];
+  location?: string;
+  departments?: string[];
+  seniorities?: string[];
+  employeeRanges?: string[];
+  emailStatus?: string[];
+}): string => {
+  // Start with the base URL
+  let baseUrl = 'https://app.apollo.io/#/';
+  
+  // Determine if searching people or companies
+  baseUrl += params.searchType === 'people' ? 'people' : 'companies';
+  
+  // Create URL search params
+  const urlParams = new URLSearchParams();
+  
+  // Fixed params
+  urlParams.append('sortAscending', 'false');
+  urlParams.append('sortByField', '%5Bnone%5D');
+  urlParams.append('page', '1');
+  
+  // Always include these organization keyword fields
+  urlParams.append('includedOrganizationKeywordFields[]', 'tags');
+  urlParams.append('includedOrganizationKeywordFields[]', 'name');
+  urlParams.append('includedOrganizationKeywordFields[]', 'seo_description');
+  
+  // Include existFields for organization_id (needed for proper search execution)
+  urlParams.append('existFields[]', 'organization_id');
+  
+  // Add keywords (for industry/tags)
+  if (params.keywords && params.keywords.length > 0) {
+    params.keywords.forEach(keyword => {
+      if (keyword && keyword.trim()) {
+        urlParams.append('qOrganizationKeywordTags[]', keyword.trim());
+      }
+    });
+  }
+  
+  // Add location
+  if (params.location) {
+    urlParams.append('organizationLocations[]', params.location);
+  }
+  
+  // Add employee ranges
+  if (params.employeeRanges && params.employeeRanges.length > 0) {
+    params.employeeRanges.forEach(range => {
+      urlParams.append('organizationNumEmployeesRanges[]', range);
+    });
+  }
+  
+  // People-specific parameters
+  if (params.searchType === 'people') {
+    // Add departments
+    if (params.departments && params.departments.length > 0) {
+      params.departments.forEach(dept => {
+        urlParams.append('personDepartmentOrSubdepartments[]', dept);
+      });
+    }
+    
+    // Add seniority levels
+    if (params.seniorities && params.seniorities.length > 0) {
+      params.seniorities.forEach(seniority => {
+        urlParams.append('personSeniorities[]', seniority);
+      });
+    }
+    
+    // Add email status
+    if (params.emailStatus && params.emailStatus.length > 0) {
+      params.emailStatus.forEach(status => {
+        urlParams.append('contactEmailStatusV2[]', status);
+      });
+    }
+  }
+  
+  // Construct the final URL
+  const finalUrl = `${baseUrl}?${urlParams.toString()}`;
+  console.log(`Built Apollo URL: ${finalUrl}`);
+  return finalUrl;
+};
+
+/**
  * Search for leads using the selected lead provider
  * @param params Search parameters
  * @returns Search results
  */
 export const searchForLeads = async (params: {
   searchType: SearchType;
-  industry: string;
+  industry?: string;
+  keywords?: string[];
   location?: string;
+  departments?: string[];
+  seniorities?: string[];
+  employeeRanges?: string[];
+  emailStatus?: string[];
   limit?: number;
 }) => {
   try {
@@ -127,13 +216,33 @@ export const searchForLeads = async (params: {
     // Default location if not provided
     const location = params.location || "United States";
     
+    // Convert single industry string to keywords array if needed
+    const keywords = params.keywords || 
+      (params.industry ? params.industry.split(',').map(k => k.trim()).filter(k => k) : []);
+    
     if (leadProvider === 'apollo') {
       // Apollo.io direct API implementation (placeholder for now)
       throw new Error("Direct Apollo.io API integration is not implemented yet. Please use Apify Apollo scraper instead.");
     } else {
       // Use Apify Apollo scraper
-      console.log(`Searching with Apify Apollo for ${params.searchType} in ${params.industry} with limit ${limit}`);
-      return searchWithApifyApollo(params, apiKey, limit, location);
+      console.log(`Searching with Apify Apollo for ${params.searchType} with keywords: ${keywords.join(', ')} and limit ${limit}`);
+      
+      // Prepare search parameters for URL building
+      const searchParams = {
+        searchType: params.searchType,
+        keywords: keywords,
+        location: location,
+        departments: params.departments || [],
+        seniorities: params.seniorities || [],
+        employeeRanges: params.employeeRanges || [],
+        emailStatus: params.emailStatus || []
+      };
+      
+      // Build the Apollo URL dynamically
+      const apolloUrl = buildApolloSearchUrl(searchParams);
+      console.log("Dynamic Apollo URL:", apolloUrl);
+      
+      return searchWithApifyApollo(params.searchType, apolloUrl, apiKey, limit);
     }
   } catch (error) {
     console.error("Error searching for leads:", error);
@@ -145,29 +254,20 @@ export const searchForLeads = async (params: {
  * Search using the Apify Apollo Scraper
  */
 const searchWithApifyApollo = async (
-  params: { searchType: SearchType; industry: string },
+  searchType: SearchType,
+  apolloUrl: string,
   apiKey: string,
-  limit: number,
-  location: string
+  limit: number
 ) => {
   let endpoint: string;
   let body: any;
   
-  if (params.searchType === 'people') {
-    // Format the search URL for Apollo.io people search - FIXED URL FORMAT
-    const apolloUrl = `https://app.apollo.io/#/people?includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name&includedOrganizationKeywordFields[]=seo_description&sortByField=%5Bnone%5D&sortAscending=false&qOrganizationKeywordTags[]=${encodeURIComponent(params.industry)}&page=1&personLocations[]=${encodeURIComponent(location)}`;
-    
+  if (searchType === 'people') {
     endpoint = `https://api.apify.com/v2/acts/jljBwyyQakqrL1wae/run-sync-get-dataset-items?timeout=300&limit=${limit}`;
-    
     body = JSON.stringify({ url: apolloUrl });
-    
     console.log("People Search URL:", apolloUrl);
   } else {
-    // Format the search URL for Apollo.io company search - FIXED URL FORMAT
-    const apolloUrl = `https://app.apollo.io/#/companies?includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name&includedOrganizationKeywordFields[]=seo_description&sortByField=%5Bnone%5D&sortAscending=false&qOrganizationKeywordTags[]=${encodeURIComponent(params.industry)}&page=1&organizationLocations[]=${encodeURIComponent(location)}`;
-    
     endpoint = `https://api.apify.com/v2/acts/patXsmIVzLafH9GKD/run-sync-get-dataset-items?timeout=300&limit=${limit}`;
-    
     body = JSON.stringify({
       searchUrl: apolloUrl,
       count: limit,
@@ -178,7 +278,6 @@ const searchWithApifyApollo = async (
       scrapeNews: false,
       startPage: 1
     });
-    
     console.log("Company Search URL:", apolloUrl);
   }
   

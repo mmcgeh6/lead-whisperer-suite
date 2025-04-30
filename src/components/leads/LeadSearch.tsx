@@ -15,6 +15,7 @@ interface LeadSearchProps {
 
 export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [location, setLocation] = useState("United States");
   const [isSearching, setIsSearching] = useState(false);
   const [searchType, setSearchType] = useState<SearchType>("people");
   const [resultCount, setResultCount] = useState<string>("20");
@@ -71,12 +72,15 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       
       console.log(`Starting ${searchType} search with ${leadProvider} for "${searchQuery}" with limit ${resultCount}`);
       
-      // Use the search service
+      // Convert the search query into an array of keywords
+      const keywords = searchQuery.split(',').map(k => k.trim()).filter(k => k);
+      
+      // Use the search service with the new parameter structure
       const results = await searchForLeads({
         searchType,
-        industry: searchQuery,
+        keywords: keywords,
+        location: location, 
         limit: parseInt(resultCount, 10),
-        location: "tampa fl" // Adding a default location to make the search more specific
       });
       
       console.log("Search results:", results);
@@ -151,6 +155,14 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
                   </Select>
                 </div>
                 <div className="md:col-span-3">
+                  <Input
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Location, e.g. United States, Tampa FL, etc."
+                    className="w-full mb-4"
+                  />
+                </div>
+                <div className="md:col-span-3">
                   <Button 
                     type="submit" 
                     disabled={isSearching}
@@ -194,6 +206,14 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
                       <SelectItem value="100">100 results</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="md:col-span-3">
+                  <Input
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Location, e.g. United States, Tampa FL, etc."
+                    className="w-full mb-4"
+                  />
                 </div>
                 <div className="md:col-span-3">
                   <Button 

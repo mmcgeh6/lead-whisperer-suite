@@ -94,12 +94,17 @@ const LeadSearchPage = () => {
       }
       
       console.log(`Starting ${activeTab} search with ${leadProvider} for "${searchParams.keywords.join(',')}" with limit ${searchParams.resultCount || 20}`);
+      console.log("Search parameters:", searchParams);
       
-      // Use the search service
+      // Use the search service with full search parameters
       const results = await searchForLeads({
         searchType: activeTab,
-        industry: searchParams.keywords.join(','),
+        keywords: searchParams.keywords,
         location: searchParams.location,
+        departments: searchParams.departments,
+        seniorities: searchParams.seniorities,
+        employeeRanges: searchParams.employeeRanges,
+        emailStatus: searchParams.emailStatus,
         limit: searchParams.resultCount || 20
       });
       
