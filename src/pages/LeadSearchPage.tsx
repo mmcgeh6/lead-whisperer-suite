@@ -20,6 +20,7 @@ import {
   CompanySearchResult,
   getAppSettings
 } from "@/services/apifyService";
+import DebugConsole from "@/components/dev/DebugConsole";
 
 // Result types
 export interface SearchResult {
@@ -133,7 +134,7 @@ const LeadSearchPage = () => {
       
       try {
         // Map transformed leads to search results format with safe access
-        const mappedResults = transformedLeads.map((item, index) => {
+        const mappedResults: SearchResult[] = transformedLeads.map((item, index) => {
           console.log(`Mapping result ${index} to SearchResult format`);
           
           try {
@@ -150,21 +151,21 @@ const LeadSearchPage = () => {
               const lastName = contact.lastName || "";
               const fullName = `${firstName} ${lastName}`.trim() || "Unknown";
               
-              console.log(`Creating SearchResult for person: ${fullName}, company: ${company.name || "Unknown"}`);
+              console.log(`Creating SearchResult for person: ${fullName}, company: ${company?.name || "Unknown"}`);
               
               return {
                 id: `result-${Date.now()}-${index}`,
-                type: 'person',
+                type: 'person' as const,
                 name: fullName,
                 title: contact.title || "N/A",
-                company: company.name || "Unknown",
-                industry: company.industry || "N/A",
-                location: company.location || "N/A",
-                website: company.website || "",
+                company: company?.name || "Unknown",
+                industry: company?.industry || "N/A",
+                location: company?.location || "N/A",
+                website: company?.website || "",
                 linkedin_url: contact.linkedin_url || "",
                 email: contact.email || "",
                 phone: contact.phone || "",
-                description: company.description || "",
+                description: company?.description || "",
                 selected: false,
                 archived: false,
                 raw_data: item
@@ -174,17 +175,17 @@ const LeadSearchPage = () => {
               const companyItem = item as CompanySearchResult;
               const company = companyItem.company || {};
               
-              console.log(`Creating SearchResult for company: ${company.name || "Unknown"}`);
+              console.log(`Creating SearchResult for company: ${company?.name || "Unknown"}`);
               
               return {
                 id: `result-${Date.now()}-${index}`,
-                type: 'company',
-                name: company.name || "Unknown",
-                industry: company.industry || "N/A",
-                location: company.location || "N/A",
-                website: company.website || "",
-                linkedin_url: company.linkedin_url || "",
-                description: company.description || "",
+                type: 'company' as const,
+                name: company?.name || "Unknown",
+                industry: company?.industry || "N/A",
+                location: company?.location || "N/A",
+                website: company?.website || "",
+                linkedin_url: company?.linkedin_url || "",
+                description: company?.description || "",
                 selected: false,
                 archived: false,
                 raw_data: item
@@ -195,12 +196,12 @@ const LeadSearchPage = () => {
             // Return a placeholder result on error
             return {
               id: `result-${Date.now()}-${index}`,
-              type: activeTab === 'people' ? 'person' : 'company',
+              type: activeTab === 'people' ? 'person' : 'company' as 'person' | 'company',
               name: "Error Processing Result",
               industry: "N/A",
               location: "N/A",
               website: "",
-              description: `Error: ${error.message}`,
+              description: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
               selected: false,
               archived: false,
               raw_data: {}
@@ -275,12 +276,20 @@ const LeadSearchPage = () => {
           
           if (lead.raw_data?.company) {
             // Process transformed format
-            console.log("Found company data in raw_data.company:", lead.raw_data.company.name);
+            const rawCompany = lead.raw_data.company;
+            console.log("Found company data in raw_data.company:", rawCompany.name || "Unknown company");
             
             const companyData: Company = {
-              ...lead.raw_data.company,
+              ...rawCompany,
               // Ensure all required fields are present
-              size: lead.raw_data.company.size || "Unknown",
+              name: rawCompany.name || "Unknown Company",
+              website: rawCompany.website || "",
+              industry: rawCompany.industry || "",
+              size: rawCompany.size || "Unknown",
+              location: rawCompany.location || "",
+              description: rawCompany.description || "",
+              createdAt: rawCompany.createdAt || new Date().toISOString(),
+              updatedAt: rawCompany.updatedAt || new Date().toISOString(),
             };
             
             // Add company
@@ -455,6 +464,8 @@ const LeadSearchPage = () => {
           </div>
         </div>
       </div>
+      
+      <DebugConsole />
     </Layout>
   );
 };

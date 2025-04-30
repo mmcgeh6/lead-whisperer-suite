@@ -73,6 +73,9 @@ const DebugConsole: React.FC = () => {
       }
     }
     
+    // Force a console message to test
+    originalConsole.log("Debug console initialized and ready for logging");
+    
     // Restore original console methods on cleanup
     return () => {
       console.log = originalConsole.log;
@@ -116,18 +119,7 @@ const DebugConsole: React.FC = () => {
       });
   };
   
-  if (!isVisible) {
-    return (
-      <Button 
-        className="fixed bottom-4 right-4 z-50 bg-gray-800 text-white"
-        onClick={toggleDebugConsole}
-      >
-        <Bug className="h-4 w-4 mr-2" />
-        Show Debug Console
-      </Button>
-    );
-  }
-  
+  // Make sure the console is always visible and accessible
   return (
     <div className="fixed bottom-4 right-4 z-50">
       {isMinimized ? (
@@ -143,7 +135,7 @@ const DebugConsole: React.FC = () => {
           </span>
         </Button>
       ) : (
-        <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg w-[80vw] md:w-[600px] max-h-[80vh] overflow-auto">
+        <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg w-[90vw] md:w-[600px] max-h-[80vh] overflow-auto">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-bold">Debug Console</h3>
             <div className="space-x-2 flex">
