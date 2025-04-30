@@ -23,10 +23,31 @@ export const AdminSetup = () => {
 
     setIsLoading(true);
     try {
+      console.log("Attempting to make user admin for user ID:", user.id);
+      
+      // First check if the user has proper permissions
+      // Check if user_roles row-level security might be blocking
+      const { data: rls, error: rlsError } = await supabase.rpc('get_current_user_id');
+      if (rlsError) {
+        console.log("RLS check error:", rlsError);
+      } else {
+        console.log("Current user ID from RPC:", rls);
+      }
+      
       // Delete any existing roles first
-      await supabase.from('user_roles')
+      const { error: deleteError } = await supabase.from('user_roles')
         .delete()
         .eq('user_id', user.id);
+      
+      if (deleteError) {
+        console.error("Error deleting existing roles:", deleteError);
+        toast({
+          title: "Error",
+          description: `Failed to clear existing roles: ${deleteError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
       
       // Insert the admin role
       const { error } = await supabase.from('user_roles')
@@ -35,7 +56,10 @@ export const AdminSetup = () => {
           role: 'admin'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error inserting admin role:", error);
+        throw error;
+      }
       
       // Refresh the profile to update the admin status
       await refreshProfile();
@@ -44,11 +68,11 @@ export const AdminSetup = () => {
         title: "Success",
         description: "You are now an admin!",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error making user admin:", error);
       toast({
         title: "Error",
-        description: "Failed to set admin privileges. Please try again.",
+        description: `Failed to set admin privileges: ${error?.message || "Unknown error"}`,
         variant: "destructive",
       });
     } finally {

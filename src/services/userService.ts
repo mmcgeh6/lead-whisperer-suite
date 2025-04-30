@@ -25,11 +25,14 @@ export const fetchUsers = async (): Promise<UserWithRole[]> => {
           return null;
         }
         
-        // Get role for this user
+        // Get role for this user by directly querying the user_roles table
         const { data: roleData, error: roleError } = await supabase
-          .rpc('has_role', { role: 'admin', user_id: profile.id });
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', profile.id)
+          .maybeSingle();
         
-        const isAdmin = roleData === true;
+        const isAdmin = roleData?.role === 'admin';
         
         return {
           id: profile.id,
