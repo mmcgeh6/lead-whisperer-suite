@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
@@ -85,7 +86,7 @@ const UserManagementPage = () => {
           
           // Get role for this user using raw SQL
           const { data: roleData, error: roleError } = await supabase
-            .rpc('has_role', { role: 'admin' as string });
+            .rpc('has_role', { role: 'admin' });
           
           const isAdmin = roleData === true;
           
@@ -135,12 +136,12 @@ const UserManagementPage = () => {
       if (newRole === 'admin') {
         // First delete any existing roles
         const { error: deleteError } = await supabase
-          .rpc('has_role', { role: 'admin' as string });
+          .rpc('has_role', { role: 'admin' });
         
         // Then insert admin role using raw SQL
         const { error: insertError } = await supabase.rpc(
           'execute_sql', 
-          { sql: `INSERT INTO public.user_roles (user_id, role) VALUES ('${selectedUser.id}', 'admin')` as string }
+          { sql: `INSERT INTO public.user_roles (user_id, role) VALUES ('${selectedUser.id}', 'admin')` }
         );
         
         if (insertError) throw insertError;
@@ -148,7 +149,7 @@ const UserManagementPage = () => {
         // Remove admin role using raw SQL
         const { error } = await supabase.rpc(
           'execute_sql', 
-          { sql: `DELETE FROM public.user_roles WHERE user_id = '${selectedUser.id}' AND role = 'admin'` as string }
+          { sql: `DELETE FROM public.user_roles WHERE user_id = '${selectedUser.id}' AND role = 'admin'` }
         );
         
         if (error) throw error;

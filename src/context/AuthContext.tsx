@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Use the has_role RPC function to check if the user is an admin
       const { data: isAdminResult, error: roleError } = await supabase
-        .rpc('has_role', { role: 'admin' as string });
+        .rpc('has_role', { role: 'admin' });
       
       if (roleError) {
         console.error("Error checking admin role:", roleError);
