@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 const DebugConsole: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
   const [isVisible, setIsVisible] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(true);
+  const [isMinimized, setIsMinimized] = useState(false); // Default to expanded
   
   useEffect(() => {
     // Only show debug console in development
@@ -33,21 +33,21 @@ const DebugConsole: React.FC = () => {
       originalConsole.log(...args);
       setLogs(prev => [...prev, `LOG: ${args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ')}`].slice(-50)); // Keep only most recent 50 logs
+      ).join(' ')}`].slice(-100)); // Keep only most recent 100 logs
     };
     
     console.warn = (...args) => {
       originalConsole.warn(...args);
       setLogs(prev => [...prev, `WARN: ${args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ')}`].slice(-50));
+      ).join(' ')}`].slice(-100));
     };
     
     console.error = (...args) => {
       originalConsole.error(...args);
       setLogs(prev => [...prev, `ERROR: ${args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ')}`].slice(-50));
+      ).join(' ')}`].slice(-100));
     };
     
     // Restore original console methods on cleanup
@@ -71,7 +71,7 @@ const DebugConsole: React.FC = () => {
           Show Debug Logs
         </Button>
       ) : (
-        <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg w-[500px] max-h-[400px] overflow-auto">
+        <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg w-[600px] max-h-[500px] overflow-auto">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-bold">Debug Console</h3>
             <div className="space-x-2">

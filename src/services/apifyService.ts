@@ -154,8 +154,8 @@ const searchWithApifyApollo = async (
   let body: any;
   
   if (params.searchType === 'people') {
-    // Format the search URL for Apollo.io people search
-    const apolloUrl = `https://app.apollo.io/#/people?page=1&existFields[]=organization_id&includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name&includedOrganizationKeywordFields[]=seo_description&organizationLocations[]=${encodeURIComponent(location)}&sortByField=%5Bnone%5D&sortAscending=false&qOrganizationKeywordTags[]=${encodeURIComponent(params.industry)}&personSeniorities[]=director&personDepartmentOrSubdepartments[]=master_marketing&personDepartmentOrSubdepartments[]=master_sales`;
+    // Format the search URL for Apollo.io people search - FIXED URL FORMAT
+    const apolloUrl = `https://app.apollo.io/#/people?includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name&includedOrganizationKeywordFields[]=seo_description&sortByField=%5Bnone%5D&sortAscending=false&qOrganizationKeywordTags[]=${encodeURIComponent(params.industry)}&page=1&personLocations[]=${encodeURIComponent(location)}`;
     
     endpoint = `https://api.apify.com/v2/acts/jljBwyyQakqrL1wae/run-sync-get-dataset-items?timeout=300&limit=${limit}`;
     
@@ -163,8 +163,8 @@ const searchWithApifyApollo = async (
     
     console.log("People Search URL:", apolloUrl);
   } else {
-    // Format the search URL for Apollo.io company search
-    const apolloUrl = `https://app.apollo.io/#/companies?page=1&organizationLocations[]=${encodeURIComponent(location)}&organizationIndustryTagIds[]=${encodeURIComponent(params.industry)}`;
+    // Format the search URL for Apollo.io company search - FIXED URL FORMAT
+    const apolloUrl = `https://app.apollo.io/#/companies?includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name&includedOrganizationKeywordFields[]=seo_description&sortByField=%5Bnone%5D&sortAscending=false&qOrganizationKeywordTags[]=${encodeURIComponent(params.industry)}&page=1&organizationLocations[]=${encodeURIComponent(location)}`;
     
     endpoint = `https://api.apify.com/v2/acts/patXsmIVzLafH9GKD/run-sync-get-dataset-items?timeout=300&limit=${limit}`;
     
