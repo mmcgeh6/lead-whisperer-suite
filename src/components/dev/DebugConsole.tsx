@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
  */
 const DebugConsole: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
-  const [isVisible, setIsVisible] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false); // Default to expanded
+  const [isVisible, setIsVisible] = useState(true); // Default to visible
+  const [isMinimized, setIsMinimized] = useState(false);
   
   useEffect(() => {
-    // Only show debug console in development
+    // Always show debug console in development or on specific domains
     const isDevMode = process.env.NODE_ENV === 'development' || 
                       window.location.hostname === 'localhost' ||
                       window.location.hostname.includes('lovableproject.com');
@@ -50,6 +50,12 @@ const DebugConsole: React.FC = () => {
       ).join(' ')}`].slice(-100));
     };
     
+    // Load any logs from localStorage
+    const savedLogs = localStorage.getItem('debugConsoleLogs');
+    if (savedLogs) {
+      setLogs(JSON.parse(savedLogs));
+    }
+    
     // Restore original console methods on cleanup
     return () => {
       console.log = originalConsole.log;
@@ -57,6 +63,13 @@ const DebugConsole: React.FC = () => {
       console.error = originalConsole.error;
     };
   }, []);
+  
+  // Save logs to localStorage when they change
+  useEffect(() => {
+    if (logs.length > 0) {
+      localStorage.setItem('debugConsoleLogs', JSON.stringify(logs));
+    }
+  }, [logs]);
   
   if (!isVisible) return null;
   
@@ -66,9 +79,13 @@ const DebugConsole: React.FC = () => {
         <Button 
           onClick={() => setIsMinimized(false)}
           variant="outline"
-          className="bg-gray-800 text-white hover:bg-gray-700"
+          className="bg-gray-800 text-white hover:bg-gray-700 flex items-center"
         >
+          <ChevronUp className="h-4 w-4 mr-2" />
           Show Debug Logs
+          <span className="ml-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+            {logs.length > 0 ? (logs.length > 99 ? '99+' : logs.length) : 0}
+          </span>
         </Button>
       ) : (
         <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg w-[600px] max-h-[500px] overflow-auto">
@@ -79,7 +96,7 @@ const DebugConsole: React.FC = () => {
                 Clear
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setIsMinimized(true)}>
-                <X className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4" />
               </Button>
             </div>
           </div>

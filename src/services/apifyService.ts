@@ -348,16 +348,18 @@ export const transformApifyResults = (results: any[], searchType: SearchType = '
   
   if (searchType === 'people') {
     return results.map(item => {
-      // Extract company data
+      console.log("Processing people item:", JSON.stringify(item).substring(0, 300));
+      
+      // Extract company data - with improved field extraction
       const company: Company = {
         id: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: item.organization_name || "Unknown Company",
-        website: item.organization_website || "",
-        industry: item.organization_industry || "",
-        size: item.organization_size || "Unknown",
-        location: item.organization_location || "",
-        description: item.organization_description || "",
-        linkedin_url: item.organization_linkedin_url || "",
+        name: item.organization_name || item.company_name || item.company || "Unknown Company",
+        website: item.organization_website || item.company_website || item.website || "",
+        industry: item.organization_industry || item.industry || "",
+        size: item.organization_size || item.company_size || item.size || "Unknown",
+        location: item.organization_location || item.company_location || item.location || "",
+        description: item.organization_description || item.company_description || item.description || "",
+        linkedin_url: item.organization_linkedin_url || item.company_linkedin_url || "",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -381,16 +383,18 @@ export const transformApifyResults = (results: any[], searchType: SearchType = '
   } else {
     // Company search results transformation
     return results.map(item => {
-      // Extract company data only
+      console.log("Processing company item:", JSON.stringify(item).substring(0, 300));
+      
+      // Extract company data only with improved field extraction
       const company: Company = {
         id: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: item.name || "Unknown Company",
-        website: item.website || "",
-        industry: item.industry || "",
-        size: item.size || "Unknown",
-        location: item.location || "",
-        description: item.description || "",
-        linkedin_url: item.linkedin_url || "",
+        name: item.name || item.organization_name || item.company_name || "Unknown Company",
+        website: item.website || item.organization_website || item.company_website || "",
+        industry: item.industry || item.organization_industry || "",
+        size: item.size || item.organization_size || item.company_size || "Unknown",
+        location: item.location || item.organization_location || item.company_location || "",
+        description: item.description || item.organization_description || item.company_description || "",
+        linkedin_url: item.linkedin_url || item.organization_linkedin_url || item.company_linkedin_url || "",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
