@@ -347,60 +347,337 @@ export const transformApifyResults = (results: any[], searchType: SearchType = '
   
   console.log(`Transforming ${results.length} ${searchType} results`);
   
-  if (searchType === 'people') {
-    return results.map(item => {
-      console.log("Processing people item:", JSON.stringify(item).substring(0, 300));
-      
-      // Extract company data with improved field extraction - fixed to use the correct fields
-      const company: Company = {
-        id: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: item.organization || item.organization_name || item.company_name || item.company || "Unknown Company",
-        website: item.website_url || item.organization_website || item.company_website || item.website || "",
-        industry: item.industry || item.organization_industry || "",
-        size: item.organization_size || item.company_size || item.size || "Unknown",
-        location: item.city || item.location || item.organization_location || "",
-        description: item.organization_description || item.company_description || item.description || "",
-        linkedin_url: item.organization_linkedin_url || item.company_linkedin_url || "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      // Extract contact data
-      const contact = {
-        id: `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        firstName: item.first_name || "",
-        lastName: item.last_name || "",
-        title: item.title || "",
-        email: item.email || "",
-        phone: item.phone || "",
-        linkedin_url: item.linkedin_url || "",
-        companyId: company.id,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      return { company, contact } as PeopleSearchResult;
-    });
-  } else {
-    // Company search results transformation
-    return results.map(item => {
-      console.log("Processing company item:", JSON.stringify(item).substring(0, 300));
-      
-      // Extract company data only with improved field extraction - fixed to use the correct fields
-      const company: Company = {
-        id: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: item.organization || item.name || item.organization_name || item.company_name || "Unknown Company",
-        website: item.website_url || item.website || item.organization_website || "",
-        industry: item.industry || item.organization_industry || "",
-        size: item.size || item.organization_size || item.company_size || "Unknown",
-        location: item.city || item.location || item.organization_location || "",
-        description: item.description || item.organization_description || "",
-        linkedin_url: item.linkedin_url || item.organization_linkedin_url || "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      return { company } as CompanySearchResult;
-    });
+  try {
+    if (searchType === 'people') {
+      return results.map((item, index) => {
+        try {
+          console.log(`Processing people item ${index}:`, typeof item);
+          
+          // First, extract the correct company data, handling different possible formats
+          let companyName = "";
+          let companyWebsite = "";
+          let companyIndustry = "";
+          let companySize = "";
+          let companyLocation = "";
+          let companyDescription = "";
+          let companyLinkedinUrl = "";
+          
+          // Check for top-level organization field which contains the company name
+          if (typeof item.organization === 'string') {
+            companyName = item.organization;
+            console.log(`Found company name '${companyName}' in organization field`);
+          } else if (typeof item.organization_name === 'string') {
+            companyName = item.organization_name;
+            console.log(`Found company name '${companyName}' in organization_name field`);
+          } else if (typeof item.company_name === 'string') {
+            companyName = item.company_name;
+            console.log(`Found company name '${companyName}' in company_name field`);
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.name) {
+            companyName = item.organization.name;
+            console.log(`Found company name '${companyName}' in organization.name field`);
+          }
+          
+          // Website URL
+          if (typeof item.website_url === 'string') {
+            companyWebsite = item.website_url;
+          } else if (typeof item.organization_website === 'string') {
+            companyWebsite = item.organization_website;
+          } else if (typeof item.website === 'string') {
+            companyWebsite = item.website;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.website_url) {
+            companyWebsite = item.organization.website_url;
+          }
+          
+          // Industry
+          if (typeof item.industry === 'string') {
+            companyIndustry = item.industry;
+          } else if (typeof item.organization_industry === 'string') {
+            companyIndustry = item.organization_industry;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.industry) {
+            companyIndustry = item.organization.industry;
+          }
+          
+          // Size
+          if (typeof item.organization_size === 'string') {
+            companySize = item.organization_size;
+          } else if (typeof item.company_size === 'string') {
+            companySize = item.company_size;
+          } else if (typeof item.size === 'string') {
+            companySize = item.size;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.size) {
+            companySize = item.organization.size;
+          }
+          
+          // Location
+          if (typeof item.city === 'string') {
+            companyLocation = item.city;
+          } else if (typeof item.location === 'string') {
+            companyLocation = item.location;
+          } else if (typeof item.organization_location === 'string') {
+            companyLocation = item.organization_location;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.location) {
+            companyLocation = item.organization.location;
+          }
+          
+          // Description
+          if (typeof item.organization_description === 'string') {
+            companyDescription = item.organization_description;
+          } else if (typeof item.company_description === 'string') {
+            companyDescription = item.company_description;
+          } else if (typeof item.description === 'string') {
+            companyDescription = item.description;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.description) {
+            companyDescription = item.organization.description;
+          }
+          
+          // LinkedIn URL
+          if (typeof item.organization_linkedin_url === 'string') {
+            companyLinkedinUrl = item.organization_linkedin_url;
+          } else if (typeof item.company_linkedin_url === 'string') {
+            companyLinkedinUrl = item.company_linkedin_url;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.linkedin_url) {
+            companyLinkedinUrl = item.organization.linkedin_url;
+          }
+          
+          // Create company object with extracted data
+          const company: Company = {
+            id: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: companyName || "Unknown Company",
+            website: companyWebsite || "",
+            industry: companyIndustry || "",
+            size: companySize || "Unknown",
+            location: companyLocation || "",
+            description: companyDescription || "",
+            linkedin_url: companyLinkedinUrl || "",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          
+          console.log(`Built company object for '${company.name}'`);
+          
+          // Extract contact data
+          let firstName = "";
+          let lastName = "";
+          let title = "";
+          let email = "";
+          let phone = "";
+          let contactLinkedinUrl = "";
+          
+          // First and last name
+          if (typeof item.first_name === 'string') {
+            firstName = item.first_name;
+          } else if (item.contact && typeof item.contact.firstName === 'string') {
+            firstName = item.contact.firstName;
+          }
+          
+          if (typeof item.last_name === 'string') {
+            lastName = item.last_name;
+          } else if (item.contact && typeof item.contact.lastName === 'string') {
+            lastName = item.contact.lastName;
+          }
+          
+          // Title
+          if (typeof item.title === 'string') {
+            title = item.title;
+          } else if (item.contact && typeof item.contact.title === 'string') {
+            title = item.contact.title;
+          }
+          
+          // Email
+          if (typeof item.email === 'string') {
+            email = item.email;
+          } else if (item.contact && typeof item.contact.email === 'string') {
+            email = item.contact.email;
+          }
+          
+          // Phone
+          if (typeof item.phone === 'string') {
+            phone = item.phone;
+          } else if (item.contact && typeof item.contact.phone === 'string') {
+            phone = item.contact.phone;
+          }
+          
+          // LinkedIn URL
+          if (typeof item.linkedin_url === 'string') {
+            contactLinkedinUrl = item.linkedin_url;
+          } else if (item.contact && typeof item.contact.linkedin_url === 'string') {
+            contactLinkedinUrl = item.contact.linkedin_url;
+          }
+          
+          const contact = {
+            id: `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            firstName: firstName || "",
+            lastName: lastName || "",
+            title: title || "",
+            email: email || "",
+            phone: phone || "",
+            linkedin_url: contactLinkedinUrl || "",
+            companyId: company.id,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          
+          console.log(`Built contact object for '${firstName} ${lastName}'`);
+          
+          return { company, contact } as PeopleSearchResult;
+        } catch (error) {
+          console.error(`Error processing people item ${index}:`, error);
+          // Return a default object to avoid breaking the entire transformation
+          return {
+            company: {
+              id: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              name: "Error Processing Company",
+              website: "",
+              industry: "",
+              size: "Unknown",
+              location: "",
+              description: `Error processing: ${error.message}`,
+              linkedin_url: "",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            contact: {
+              id: `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              firstName: "Error",
+              lastName: "Processing",
+              title: "",
+              email: "",
+              phone: "",
+              linkedin_url: "",
+              companyId: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          } as PeopleSearchResult;
+        }
+      });
+    } else {
+      // Company search results transformation
+      return results.map((item, index) => {
+        try {
+          console.log(`Processing company item ${index}:`, typeof item);
+          
+          // Extract company data with explicit field checking
+          let companyName = "";
+          let companyWebsite = "";
+          let companyIndustry = "";
+          let companySize = "";
+          let companyLocation = "";
+          let companyDescription = "";
+          let companyLinkedinUrl = "";
+          
+          // Company name
+          if (typeof item.organization === 'string') {
+            companyName = item.organization;
+          } else if (typeof item.name === 'string') {
+            companyName = item.name;
+          } else if (typeof item.organization_name === 'string') {
+            companyName = item.organization_name;
+          } else if (typeof item.company_name === 'string') {
+            companyName = item.company_name;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.name) {
+            companyName = item.organization.name;
+          }
+          
+          // Website URL
+          if (typeof item.website_url === 'string') {
+            companyWebsite = item.website_url;
+          } else if (typeof item.website === 'string') {
+            companyWebsite = item.website;
+          } else if (typeof item.organization_website === 'string') {
+            companyWebsite = item.organization_website;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.website_url) {
+            companyWebsite = item.organization.website_url;
+          }
+          
+          // Industry
+          if (typeof item.industry === 'string') {
+            companyIndustry = item.industry;
+          } else if (typeof item.organization_industry === 'string') {
+            companyIndustry = item.organization_industry;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.industry) {
+            companyIndustry = item.organization.industry;
+          }
+          
+          // Size
+          if (typeof item.size === 'string') {
+            companySize = item.size;
+          } else if (typeof item.organization_size === 'string') {
+            companySize = item.organization_size;
+          } else if (typeof item.company_size === 'string') {
+            companySize = item.company_size;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.size) {
+            companySize = item.organization.size;
+          }
+          
+          // Location
+          if (typeof item.city === 'string') {
+            companyLocation = item.city;
+          } else if (typeof item.location === 'string') {
+            companyLocation = item.location;
+          } else if (typeof item.organization_location === 'string') {
+            companyLocation = item.organization_location;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.location) {
+            companyLocation = item.organization.location;
+          }
+          
+          // Description
+          if (typeof item.description === 'string') {
+            companyDescription = item.description;
+          } else if (typeof item.organization_description === 'string') {
+            companyDescription = item.organization_description;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.description) {
+            companyDescription = item.organization.description;
+          }
+          
+          // LinkedIn URL
+          if (typeof item.linkedin_url === 'string') {
+            companyLinkedinUrl = item.linkedin_url;
+          } else if (typeof item.organization_linkedin_url === 'string') {
+            companyLinkedinUrl = item.organization_linkedin_url;
+          } else if (item.organization && typeof item.organization === 'object' && item.organization.linkedin_url) {
+            companyLinkedinUrl = item.organization.linkedin_url;
+          }
+          
+          // Create company object with extracted data
+          const company: Company = {
+            id: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: companyName || "Unknown Company",
+            website: companyWebsite || "",
+            industry: companyIndustry || "",
+            size: companySize || "Unknown",
+            location: companyLocation || "",
+            description: companyDescription || "",
+            linkedin_url: companyLinkedinUrl || "",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          
+          console.log(`Built company object for '${company.name}'`);
+          
+          return { company } as CompanySearchResult;
+        } catch (error) {
+          console.error(`Error processing company item ${index}:`, error);
+          // Return a default object to avoid breaking the entire transformation
+          return {
+            company: {
+              id: `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              name: "Error Processing Company",
+              website: "",
+              industry: "",
+              size: "Unknown",
+              location: "",
+              description: `Error processing: ${error.message}`,
+              linkedin_url: "",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          } as CompanySearchResult;
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error in transformApifyResults:", error);
+    return [];
   }
 };

@@ -31,6 +31,32 @@ interface SearchResultsProps {
   selectedCount: number;
 }
 
+// Helper function to safely display values
+const safeDisplay = (value: any): string => {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return value.toString();
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+  if (typeof value === 'object') {
+    // If an object is passed, return a safe string representation
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      console.error("Could not stringify object:", error);
+      return '[Complex Object]';
+    }
+  }
+  return String(value);
+};
+
 export const SearchResults = ({
   results,
   onResultSelection,
@@ -46,7 +72,7 @@ export const SearchResults = ({
   const filteredResults = results.filter(result => {
     // Text filter
     const matchesFilter = filterText === "" || 
-      result.name.toLowerCase().includes(filterText.toLowerCase()) ||
+      (result.name && result.name.toLowerCase().includes(filterText.toLowerCase())) ||
       (result.company && result.company.toLowerCase().includes(filterText.toLowerCase())) ||
       (result.industry && result.industry.toLowerCase().includes(filterText.toLowerCase())) ||
       (result.location && result.location.toLowerCase().includes(filterText.toLowerCase()));
@@ -143,18 +169,18 @@ export const SearchResults = ({
                 />
               </TableHead>
               <TableHead>Name</TableHead>
-              {results[0]?.type === 'person' && <TableHead>Title</TableHead>}
-              {results[0]?.type === 'person' && <TableHead>Company</TableHead>}
+              {results.length > 0 && results[0]?.type === 'person' && <TableHead>Title</TableHead>}
+              {results.length > 0 && results[0]?.type === 'person' && <TableHead>Company</TableHead>}
               <TableHead>Location</TableHead>
               <TableHead>Industry</TableHead>
               <TableHead>Website</TableHead>
-              {results[0]?.type === 'person' && <TableHead>Email</TableHead>}
+              {results.length > 0 && results[0]?.type === 'person' && <TableHead>Email</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredResults.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={results[0]?.type === 'person' ? 8 : 6} className="text-center py-10">
+                <TableCell colSpan={results.length > 0 && results[0]?.type === 'person' ? 8 : 6} className="text-center py-10">
                   No results match your filters
                 </TableCell>
               </TableRow>
@@ -171,11 +197,11 @@ export const SearchResults = ({
                       disabled={result.archived}
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{result.name}</TableCell>
-                  {result.type === 'person' && <TableCell>{result.title || '-'}</TableCell>}
-                  {result.type === 'person' && <TableCell>{result.company || '-'}</TableCell>}
-                  <TableCell>{result.location || '-'}</TableCell>
-                  <TableCell>{result.industry || '-'}</TableCell>
+                  <TableCell className="font-medium">{safeDisplay(result.name)}</TableCell>
+                  {result.type === 'person' && <TableCell>{safeDisplay(result.title)}</TableCell>}
+                  {result.type === 'person' && <TableCell>{safeDisplay(result.company)}</TableCell>}
+                  <TableCell>{safeDisplay(result.location)}</TableCell>
+                  <TableCell>{safeDisplay(result.industry)}</TableCell>
                   <TableCell>
                     {result.website ? (
                       <a 
@@ -184,11 +210,11 @@ export const SearchResults = ({
                         rel="noopener noreferrer"
                         className="text-blue-500 hover:underline"
                       >
-                        {result.website.replace(/^(https?:\/\/)?(www\.)?/, '')}
+                        {safeDisplay(result.website).replace(/^(https?:\/\/)?(www\.)?/, '')}
                       </a>
                     ) : '-'}
                   </TableCell>
-                  {result.type === 'person' && <TableCell>{result.email || '-'}</TableCell>}
+                  {result.type === 'person' && <TableCell>{safeDisplay(result.email)}</TableCell>}
                 </TableRow>
               ))
             )}

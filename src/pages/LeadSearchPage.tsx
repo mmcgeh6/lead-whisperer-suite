@@ -60,6 +60,7 @@ const LeadSearchPage = () => {
     }
     
     setIsSearching(true);
+    console.log("Starting search with parameters:", searchParams);
     
     try {
       // Get settings from Supabase
@@ -130,55 +131,98 @@ const LeadSearchPage = () => {
         return;
       }
       
-      setSearchResults(transformedLeads.map((item, index) => {
-        // Check if this is a people search result by checking if it has a contact property
-        const isPeopleResult = 'contact' in item;
+      try {
+        // Map transformed leads to search results format with safe access
+        const mappedResults = transformedLeads.map((item, index) => {
+          console.log(`Mapping result ${index} to SearchResult format`);
+          
+          try {
+            // Check if this is a people search result by checking if it has a contact property
+            const isPeopleResult = item && 'contact' in item;
+            
+            if (isPeopleResult) {
+              // This is a people search result
+              const peopleItem = item as PeopleSearchResult;
+              const contact = peopleItem.contact || {};
+              const company = peopleItem.company || {};
+              
+              const firstName = contact.firstName || "";
+              const lastName = contact.lastName || "";
+              const fullName = `${firstName} ${lastName}`.trim() || "Unknown";
+              
+              console.log(`Creating SearchResult for person: ${fullName}, company: ${company.name || "Unknown"}`);
+              
+              return {
+                id: `result-${Date.now()}-${index}`,
+                type: 'person',
+                name: fullName,
+                title: contact.title || "N/A",
+                company: company.name || "Unknown",
+                industry: company.industry || "N/A",
+                location: company.location || "N/A",
+                website: company.website || "",
+                linkedin_url: contact.linkedin_url || "",
+                email: contact.email || "",
+                phone: contact.phone || "",
+                description: company.description || "",
+                selected: false,
+                archived: false,
+                raw_data: item
+              };
+            } else {
+              // This is a company search result
+              const companyItem = item as CompanySearchResult;
+              const company = companyItem.company || {};
+              
+              console.log(`Creating SearchResult for company: ${company.name || "Unknown"}`);
+              
+              return {
+                id: `result-${Date.now()}-${index}`,
+                type: 'company',
+                name: company.name || "Unknown",
+                industry: company.industry || "N/A",
+                location: company.location || "N/A",
+                website: company.website || "",
+                linkedin_url: company.linkedin_url || "",
+                description: company.description || "",
+                selected: false,
+                archived: false,
+                raw_data: item
+              };
+            }
+          } catch (error) {
+            console.error(`Error mapping result ${index}:`, error);
+            // Return a placeholder result on error
+            return {
+              id: `result-${Date.now()}-${index}`,
+              type: activeTab === 'people' ? 'person' : 'company',
+              name: "Error Processing Result",
+              industry: "N/A",
+              location: "N/A",
+              website: "",
+              description: `Error: ${error.message}`,
+              selected: false,
+              archived: false,
+              raw_data: {}
+            };
+          }
+        });
         
-        if (isPeopleResult) {
-          // This is a people search result
-          const peopleItem = item as PeopleSearchResult;
-          
-          return {
-            id: `result-${Date.now()}-${index}`,
-            type: 'person',
-            name: `${peopleItem.contact?.firstName || ""} ${peopleItem.contact?.lastName || ""}`.trim() || "Unknown",
-            title: peopleItem.contact?.title || "N/A",
-            company: peopleItem.company?.name || "Unknown",
-            industry: peopleItem.company?.industry || "N/A",
-            location: peopleItem.company?.location || "N/A",
-            website: peopleItem.company?.website || "",
-            linkedin_url: peopleItem.contact?.linkedin_url || "",
-            email: peopleItem.contact?.email || "",
-            phone: peopleItem.contact?.phone || "",
-            description: peopleItem.company?.description || "",
-            selected: false,
-            archived: false,
-            raw_data: item
-          };
-        } else {
-          // This is a company search result
-          const companyItem = item as CompanySearchResult;
-          
-          return {
-            id: `result-${Date.now()}-${index}`,
-            type: 'company',
-            name: companyItem.company?.name || "Unknown",
-            industry: companyItem.company?.industry || "N/A",
-            location: companyItem.company?.location || "N/A",
-            website: companyItem.company?.website || "",
-            linkedin_url: companyItem.company?.linkedin_url || "",
-            description: companyItem.company?.description || "",
-            selected: false,
-            archived: false,
-            raw_data: item
-          };
-        }
-      }));
-      
-      toast({
-        title: "Search Complete",
-        description: `Found ${transformedLeads.length} results.`
-      });
+        console.log(`Successfully mapped ${mappedResults.length} results`);
+        setSearchResults(mappedResults);
+        
+        toast({
+          title: "Search Complete",
+          description: `Found ${mappedResults.length} results.`
+        });
+      } catch (error) {
+        console.error("Error mapping search results:", error);
+        toast({
+          title: "Error Processing Results",
+          description: "The search was successful but there was an error processing the results.",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error("Search error:", error);
       toast({
@@ -209,7 +253,7 @@ const LeadSearchPage = () => {
     });
   };
 
-  const saveSelectedLeads = async () => {
+  const saveSelectedLeads = async (listId: string) => {
     const selectedLeads = searchResults.filter(result => result.selected);
     
     if (selectedLeads.length === 0) {
@@ -221,66 +265,82 @@ const LeadSearchPage = () => {
       return;
     }
     
+    console.log(`Saving ${selectedLeads.length} leads`);
+    
     try {
       // Process each selected lead
       for (const lead of selectedLeads) {
-        if (lead.raw_data?.company) {
-          // Process Apify format
-          const companyData: Company = {
-            ...lead.raw_data.company,
-            // Ensure all required fields are present
-            size: lead.raw_data.company.size || "Unknown",
-          };
+        try {
+          console.log("Processing lead to save:", lead.name);
           
-          // Add company
-          addCompany(companyData);
-          
-          // Add contact if this is a person search result
-          if (lead.raw_data.contact) {
-            addContact({
-              ...lead.raw_data.contact,
-              companyId: companyData.id
-            });
-          }
-        } else {
-          // Process legacy format
-          // Create a company first
-          const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
-          const companyData: Company = {
-            id: companyId,
-            name: lead.company || lead.name || "Unknown Company",
-            website: lead.website || "",
-            industry: lead.industry || "",
-            size: "Unknown", // Default size value for legacy format
-            location: lead.location || "",
-            description: lead.description || "",
-            linkedin_url: lead.linkedin_url?.includes("company") ? lead.linkedin_url : "",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          
-          // Add company
-          addCompany(companyData);
-          
-          // Only create contact for person type
-          if (lead.type === 'person') {
-            const nameParts = lead.name.split(' ');
-            const firstName = nameParts[0] || "";
-            const lastName = nameParts.slice(1).join(' ') || "";
+          if (lead.raw_data?.company) {
+            // Process transformed format
+            console.log("Found company data in raw_data.company:", lead.raw_data.company.name);
             
-            // Add contact
-            addContact({
-              firstName,
-              lastName,
-              title: lead.title || "",
-              email: lead.email || "",
-              phone: lead.phone || "",
-              linkedin_url: lead.linkedin_url || "",
-              companyId,
-              notes: `Imported from lead search on ${new Date().toLocaleDateString()}`,
-            });
+            const companyData: Company = {
+              ...lead.raw_data.company,
+              // Ensure all required fields are present
+              size: lead.raw_data.company.size || "Unknown",
+            };
+            
+            // Add company
+            console.log("Adding company:", companyData.name);
+            addCompany(companyData);
+            
+            // Add contact if this is a person search result
+            if (lead.raw_data.contact) {
+              console.log("Adding contact:", `${lead.raw_data.contact.firstName} ${lead.raw_data.contact.lastName}`);
+              addContact({
+                ...lead.raw_data.contact,
+                companyId: companyData.id
+              });
+            }
+          } else {
+            // Process legacy format
+            console.log("No company data in raw_data.company, using legacy format");
+            
+            // Create a company first
+            const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
+            const companyData: Company = {
+              id: companyId,
+              name: lead.company || lead.name || "Unknown Company",
+              website: lead.website || "",
+              industry: lead.industry || "",
+              size: "Unknown", // Default size value for legacy format
+              location: lead.location || "",
+              description: lead.description || "",
+              linkedin_url: lead.linkedin_url?.includes("company") ? lead.linkedin_url : "",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            
+            // Add company
+            console.log("Adding company (legacy format):", companyData.name);
+            addCompany(companyData);
+            
+            // Only create contact for person type
+            if (lead.type === 'person') {
+              const nameParts = lead.name.split(' ');
+              const firstName = nameParts[0] || "";
+              const lastName = nameParts.slice(1).join(' ') || "";
+              
+              // Add contact
+              console.log("Adding contact (legacy format):", `${firstName} ${lastName}`);
+              addContact({
+                firstName,
+                lastName,
+                title: lead.title || "",
+                email: lead.email || "",
+                phone: lead.phone || "",
+                linkedin_url: lead.linkedin_url || "",
+                companyId,
+                notes: `Imported from lead search on ${new Date().toLocaleDateString()}`,
+              });
+            }
           }
+        } catch (error) {
+          console.error("Error saving individual lead:", error);
         }
       }
       
