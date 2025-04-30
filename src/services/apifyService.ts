@@ -7,6 +7,18 @@ import { Company, Contact } from "@/types";
 
 export type SearchType = 'people' | 'companies';
 
+// Define what our transformed results will look like
+export interface PeopleSearchResult {
+  company: Company;
+  contact: Partial<Contact>;
+}
+
+export interface CompanySearchResult {
+  company: Company;
+}
+
+export type SearchResult = PeopleSearchResult | CompanySearchResult;
+
 /**
  * Search for leads using the Apify Apollo Scraper API
  * @param params Search parameters
@@ -95,7 +107,7 @@ export const searchForLeads = async (params: {
 /**
  * Transform raw Apify data into a standardized leads format
  */
-export const transformApifyResults = (results: any[], searchType: SearchType = 'people') => {
+export const transformApifyResults = (results: any[], searchType: SearchType = 'people'): SearchResult[] => {
   if (!results || !Array.isArray(results)) {
     return [];
   }
@@ -108,7 +120,7 @@ export const transformApifyResults = (results: any[], searchType: SearchType = '
         name: item.organization_name || "Unknown Company",
         website: item.organization_website || "",
         industry: item.organization_industry || "",
-        size: item.organization_size || "Unknown", // Add default value for size
+        size: item.organization_size || "Unknown",
         location: item.organization_location || "",
         description: item.organization_description || "",
         linkedin_url: item.organization_linkedin_url || "",
@@ -130,7 +142,7 @@ export const transformApifyResults = (results: any[], searchType: SearchType = '
         updatedAt: new Date().toISOString(),
       };
       
-      return { company, contact };
+      return { company, contact } as PeopleSearchResult;
     });
   } else {
     // Company search results transformation
@@ -141,7 +153,7 @@ export const transformApifyResults = (results: any[], searchType: SearchType = '
         name: item.name || "Unknown Company",
         website: item.website || "",
         industry: item.industry || "",
-        size: item.size || "Unknown", // Add default value for size
+        size: item.size || "Unknown",
         location: item.location || "",
         description: item.description || "",
         linkedin_url: item.linkedin_url || "",
@@ -149,7 +161,7 @@ export const transformApifyResults = (results: any[], searchType: SearchType = '
         updatedAt: new Date().toISOString(),
       };
       
-      return { company };
+      return { company } as CompanySearchResult;
     });
   }
 };

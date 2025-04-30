@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,22 +83,24 @@ const LeadSearchPage = () => {
         const transformedLeads = transformApifyResults(results, activeTab);
         
         setSearchResults(transformedLeads.map((item, index) => {
-          const isPersonSearch = !!item.contact;
+          const isPersonSearch = activeTab === 'people' && 'contact' in item;
           
           return {
             id: `result-${Date.now()}-${index}`,
             type: isPersonSearch ? 'person' : 'company',
-            name: isPersonSearch 
-              ? `${item.contact?.firstName || ""} ${item.contact?.lastName || ""}`.trim() || "Unknown"
+            name: isPersonSearch && item.contact
+              ? `${item.contact.firstName || ""} ${item.contact.lastName || ""}`.trim() || "Unknown"
               : item.company.name || "Unknown",
-            title: isPersonSearch ? item.contact?.title || "N/A" : undefined,
+            title: isPersonSearch && item.contact ? item.contact.title || "N/A" : undefined,
             company: isPersonSearch ? item.company.name : undefined,
             industry: item.company.industry || "N/A",
             location: item.company.location || "N/A",
             website: item.company.website || "",
-            linkedin_url: isPersonSearch ? item.contact?.linkedin_url || "" : item.company.linkedin_url || "",
-            email: isPersonSearch ? item.contact?.email || "" : undefined,
-            phone: isPersonSearch ? item.contact?.phone || "" : undefined,
+            linkedin_url: isPersonSearch && item.contact 
+              ? item.contact.linkedin_url || "" 
+              : item.company.linkedin_url || "",
+            email: isPersonSearch && item.contact ? item.contact.email || "" : undefined,
+            phone: isPersonSearch && item.contact ? item.contact.phone || "" : undefined,
             description: item.company.description || "",
             selected: false,
             archived: false,
