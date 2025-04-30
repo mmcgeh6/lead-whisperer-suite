@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,8 @@ import {
   searchForLeads, 
   transformApifyResults, 
   PeopleSearchResult, 
-  CompanySearchResult 
+  CompanySearchResult,
+  LeadProvider
 } from "@/services/apifyService";
 
 // Result types
@@ -60,24 +62,39 @@ const LeadSearchPage = () => {
     setIsSearching(true);
     
     try {
-      // Check for API key
-      const apiKey = localStorage.getItem('apifyApolloApiKey');
+      // Get the lead provider from localStorage
+      const leadProvider = localStorage.getItem('leadProvider') || 'apify-apollo';
+      
+      // Check for appropriate API key based on the selected provider
+      let apiKeyName: string;
+      let apiKeyLabel: string;
+      
+      if (leadProvider === 'apollo') {
+        apiKeyName = 'apollioApiKey';
+        apiKeyLabel = 'Apollo.io';
+      } else {
+        apiKeyName = 'apifyApolloApiKey';
+        apiKeyLabel = 'Apify';
+      }
+      
+      const apiKey = localStorage.getItem(apiKeyName);
+      
       if (!apiKey) {
         toast({
           title: "API Key Not Configured",
-          description: "Please set up your Apify API key in API Settings",
+          description: `Please set up your ${apiKeyLabel} API key in API Settings`,
           variant: "destructive",
         });
         setIsSearching(false);
         return;
       }
       
-      // Use the Apify service
+      // Use the search service
       const results = await searchForLeads({
         searchType: activeTab,
         industry: searchParams.keywords.join(','),
         location: searchParams.location,
-        limit: 20
+        limit: searchParams.resultCount || 20
       });
       
       // Transform results
@@ -94,31 +111,48 @@ const LeadSearchPage = () => {
       }
       
       setSearchResults(transformedLeads.map((item, index) => {
-        const isPersonSearch = activeTab === 'people' && 'contact' in item;
-        const peopleItem = isPersonSearch ? item as PeopleSearchResult : null;
-        const companyItem = item as CompanySearchResult;
+        // Check if this is a people search result by checking if it has a contact property
+        const isPeopleResult = 'contact' in item;
         
-        return {
-          id: `result-${Date.now()}-${index}`,
-          type: isPersonSearch ? 'person' : 'company',
-          name: isPersonSearch && peopleItem?.contact
-            ? `${peopleItem.contact.firstName || ""} ${peopleItem.contact.lastName || ""}`.trim() || "Unknown"
-            : companyItem.company.name || "Unknown",
-          title: isPersonSearch && peopleItem?.contact ? peopleItem.contact.title || "N/A" : undefined,
-          company: isPersonSearch ? companyItem.company.name : undefined,
-          industry: companyItem.company.industry || "N/A",
-          location: companyItem.company.location || "N/A",
-          website: companyItem.company.website || "",
-          linkedin_url: isPersonSearch && peopleItem?.contact 
-            ? peopleItem.contact.linkedin_url || "" 
-            : companyItem.company.linkedin_url || "",
-          email: isPersonSearch && peopleItem?.contact ? peopleItem.contact.email || "" : undefined,
-          phone: isPersonSearch && peopleItem?.contact ? peopleItem.contact.phone || "" : undefined,
-          description: companyItem.company.description || "",
-          selected: false,
-          archived: false,
-          raw_data: item
-        };
+        if (isPeopleResult) {
+          // This is a people search result
+          const peopleItem = item as PeopleSearchResult;
+          
+          return {
+            id: `result-${Date.now()}-${index}`,
+            type: 'person',
+            name: `${peopleItem.contact?.firstName || ""} ${peopleItem.contact?.lastName || ""}`.trim() || "Unknown",
+            title: peopleItem.contact?.title || "N/A",
+            company: peopleItem.company?.name || "Unknown",
+            industry: peopleItem.company?.industry || "N/A",
+            location: peopleItem.company?.location || "N/A",
+            website: peopleItem.company?.website || "",
+            linkedin_url: peopleItem.contact?.linkedin_url || "",
+            email: peopleItem.contact?.email || "",
+            phone: peopleItem.contact?.phone || "",
+            description: peopleItem.company?.description || "",
+            selected: false,
+            archived: false,
+            raw_data: item
+          };
+        } else {
+          // This is a company search result
+          const companyItem = item as CompanySearchResult;
+          
+          return {
+            id: `result-${Date.now()}-${index}`,
+            type: 'company',
+            name: companyItem.company?.name || "Unknown",
+            industry: companyItem.company?.industry || "N/A",
+            location: companyItem.company?.location || "N/A",
+            website: companyItem.company?.website || "",
+            linkedin_url: companyItem.company?.linkedin_url || "",
+            description: companyItem.company?.description || "",
+            selected: false,
+            archived: false,
+            raw_data: item
+          };
+        }
       }));
       
       toast({

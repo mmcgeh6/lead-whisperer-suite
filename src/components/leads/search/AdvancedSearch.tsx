@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,13 @@ import {
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, Search } from "lucide-react";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 
 interface AdvancedSearchProps {
   type: 'people' | 'companies';
@@ -25,6 +31,7 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
   const [seniorities, setSeniorities] = useState<string[]>([]);
   const [employeeRanges, setEmployeeRanges] = useState<string[]>([]);
   const [emailStatus, setEmailStatus] = useState<string[]>([]);
+  const [resultCount, setResultCount] = useState<string>("20");
 
   // Department options
   const departmentOptions = [
@@ -68,6 +75,14 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
   const emailStatusOptions = [
     { value: "verified", label: "Verified" },
     { value: "unverified", label: "Unverified" },
+  ];
+  
+  // Result count options
+  const resultCountOptions = [
+    { value: "10", label: "10 results" },
+    { value: "20", label: "20 results" },
+    { value: "50", label: "50 results" },
+    { value: "100", label: "100 results" },
   ];
 
   const handleToggleDepartment = (value: string) => {
@@ -116,6 +131,7 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
       seniorities,
       employeeRanges,
       emailStatus,
+      resultCount: parseInt(resultCount, 10)
     };
 
     onSearch(searchParams);
@@ -128,6 +144,7 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
     setSeniorities([]);
     setEmployeeRanges([]);
     setEmailStatus([]);
+    setResultCount("20");
   };
 
   return (
@@ -152,6 +169,25 @@ export const AdvancedSearch = ({ type, onSearch, isSearching }: AdvancedSearchPr
             onChange={(e) => setLocation(e.target.value)}
             placeholder="Country or region e.g., United States"
           />
+        </div>
+        
+        <div>
+          <Label htmlFor="resultCount">Number of Results</Label>
+          <Select
+            value={resultCount}
+            onValueChange={setResultCount}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select number of results" />
+            </SelectTrigger>
+            <SelectContent>
+              {resultCountOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       

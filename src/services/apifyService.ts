@@ -6,6 +6,7 @@
 import { Company, Contact } from "@/types";
 
 export type SearchType = 'people' | 'companies';
+export type LeadProvider = 'apollo' | 'apify-apollo';
 
 // Define what our transformed results will look like
 export interface PeopleSearchResult {
@@ -20,7 +21,7 @@ export interface CompanySearchResult {
 export type SearchResult = PeopleSearchResult | CompanySearchResult;
 
 /**
- * Search for leads using the Apify Apollo Scraper API
+ * Search for leads using the selected lead provider
  * @param params Search parameters
  * @returns Search results
  */
@@ -31,11 +32,20 @@ export const searchForLeads = async (params: {
   limit?: number;
 }) => {
   try {
-    // Get the API key from localStorage
-    const apiKey = localStorage.getItem('apifyApolloApiKey');
+    // Get the lead provider from localStorage
+    const leadProvider = localStorage.getItem('leadProvider') || 'apify-apollo';
+    
+    // Get the appropriate API key based on the selected provider
+    let apiKey: string | null;
+    
+    if (leadProvider === 'apollo') {
+      apiKey = localStorage.getItem('apollioApiKey');
+    } else {
+      apiKey = localStorage.getItem('apifyApolloApiKey');
+    }
     
     if (!apiKey || apiKey.trim() === '') {
-      throw new Error("Apify API key is not configured. Please set up your API key in API Settings.");
+      throw new Error(`${leadProvider === 'apollo' ? 'Apollo.io' : 'Apify'} API key is not configured. Please set up your API key in API Settings.`);
     }
     
     // Default limit if not provided
@@ -44,64 +54,82 @@ export const searchForLeads = async (params: {
     // Default location if not provided
     const location = params.location || "United States";
     
-    let endpoint: string;
-    let body: any;
-    
-    if (params.searchType === 'people') {
-      // Format the search URL for Apollo.io people search
-      const apolloUrl = `https://app.apollo.io/#/people?page=1&existFields[]=organization_id&includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name&includedOrganizationKeywordFields[]=seo_description&organizationLocations[]=${encodeURIComponent(location)}&sortByField=%5Bnone%5D&sortAscending=false&qOrganizationKeywordTags[]=${encodeURIComponent(params.industry)}&personSeniorities[]=director&personDepartmentOrSubdepartments[]=master_marketing&personDepartmentOrSubdepartments[]=master_sales`;
-      
-      endpoint = `https://api.apify.com/v2/acts/jljBwyyQakqrL1wae/run-sync-get-dataset-items?timeout=300&limit=${limit}`;
-      
-      body = JSON.stringify({ url: apolloUrl });
-      
-      console.log("People Search URL:", apolloUrl);
+    if (leadProvider === 'apollo') {
+      // Apollo.io direct API implementation (placeholder for now)
+      throw new Error("Direct Apollo.io API integration is not implemented yet. Please use Apify Apollo scraper instead.");
     } else {
-      // Format the search URL for Apollo.io company search
-      const apolloUrl = `https://app.apollo.io/#/companies?page=1&organizationLocations[]=${encodeURIComponent(location)}&organizationIndustryTagIds[]=${encodeURIComponent(params.industry)}`;
-      
-      endpoint = `https://api.apify.com/v2/acts/patXsmIVzLafH9GKD/run-sync-get-dataset-items?timeout=300&limit=${limit}`;
-      
-      body = JSON.stringify({
-        searchUrl: apolloUrl,
-        count: limit,
-        deepScrape: false,
-        maxDelay: 7,
-        minDelay: 2,
-        scrapeJobs: false,
-        scrapeNews: false,
-        startPage: 1
-      });
-      
-      console.log("Company Search URL:", apolloUrl);
+      // Use Apify Apollo scraper
+      return searchWithApifyApollo(params, apiKey, limit, location);
     }
-    
-    console.log("API endpoint:", endpoint);
-    
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "Accept": "application/json"
-      },
-      body: body
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API response error:", errorText);
-      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
-    }
-    
-    const data = await response.json();
-    console.log("API response:", data);
-    
-    return data;
   } catch (error) {
-    console.error("Error searching for leads via Apify:", error);
+    console.error("Error searching for leads:", error);
     throw error;
   }
+};
+
+/**
+ * Search using the Apify Apollo Scraper
+ */
+const searchWithApifyApollo = async (
+  params: { searchType: SearchType; industry: string },
+  apiKey: string,
+  limit: number,
+  location: string
+) => {
+  let endpoint: string;
+  let body: any;
+  
+  if (params.searchType === 'people') {
+    // Format the search URL for Apollo.io people search
+    const apolloUrl = `https://app.apollo.io/#/people?page=1&existFields[]=organization_id&includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name&includedOrganizationKeywordFields[]=seo_description&organizationLocations[]=${encodeURIComponent(location)}&sortByField=%5Bnone%5D&sortAscending=false&qOrganizationKeywordTags[]=${encodeURIComponent(params.industry)}&personSeniorities[]=director&personDepartmentOrSubdepartments[]=master_marketing&personDepartmentOrSubdepartments[]=master_sales`;
+    
+    endpoint = `https://api.apify.com/v2/acts/jljBwyyQakqrL1wae/run-sync-get-dataset-items?timeout=300&limit=${limit}`;
+    
+    body = JSON.stringify({ url: apolloUrl });
+    
+    console.log("People Search URL:", apolloUrl);
+  } else {
+    // Format the search URL for Apollo.io company search
+    const apolloUrl = `https://app.apollo.io/#/companies?page=1&organizationLocations[]=${encodeURIComponent(location)}&organizationIndustryTagIds[]=${encodeURIComponent(params.industry)}`;
+    
+    endpoint = `https://api.apify.com/v2/acts/patXsmIVzLafH9GKD/run-sync-get-dataset-items?timeout=300&limit=${limit}`;
+    
+    body = JSON.stringify({
+      searchUrl: apolloUrl,
+      count: limit,
+      deepScrape: false,
+      maxDelay: 7,
+      minDelay: 2,
+      scrapeJobs: false,
+      scrapeNews: false,
+      startPage: 1
+    });
+    
+    console.log("Company Search URL:", apolloUrl);
+  }
+  
+  console.log("API endpoint:", endpoint);
+  
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json"
+    },
+    body: body
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("API response error:", errorText);
+    throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+  }
+  
+  const data = await response.json();
+  console.log("API response:", data);
+  
+  return data;
 };
 
 /**
