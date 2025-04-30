@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
 export const Header = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -55,10 +55,15 @@ export const Header = () => {
           <Link to="/outreach" className="text-gray-600 hover:text-gray-800">
             Outreach
           </Link>
-          {user?.email === 'admin@example.com' && (
-            <Link to="/settings" className="text-gray-600 hover:text-gray-800">
-              Settings
-            </Link>
+          {isAdmin && (
+            <>
+              <Link to="/settings" className="text-gray-600 hover:text-gray-800">
+                Settings
+              </Link>
+              <Link to="/users" className="text-gray-600 hover:text-gray-800">
+                Users
+              </Link>
+            </>
           )}
         </nav>
         {user ? (
@@ -76,6 +81,16 @@ export const Header = () => {
               <DropdownMenuItem onClick={() => navigate('/profile')}>
                 Profile
               </DropdownMenuItem>
+              {isAdmin && (
+                <>
+                  <DropdownMenuItem onClick={() => navigate('/settings')}>
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/users')}>
+                    User Management
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut}>
                 Sign Out

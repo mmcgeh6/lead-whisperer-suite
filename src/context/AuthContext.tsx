@@ -4,12 +4,17 @@ import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut as authSignOut } from "@/lib/auth";
 
+// Define possible user roles
+export type UserRole = 'admin' | 'user';
+
 interface AuthContextProps {
   session: Session | null;
   user: User | null;
   profile: any | null;
   isLoading: boolean;
-  signOut: () => Promise<void>; // Added signOut method
+  isAdmin: boolean;
+  userRole: UserRole | null;
+  signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -18,7 +23,9 @@ const AuthContext = createContext<AuthContextProps>({
   user: null,
   profile: null,
   isLoading: true,
-  signOut: async () => {}, // Default implementation
+  isAdmin: false,
+  userRole: null,
+  signOut: async () => {},
   refreshProfile: async () => {},
 });
 
@@ -28,7 +35,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   // Function to fetch user profile
   const fetchProfile = async (userId: string) => {
@@ -51,14 +60,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Function to fetch user role
+  const fetchUserRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .single();
+
+      if (error) {
+        console.error("Error fetching user role:", error);
+        return 'user' as UserRole; // Default role
+      }
+      
+      return data?.role as UserRole;
+    } catch (error) {
+      console.error("Error in fetchUserRole:", error);
+      return 'user' as UserRole; // Default role
+    }
+  };
+
   const refreshProfile = async () => {
     if (user?.id) {
       const profile = await fetchProfile(user.id);
       setProfile(profile);
+      
+      const role = await fetchUserRole(user.id);
+      setUserRole(role);
+      setIsAdmin(role === 'admin');
     }
   };
   
-  // Add signOut method implementation
   const handleSignOut = async () => {
     const { error } = await authSignOut();
     if (error) {
@@ -78,9 +111,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setTimeout(async () => {
             const profile = await fetchProfile(session.user.id);
             setProfile(profile);
+            
+            const role = await fetchUserRole(session.user.id);
+            setUserRole(role);
+            setIsAdmin(role === 'admin');
           }, 0);
         } else {
           setProfile(null);
+          setUserRole(null);
+          setIsAdmin(false);
         }
         
         setIsLoading(false);
@@ -94,6 +133,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (session?.user) {
         fetchProfile(session.user.id).then(setProfile);
+        fetchUserRole(session.user.id).then(role => {
+          setUserRole(role);
+          setIsAdmin(role === 'admin');
+        });
       }
       
       setIsLoading(false);
@@ -105,7 +148,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, isLoading, signOut: handleSignOut, refreshProfile }}>
+    <AuthContext.Provider value={{ 
+      session, 
+      user, 
+      profile, 
+      isLoading, 
+      isAdmin, 
+      userRole,
+      signOut: handleSignOut, 
+      refreshProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );

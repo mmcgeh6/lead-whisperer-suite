@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } fr
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { supabase } from "@/integrations/supabase/client";
 
 // Schema for API Settings form
 const apiSettingsSchema = z.object({
@@ -30,10 +31,7 @@ type ApiSettingsValues = z.infer<typeof apiSettingsSchema>;
 export const ApiConnectionsManager = () => {
   const [activeTab, setActiveTab] = useState<string>("lead-apis");
   const { toast } = useToast();
-  const { user } = useAuth();
-  
-  // Check if user is admin
-  const isAdmin = user?.email === 'admin@example.com';
+  const { isAdmin } = useAuth();
   
   // Initialize form with values from localStorage
   const form = useForm<ApiSettingsValues>({

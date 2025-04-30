@@ -20,6 +20,7 @@ import EmailComposerPage from "@/pages/EmailComposerPage";
 import CallScriptPage from "@/pages/CallScriptPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
+import UserManagementPage from "@/pages/UserManagementPage";
 
 function App() {
   return (
@@ -166,11 +167,21 @@ function App() {
               }
             />
             
+            {/* Admin-only routes */}
             <Route
               path="/settings"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin={true}>
                   <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <UserManagementPage />
                 </ProtectedRoute>
               }
             />

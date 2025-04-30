@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ export const CompanyList = ({
   hideOptions = false
 }: CompanyListProps) => {
   const { companies } = useAppContext();
-  const [displayCompanies, setDisplayCompanies] = useState<Array<Company | (Partial<Company> & {id: string})>>([]);
+  const [displayCompanies, setDisplayCompanies] = useState<Array<Company>>([]);
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -30,8 +29,10 @@ export const CompanyList = ({
     const allCompanies = [...companies];
     
     if (newLeads && newLeads.length > 0) {
-      // Only add leads that have an id field
-      const validNewLeads = newLeads.filter(lead => lead.id) as Array<Partial<Company> & {id: string}>;
+      // Only add leads that have required fields for Company type
+      const validNewLeads = newLeads
+        .filter(lead => lead.id && lead.name) as Company[];
+      
       allCompanies.unshift(...validNewLeads);
     }
     
