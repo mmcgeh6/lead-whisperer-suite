@@ -18,7 +18,7 @@ import {
   transformApifyResults, 
   PeopleSearchResult, 
   CompanySearchResult,
-  LeadProvider
+  getAppSettings
 } from "@/services/apifyService";
 
 // Result types
@@ -62,22 +62,23 @@ const LeadSearchPage = () => {
     setIsSearching(true);
     
     try {
-      // Get the lead provider from localStorage
-      const leadProvider = localStorage.getItem('leadProvider') || 'apify-apollo';
+      // Get settings from Supabase
+      const settings = await getAppSettings();
+      
+      // Get the lead provider from settings
+      const leadProvider = settings.leadProvider || 'apify-apollo';
       
       // Check for appropriate API key based on the selected provider
-      let apiKeyName: string;
+      let apiKey: string | null;
       let apiKeyLabel: string;
       
       if (leadProvider === 'apollo') {
-        apiKeyName = 'apollioApiKey';
         apiKeyLabel = 'Apollo.io';
+        apiKey = settings.apolloApiKey || null;
       } else {
-        apiKeyName = 'apifyApolloApiKey';
         apiKeyLabel = 'Apify';
+        apiKey = settings.apifyApolloApiKey || null;
       }
-      
-      const apiKey = localStorage.getItem(apiKeyName);
       
       if (!apiKey) {
         toast({
@@ -89,6 +90,8 @@ const LeadSearchPage = () => {
         return;
       }
       
+      console.log(`Starting ${activeTab} search with ${leadProvider} for "${searchParams.keywords.join(',')}" with limit ${searchParams.resultCount || 20}`);
+      
       // Use the search service
       const results = await searchForLeads({
         searchType: activeTab,
@@ -97,13 +100,17 @@ const LeadSearchPage = () => {
         limit: searchParams.resultCount || 20
       });
       
+      console.log("Raw search results:", results);
+      
       // Transform results
       const transformedLeads = transformApifyResults(results, activeTab);
+      
+      console.log("Transformed leads:", transformedLeads);
       
       if (!transformedLeads || transformedLeads.length === 0) {
         toast({
           title: "No Results Found",
-          description: "Your search did not return any results. Try different keywords.",
+          description: "Your search did not return any results. Try different keywords or check the browser console for more information.",
           variant: "default",
         });
         setIsSearching(false);

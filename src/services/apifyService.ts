@@ -4,6 +4,7 @@
  */
 
 import { Company, Contact } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 export type SearchType = 'people' | 'companies';
 export type LeadProvider = 'apollo' | 'apify-apollo';
@@ -20,6 +21,64 @@ export interface CompanySearchResult {
 
 export type SearchResult = PeopleSearchResult | CompanySearchResult;
 
+// Define an interface for the app settings
+interface AppSettings {
+  leadProvider: LeadProvider;
+  apolloApiKey: string;
+  apifyApolloApiKey: string;
+  companyResearchWebhook: string;
+  marketResearchWebhook: string;
+  growthResearchWebhook: string;
+  techResearchWebhook: string;
+}
+
+/**
+ * Get application settings from Supabase or fallback to localStorage
+ */
+export const getAppSettings = async (): Promise<Partial<AppSettings>> => {
+  try {
+    // First try to get settings from Supabase
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('*')
+      .maybeSingle();
+    
+    if (error) {
+      console.error("Error fetching settings from Supabase:", error);
+      // Fallback to localStorage if Supabase fails
+      return getLocalStorageSettings();
+    }
+    
+    if (data) {
+      console.log("Using settings from Supabase:", data);
+      return data as AppSettings;
+    } else {
+      // Fallback to localStorage if no data in Supabase
+      return getLocalStorageSettings();
+    }
+  } catch (error) {
+    console.error("Exception getting settings:", error);
+    // Fallback to localStorage on any exception
+    return getLocalStorageSettings();
+  }
+};
+
+/**
+ * Get settings from localStorage as fallback
+ */
+const getLocalStorageSettings = (): Partial<AppSettings> => {
+  console.log("Using settings from localStorage");
+  return {
+    leadProvider: localStorage.getItem('leadProvider') as LeadProvider || 'apify-apollo',
+    apolloApiKey: localStorage.getItem('apollioApiKey') || '',
+    apifyApolloApiKey: localStorage.getItem('apifyApolloApiKey') || '',
+    companyResearchWebhook: localStorage.getItem('companyResearchWebhook') || '',
+    marketResearchWebhook: localStorage.getItem('marketResearchWebhook') || '',
+    growthResearchWebhook: localStorage.getItem('growthResearchWebhook') || '',
+    techResearchWebhook: localStorage.getItem('techResearchWebhook') || ''
+  };
+};
+
 /**
  * Search for leads using the selected lead provider
  * @param params Search parameters
@@ -32,16 +91,19 @@ export const searchForLeads = async (params: {
   limit?: number;
 }) => {
   try {
-    // Get the lead provider from localStorage
-    const leadProvider = localStorage.getItem('leadProvider') || 'apify-apollo';
+    // Get settings from Supabase
+    const settings = await getAppSettings();
+    
+    // Get the lead provider
+    const leadProvider = settings.leadProvider || 'apify-apollo';
     
     // Get the appropriate API key based on the selected provider
-    let apiKey: string | null;
+    let apiKey: string | null = null;
     
     if (leadProvider === 'apollo') {
-      apiKey = localStorage.getItem('apollioApiKey');
+      apiKey = settings.apolloApiKey || null;
     } else {
-      apiKey = localStorage.getItem('apifyApolloApiKey');
+      apiKey = settings.apifyApolloApiKey || null;
     }
     
     if (!apiKey || apiKey.trim() === '') {
@@ -59,6 +121,7 @@ export const searchForLeads = async (params: {
       throw new Error("Direct Apollo.io API integration is not implemented yet. Please use Apify Apollo scraper instead.");
     } else {
       // Use Apify Apollo scraper
+      console.log(`Searching with Apify Apollo for ${params.searchType} in ${params.industry} with limit ${limit}`);
       return searchWithApifyApollo(params, apiKey, limit, location);
     }
   } catch (error) {
@@ -109,27 +172,40 @@ const searchWithApifyApollo = async (
   }
   
   console.log("API endpoint:", endpoint);
+  console.log("API request body:", body);
   
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-      "Accept": "application/json"
-    },
-    body: body
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("API response error:", errorText);
-    throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "Accept": "application/json"
+      },
+      body: body
+    });
+    
+    const responseText = await response.text();
+    console.log("Raw API response:", responseText);
+    
+    if (!response.ok) {
+      console.error("API response error:", response.status, responseText);
+      throw new Error(`API request failed with status ${response.status}: ${responseText}`);
+    }
+    
+    // Try to parse the JSON response
+    try {
+      const data = JSON.parse(responseText);
+      console.log("API parsed response:", data);
+      return data;
+    } catch (error) {
+      console.error("Error parsing JSON response:", error);
+      throw new Error(`Failed to parse API response: ${responseText.substring(0, 100)}...`);
+    }
+  } catch (error) {
+    console.error("Error making API request:", error);
+    throw error;
   }
-  
-  const data = await response.json();
-  console.log("API response:", data);
-  
-  return data;
 };
 
 /**
@@ -137,8 +213,11 @@ const searchWithApifyApollo = async (
  */
 export const transformApifyResults = (results: any[], searchType: SearchType = 'people'): SearchResult[] => {
   if (!results || !Array.isArray(results)) {
+    console.log("No results or invalid results format:", results);
     return [];
   }
+  
+  console.log(`Transforming ${results.length} ${searchType} results`);
   
   if (searchType === 'people') {
     return results.map(item => {

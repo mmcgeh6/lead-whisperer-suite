@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Search } from "lucide-react";
-import { searchForLeads, transformApifyResults, SearchType } from "@/services/apifyService";
+import { searchForLeads, transformApifyResults, SearchType, getAppSettings } from "@/services/apifyService";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -35,24 +35,28 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
     setIsSearching(true);
 
     try {
-      // Get the lead provider from localStorage
-      const leadProvider = localStorage.getItem('leadProvider') || 'apify-apollo';
+      // Get settings from Supabase
+      const settings = await getAppSettings();
+      
+      // Get the lead provider from settings
+      const leadProvider = settings.leadProvider || 'apify-apollo';
       
       // Check for appropriate API key based on the selected provider
+      let apiKey: string | null;
       let apiKeyName: string;
       let apiKeyLabel: string;
       
       if (leadProvider === 'apollo') {
-        apiKeyName = 'apollioApiKey';
+        apiKeyName = 'apolloApiKey';
         apiKeyLabel = 'Apollo.io';
+        apiKey = settings.apolloApiKey || null;
       } else {
         apiKeyName = 'apifyApolloApiKey';
         apiKeyLabel = 'Apify';
+        apiKey = settings.apifyApolloApiKey || null;
       }
       
-      const apiKey = localStorage.getItem(apiKeyName);
-      
-      if (!apiKey || apiKey.trim() === '') {
+      if (!apiKey) {
         toast({
           title: "API Key Not Configured",
           description: `Please set up your ${apiKeyLabel} API key in API Settings`,
@@ -62,6 +66,8 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
         return;
       }
       
+      console.log(`Starting ${searchType} search with ${leadProvider} for "${searchQuery}" with limit ${resultCount}`);
+      
       // Use the search service
       const results = await searchForLeads({
         searchType,
@@ -69,8 +75,12 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
         limit: parseInt(resultCount, 10)
       });
       
+      console.log("Search results:", results);
+      
       // Transform results
       const transformedLeads = transformApifyResults(results, searchType);
+      
+      console.log("Transformed leads:", transformedLeads);
       
       toast({
         title: "Lead Search Complete",
@@ -79,6 +89,11 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       
       if (onLeadsFound && transformedLeads.length > 0) {
         onLeadsFound(transformedLeads);
+      } else if (transformedLeads.length === 0) {
+        toast({
+          title: "No Results Found",
+          description: "The search did not return any results. Try different keywords or check the console for debugging information.",
+        });
       }
     } catch (error) {
       console.error("Error searching for leads:", error);

@@ -14,11 +14,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { getAppSettings } from "@/services/apifyService";
 
 // Schema for API Settings form
 const apiSettingsSchema = z.object({
   leadProvider: z.string(),
-  apollioApiKey: z.string().optional(),
+  apolloApiKey: z.string().optional(),
   apifyApolloApiKey: z.string().optional(),
   companyResearchWebhook: z.string().url().optional().or(z.literal("")),
   marketResearchWebhook: z.string().url().optional().or(z.literal("")),
@@ -30,93 +31,135 @@ type ApiSettingsValues = z.infer<typeof apiSettingsSchema>;
 
 export const ApiConnectionsManager = () => {
   const [activeTab, setActiveTab] = useState<string>("lead-apis");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { isAdmin } = useAuth();
   
-  // Initialize form with values from localStorage
+  // Initialize form
   const form = useForm<ApiSettingsValues>({
     resolver: zodResolver(apiSettingsSchema),
     defaultValues: {
-      leadProvider: localStorage.getItem('leadProvider') || 'apollo',
-      apollioApiKey: localStorage.getItem('apollioApiKey') || '',
-      apifyApolloApiKey: localStorage.getItem('apifyApolloApiKey') || '',
-      companyResearchWebhook: localStorage.getItem('companyResearchWebhook') || '',
-      marketResearchWebhook: localStorage.getItem('marketResearchWebhook') || '',
-      growthResearchWebhook: localStorage.getItem('growthResearchWebhook') || '',
-      techResearchWebhook: localStorage.getItem('techResearchWebhook') || '',
+      leadProvider: 'apollo',
+      apolloApiKey: '',
+      apifyApolloApiKey: '',
+      companyResearchWebhook: '',
+      marketResearchWebhook: '',
+      growthResearchWebhook: '',
+      techResearchWebhook: '',
     },
   });
   
   useEffect(() => {
-    // Load saved values from localStorage
-    const leadProvider = localStorage.getItem('leadProvider');
-    if (leadProvider) {
-      form.setValue('leadProvider', leadProvider);
-    }
+    const loadSettings = async () => {
+      setIsLoading(true);
+      try {
+        const settings = await getAppSettings();
+        
+        // Update form with values from Supabase or localStorage
+        form.setValue('leadProvider', settings.leadProvider || 'apify-apollo');
+        
+        if (settings.apolloApiKey) {
+          form.setValue('apolloApiKey', settings.apolloApiKey);
+        }
+        
+        if (settings.apifyApolloApiKey) {
+          form.setValue('apifyApolloApiKey', settings.apifyApolloApiKey);
+        }
+        
+        if (settings.companyResearchWebhook) {
+          form.setValue('companyResearchWebhook', settings.companyResearchWebhook);
+        }
+        
+        if (settings.marketResearchWebhook) {
+          form.setValue('marketResearchWebhook', settings.marketResearchWebhook);
+        }
+        
+        if (settings.growthResearchWebhook) {
+          form.setValue('growthResearchWebhook', settings.growthResearchWebhook);
+        }
+        
+        if (settings.techResearchWebhook) {
+          form.setValue('techResearchWebhook', settings.techResearchWebhook);
+        }
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+        toast({
+          title: "Failed to load settings",
+          description: "Could not retrieve API settings. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    const apollioApiKey = localStorage.getItem('apollioApiKey');
-    if (apollioApiKey) {
-      form.setValue('apollioApiKey', apollioApiKey);
-    }
-    
-    const apifyApolloApiKey = localStorage.getItem('apifyApolloApiKey');
-    if (apifyApolloApiKey) {
-      form.setValue('apifyApolloApiKey', apifyApolloApiKey);
-    }
-    
-    const companyResearchWebhook = localStorage.getItem('companyResearchWebhook');
-    if (companyResearchWebhook) {
-      form.setValue('companyResearchWebhook', companyResearchWebhook);
-    }
-    
-    const marketResearchWebhook = localStorage.getItem('marketResearchWebhook');
-    if (marketResearchWebhook) {
-      form.setValue('marketResearchWebhook', marketResearchWebhook);
-    }
-    
-    const growthResearchWebhook = localStorage.getItem('growthResearchWebhook');
-    if (growthResearchWebhook) {
-      form.setValue('growthResearchWebhook', growthResearchWebhook);
-    }
-    
-    const techResearchWebhook = localStorage.getItem('techResearchWebhook');
-    if (techResearchWebhook) {
-      form.setValue('techResearchWebhook', techResearchWebhook);
-    }
-  }, [form]);
+    loadSettings();
+  }, [form, toast]);
   
-  const onSubmit = (data: ApiSettingsValues) => {
-    // Save all values to localStorage
-    localStorage.setItem('leadProvider', data.leadProvider);
+  const onSubmit = async (data: ApiSettingsValues) => {
+    setIsLoading(true);
     
-    if (data.apollioApiKey) {
-      localStorage.setItem('apollioApiKey', data.apollioApiKey);
+    try {
+      // Save to Supabase
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({
+          id: 'default', // Use a constant ID to ensure we only have one row
+          leadProvider: data.leadProvider,
+          apolloApiKey: data.apolloApiKey,
+          apifyApolloApiKey: data.apifyApolloApiKey,
+          companyResearchWebhook: data.companyResearchWebhook,
+          marketResearchWebhook: data.marketResearchWebhook,
+          growthResearchWebhook: data.growthResearchWebhook,
+          techResearchWebhook: data.techResearchWebhook,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Also save to localStorage as fallback
+      localStorage.setItem('leadProvider', data.leadProvider);
+      
+      if (data.apolloApiKey) {
+        localStorage.setItem('apollioApiKey', data.apolloApiKey);
+      }
+      
+      if (data.apifyApolloApiKey) {
+        localStorage.setItem('apifyApolloApiKey', data.apifyApolloApiKey);
+      }
+      
+      if (data.companyResearchWebhook) {
+        localStorage.setItem('companyResearchWebhook', data.companyResearchWebhook);
+      }
+      
+      if (data.marketResearchWebhook) {
+        localStorage.setItem('marketResearchWebhook', data.marketResearchWebhook);
+      }
+      
+      if (data.growthResearchWebhook) {
+        localStorage.setItem('growthResearchWebhook', data.growthResearchWebhook);
+      }
+      
+      if (data.techResearchWebhook) {
+        localStorage.setItem('techResearchWebhook', data.techResearchWebhook);
+      }
+      
+      toast({
+        title: "API Settings Saved",
+        description: "Your API connection settings have been saved to the database.",
+      });
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      toast({
+        title: "Error Saving Settings",
+        description: "Failed to save API settings to the database. Using local storage fallback.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    if (data.apifyApolloApiKey) {
-      localStorage.setItem('apifyApolloApiKey', data.apifyApolloApiKey);
-    }
-    
-    if (data.companyResearchWebhook) {
-      localStorage.setItem('companyResearchWebhook', data.companyResearchWebhook);
-    }
-    
-    if (data.marketResearchWebhook) {
-      localStorage.setItem('marketResearchWebhook', data.marketResearchWebhook);
-    }
-    
-    if (data.growthResearchWebhook) {
-      localStorage.setItem('growthResearchWebhook', data.growthResearchWebhook);
-    }
-    
-    if (data.techResearchWebhook) {
-      localStorage.setItem('techResearchWebhook', data.techResearchWebhook);
-    }
-    
-    toast({
-      title: "API Settings Saved",
-      description: "Your API connection settings have been saved.",
-    });
   };
 
   // If user is not admin, show access denied message
@@ -189,7 +232,7 @@ export const ApiConnectionsManager = () => {
                 {form.watch('leadProvider') === 'apollo' && (
                   <FormField
                     control={form.control}
-                    name="apollioApiKey"
+                    name="apolloApiKey"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Apollo.io API Key</FormLabel>
@@ -315,19 +358,19 @@ export const ApiConnectionsManager = () => {
             </Tabs>
             
             <div className="flex justify-end">
-              <Button type="submit">
+              <Button type="submit" disabled={isLoading}>
                 <Save className="mr-2 h-4 w-4" />
-                Save API Settings
+                {isLoading ? "Saving..." : "Save API Settings"}
               </Button>
             </div>
           </form>
         </Form>
         
         <div className="mt-6 p-4 bg-muted rounded-md">
-          <h4 className="font-medium mb-2">About API Keys and Webhooks</h4>
+          <h4 className="font-medium mb-2">About API Keys and Storage</h4>
           <p className="text-sm text-muted-foreground">
-            API keys and webhook URLs are stored securely in your browser's local storage. 
-            For production use, we recommend a server-side implementation with proper key management.
+            API keys are now stored in the database and shared across all users. 
+            For redundancy, a copy is also kept in your browser's local storage as a fallback.
           </p>
         </div>
       </CardContent>
