@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUserId } from "@/services/rpcFunctions";
 
 export const AdminSetup = () => {
   const { user, refreshProfile } = useAuth();
@@ -26,13 +27,8 @@ export const AdminSetup = () => {
       console.log("Attempting to make user admin for user ID:", user.id);
       
       // First check if the user has proper permissions
-      // Check if user_roles row-level security might be blocking
-      const { data: rls, error: rlsError } = await supabase.rpc('get_current_user_id');
-      if (rlsError) {
-        console.log("RLS check error:", rlsError);
-      } else {
-        console.log("Current user ID from RPC:", rls);
-      }
+      const currentUserId = await getCurrentUserId();
+      console.log("Current user ID from helper function:", currentUserId);
       
       // Delete any existing roles first
       const { error: deleteError } = await supabase.from('user_roles')
