@@ -35,7 +35,7 @@ const SettingsPage = () => {
           </TabsContent>
           
           <TabsContent value="webhooks" className="mt-6">
-            <Alert variant="warning" className="mb-6">
+            <Alert variant="default" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 Webhook services must be configured to accept requests from your domain or they may fail due to CORS restrictions. 

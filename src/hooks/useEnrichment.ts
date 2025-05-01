@@ -293,13 +293,13 @@ export const useEnrichment = (company: Company | null) => {
         toast({
           title: "Network Error",
           description: "Could not connect to the enrichment service. Using mock data instead.",
-          variant: "warning"
+          variant: "default"
         });
       } else {
         toast({
           title: "Enrichment Failed",
           description: "Could not retrieve additional data. Using sample data instead.",
-          variant: "warning"
+          variant: "default"
         });
       }
       
@@ -450,13 +450,13 @@ export const useEnrichment = (company: Company | null) => {
         toast({
           title: "Network Error",
           description: "Could not connect to the email search service. Using generated email instead.",
-          variant: "warning"
+          variant: "default"
         });
       } else {
         toast({
           title: "Email Search Failed",
           description: "There was an error searching for the email. Using generated email instead.",
-          variant: "warning"
+          variant: "default"
         });
       }
       
@@ -473,7 +473,12 @@ export const useEnrichment = (company: Company | null) => {
           .from('contacts')
           .update({ email: mockEmail })
           .eq('id', contact.id)
-          .then(() => {
+          .then(({ error }) => {
+            if (error) {
+              console.error("Error updating contact with mock email:", error);
+              return;
+            }
+            
             // Update local state
             const updatedContact = { ...contact, email: mockEmail };
             const updatedContacts = contacts.map(c => 
@@ -485,9 +490,6 @@ export const useEnrichment = (company: Company | null) => {
               title: "Using Generated Email",
               description: `Generated sample email: ${mockEmail}`,
             });
-          })
-          .catch(err => {
-            console.error("Error updating contact with mock email:", err);
           });
       }, 1000);
     } finally {
@@ -624,13 +626,13 @@ export const useEnrichment = (company: Company | null) => {
         toast({
           title: "Network Error",
           description: "Could not connect to the enrichment service. Using sample profile data instead.",
-          variant: "warning"
+          variant: "default"
         });
       } else {
         toast({
           title: "Enrichment Failed",
           description: "Could not retrieve LinkedIn data. Using sample profile data instead.",
-          variant: "warning"
+          variant: "default"
         });
       }
       
@@ -668,9 +670,14 @@ export const useEnrichment = (company: Company | null) => {
           .from('contacts')
           .update(mockData)
           .eq('id', contact.id)
-          .then(() => {
-            // Update local state
-            const updatedContact = { ...contact, ...mockData };
+          .then(({ error }) => {
+            if (error) {
+              console.error("Error updating contact with mock data:", error);
+              return;
+            }
+            
+            // Update local state with the mock data - using type cast to avoid type mismatch
+            const updatedContact = { ...contact, ...mockData as unknown as Partial<Contact> };
             const updatedContacts = contacts.map(c => 
               c.id === contact.id ? updatedContact : c
             );
@@ -680,9 +687,6 @@ export const useEnrichment = (company: Company | null) => {
               title: "Using Sample Data",
               description: "Using mock profile data since the webhook couldn't be reached.",
             });
-          })
-          .catch(err => {
-            console.error("Error updating contact with mock data:", err);
           });
       }, 1000);
     } finally {
