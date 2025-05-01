@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmailSettings } from "@/components/settings/EmailSettings";
 import { ApiConnectionsManager } from "@/components/settings/ApiConnectionsManager";
 import { WebhookSettings } from "@/components/settings/WebhookSettings";
+import { GeneralSettings } from "@/components/settings/GeneralSettings";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
@@ -35,7 +36,7 @@ const SettingsPage = () => {
           </TabsContent>
           
           <TabsContent value="webhooks" className="mt-6">
-            <Alert variant="default" className="mb-6">
+            <Alert variant="warning" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 Webhook services must be configured to accept requests from your domain or they may fail due to CORS restrictions. 
@@ -46,9 +47,7 @@ const SettingsPage = () => {
           </TabsContent>
           
           <TabsContent value="general" className="mt-6">
-            <div className="text-center py-12">
-              <p className="text-gray-500">General settings coming soon.</p>
-            </div>
+            <GeneralSettings />
           </TabsContent>
         </Tabs>
       </div>

@@ -292,13 +292,13 @@ export const useEnrichment = (company: Company | null) => {
         toast({
           title: "Network Error",
           description: "Could not connect to the enrichment service. Using mock data instead.",
-          variant: "default"
+          variant: "warning"
         });
       } else {
         toast({
           title: "Enrichment Failed",
           description: "Could not retrieve additional data. Using sample data instead.",
-          variant: "default"
+          variant: "warning"
         });
       }
       
@@ -449,13 +449,13 @@ export const useEnrichment = (company: Company | null) => {
         toast({
           title: "Network Error",
           description: "Could not connect to the email search service. Using generated email instead.",
-          variant: "default"
+          variant: "warning"
         });
       } else {
         toast({
           title: "Email Search Failed",
           description: "There was an error searching for the email. Using generated email instead.",
-          variant: "default"
+          variant: "warning"
         });
       }
       
@@ -625,13 +625,13 @@ export const useEnrichment = (company: Company | null) => {
         toast({
           title: "Network Error",
           description: "Could not connect to the enrichment service. Using sample profile data instead.",
-          variant: "default"
+          variant: "warning"
         });
       } else {
         toast({
           title: "Enrichment Failed",
           description: "Could not retrieve LinkedIn data. Using sample profile data instead.",
-          variant: "default"
+          variant: "warning"
         });
       }
       

@@ -198,7 +198,13 @@ export type Database = {
           email: string | null
           first_name: string
           id: string
+          last_enriched: string | null
           last_name: string
+          linkedin_bio: string | null
+          linkedin_education: string[] | null
+          linkedin_experience: string[] | null
+          linkedin_posts: Json | null
+          linkedin_skills: string[] | null
           linkedin_url: string | null
           notes: string | null
           phone: string | null
@@ -211,7 +217,13 @@ export type Database = {
           email?: string | null
           first_name: string
           id?: string
+          last_enriched?: string | null
           last_name: string
+          linkedin_bio?: string | null
+          linkedin_education?: string[] | null
+          linkedin_experience?: string[] | null
+          linkedin_posts?: Json | null
+          linkedin_skills?: string[] | null
           linkedin_url?: string | null
           notes?: string | null
           phone?: string | null
@@ -224,7 +236,13 @@ export type Database = {
           email?: string | null
           first_name?: string
           id?: string
+          last_enriched?: string | null
           last_name?: string
+          linkedin_bio?: string | null
+          linkedin_education?: string[] | null
+          linkedin_experience?: string[] | null
+          linkedin_posts?: Json | null
+          linkedin_skills?: string[] | null
           linkedin_url?: string | null
           notes?: string | null
           phone?: string | null
