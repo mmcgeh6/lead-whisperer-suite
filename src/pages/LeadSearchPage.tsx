@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +39,26 @@ export interface SearchResult {
   archived: boolean;
   // Additional data for detailed view
   raw_data: any;
+}
+
+// Define interfaces for company and contact objects to fix type errors
+interface CompanyData {
+  name?: string;
+  industry?: string;
+  location?: string;
+  website?: string;
+  description?: string;
+  linkedin_url?: string;
+  size?: string;
+}
+
+interface ContactData {
+  firstName?: string;
+  lastName?: string;
+  title?: string;
+  email?: string;
+  phone?: string;
+  linkedin_url?: string;
 }
 
 const LeadSearchPage = () => {
@@ -144,8 +163,8 @@ const LeadSearchPage = () => {
             if (isPeopleResult) {
               // This is a people search result
               const peopleItem = item as PeopleSearchResult;
-              const contact = peopleItem.contact || {};
-              const company = peopleItem.company || {};
+              const contact = (peopleItem.contact || {}) as ContactData;
+              const company = (peopleItem.company || {}) as CompanyData;
               
               const firstName = contact.firstName || "";
               const lastName = contact.lastName || "";
@@ -173,7 +192,7 @@ const LeadSearchPage = () => {
             } else {
               // This is a company search result
               const companyItem = item as CompanySearchResult;
-              const company = companyItem.company || {};
+              const company = (companyItem.company || {}) as CompanyData;
               
               console.log(`Creating SearchResult for company: ${company?.name || "Unknown"}`);
               
