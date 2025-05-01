@@ -1,7 +1,7 @@
 
 import { Contact } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   Mail, 
   Phone, 
@@ -60,6 +60,9 @@ export const ContactDetailDialog = ({
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">Contact Details</DialogTitle>
+          <DialogDescription>
+            View and manage contact information for {contact.firstName} {contact.lastName}
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6">
           <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
