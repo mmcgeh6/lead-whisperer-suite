@@ -13,6 +13,7 @@ import { CompanyInsights } from "@/components/insights/CompanyInsights";
 import { CompanyResearch } from "@/components/research/CompanyResearch";
 import { SimilarCompanies } from "@/components/insights/SimilarCompanies";
 import { useEnrichment } from "@/hooks/useEnrichment";
+import { Plus } from "lucide-react";
 
 const CompanyDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +48,18 @@ const CompanyDetailPage = () => {
     setSelectedContactId(contactId);
     setContactDialogOpen(true);
   };
+
+  // Handle Add Contact button click
+  const handleAddContact = () => {
+    if (company) {
+      navigate(`/contacts/new?companyId=${company.id}`);
+    }
+  };
+
+  // Handle Edit Contact navigation
+  const handleEditContact = (contactId: string) => {
+    navigate(`/contacts/edit/${contactId}`);
+  };
   
   return (
     <Layout>
@@ -62,12 +75,24 @@ const CompanyDetailPage = () => {
         <CompanyAbout company={company} />
         
         {/* Module 2: Contacts */}
-        <CompanyContacts 
-          companyId={company.id}
-          isEnriching={enrichmentProps.isEnriching}
-          handleEnrichCompany={enrichmentProps.handleEnrichCompany}
-          onContactSelect={handleContactSelect}
-        />
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Contacts</h2>
+            <Button 
+              onClick={handleAddContact}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Contact
+            </Button>
+          </div>
+          <CompanyContacts 
+            companyId={company.id}
+            isEnriching={enrichmentProps.isEnriching}
+            handleEnrichCompany={enrichmentProps.handleEnrichCompany}
+            onContactSelect={handleContactSelect}
+          />
+        </div>
 
         {/* Contact Dialog - Shows when contact is selected */}
         <ContactDetailDialog
@@ -78,6 +103,7 @@ const CompanyDetailPage = () => {
           onEnrichContact={enrichmentProps.handleEnrichContact}
           isFindingEmail={enrichmentProps.isFindingEmail}
           isEnrichingContact={enrichmentProps.isEnrichingContact}
+          onEditContact={handleEditContact}
         />
         
         {/* Similar Companies - New section */}
