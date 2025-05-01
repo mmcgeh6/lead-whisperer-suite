@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -99,18 +98,20 @@ const ContactDetailPage = () => {
       const profileData = Array.isArray(data) ? data[0] : data;
       
       // Prepare the update data
-      const updateData: any = {
+      const updateData: Record<string, any> = {
         last_enriched: new Date().toISOString()
       };
 
       // Extract bio
-      if (profileData.bio || profileData.summary) {
-        updateData.linkedin_bio = profileData.bio || profileData.summary;
+      if (profileData.bio || profileData.summary || profileData.about) {
+        updateData.linkedin_bio = profileData.bio || profileData.summary || profileData.about;
       }
 
       // Extract skills
-      if (Array.isArray(profileData.skills)) {
+      if (Array.isArray(profileData.skills) && profileData.skills.length > 0) {
         updateData.linkedin_skills = profileData.skills;
+      } else if (profileData.topSkillsByEndorsements) {
+        updateData.linkedin_skills = profileData.topSkillsByEndorsements.split(", ");
       }
 
       // Extract education
@@ -125,17 +126,27 @@ const ContactDetailPage = () => {
         updateData.linkedin_experience = profileData.experiences.map(exp => 
           `${exp.title || ''} at ${exp.company || ''} (${exp.starts_at?.month ? exp.starts_at.month + '/' : ''}${exp.starts_at?.year || ''}-${exp.ends_at?.month ? exp.ends_at.month + '/' : ''}${exp.ends_at?.year || 'Present'})`
         );
+      } else if (Array.isArray(profileData.experiences)) {
+        const formattedExperiences = [];
+        for (const exp of profileData.experiences) {
+          if (exp.title && (exp.subtitle || exp.caption)) {
+            formattedExperiences.push(`${exp.title} at ${exp.subtitle || ''} ${exp.caption || ''}`);
+          }
+        }
+        if (formattedExperiences.length > 0) {
+          updateData.linkedin_experience = formattedExperiences;
+        }
       }
 
-      // Extract posts
-      if (Array.isArray(profileData.posts)) {
+      // Extract posts if available
+      if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
         updateData.linkedin_posts = profileData.posts.map(post => ({
           id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          content: post.content || post.text,
-          timestamp: post.timestamp || post.date,
+          content: post.content || post.text || '',
+          timestamp: post.timestamp || post.date || new Date().toISOString(),
           likes: post.likes || 0,
           comments: post.comments || 0,
-          url: post.url
+          url: post.url || null
         }));
       }
 
@@ -153,7 +164,16 @@ const ContactDetailPage = () => {
       }
 
       // Update local state
-      const updatedContact = { ...contact, ...updateData };
+      const updatedContact = { 
+        ...contact, 
+        linkedin_bio: updateData.linkedin_bio,
+        linkedin_skills: updateData.linkedin_skills,
+        linkedin_education: updateData.linkedin_education,
+        linkedin_experience: updateData.linkedin_experience,
+        linkedin_posts: updateData.linkedin_posts,
+        last_enriched: updateData.last_enriched
+      };
+      
       const updatedContacts = contacts.map(c => 
         c.id === contact.id ? updatedContact : c
       );
@@ -179,51 +199,6 @@ const ContactDetailPage = () => {
           description: "Could not retrieve additional data. Please try again later.",
           variant: "destructive"
         });
-      }
-      
-      // For development purposes, generate mock data
-      if (!contact.linkedin_posts) {
-        setTimeout(() => {
-          const mockData = {
-            linkedin_bio: "Experienced marketing professional with over 10 years in digital strategy and brand development. Passionate about creating data-driven campaigns that deliver measurable results.",
-            linkedin_posts: [
-              {
-                id: "post1",
-                content: "Excited to announce our company's new initiative on sustainable business practices! We're committed to reducing our carbon footprint by 30% over the next two years. #Sustainability #BusinessEthics",
-                timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-                likes: 42,
-                comments: 7
-              },
-              {
-                id: "post2",
-                content: "Just finished reading 'The Innovator's Dilemma' by Clayton Christensen. Highly recommend for anyone interested in understanding disruptive innovation and why established companies often fail to adapt. What business books have impacted your thinking? #Innovation #BusinessStrategy",
-                timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-                likes: 28,
-                comments: 12
-              }
-            ],
-            linkedin_skills: ["Digital Marketing", "Content Strategy", "SEO", "Team Leadership", "Project Management"],
-            linkedin_education: ["MBA in Marketing at Stanford University (2010-2012)", "BS in Business Administration at UCLA (2006-2010)"],
-            linkedin_experience: [
-              "Marketing Director at TechCorp (2018-Present)",
-              "Senior Marketing Manager at Digital Solutions Inc. (2014-2018)",
-              "Marketing Associate at Marketing Pros (2012-2014)"
-            ],
-            last_enriched: new Date().toISOString()
-          };
-          
-          // Update local state with mock data
-          const updatedContact = { ...contact, ...mockData };
-          const updatedContacts = contacts.map(c => 
-            c.id === contact.id ? updatedContact : c
-          );
-          setContacts(updatedContacts);
-          
-          toast({
-            title: "Using Sample Data",
-            description: "Using mock data for demonstration purposes.",
-          });
-        }, 2000);
       }
     } finally {
       setIsEnriching(false);

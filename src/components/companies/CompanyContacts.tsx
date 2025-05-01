@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ContactList } from "@/components/leads/ContactList";
@@ -173,18 +172,20 @@ export const CompanyContacts = ({
       const profileData = Array.isArray(data) ? data[0] : data;
       
       // Prepare the update data
-      const updateData: any = {
+      const updateData: Record<string, any> = {
         last_enriched: new Date().toISOString()
       };
 
       // Extract bio
-      if (profileData.bio || profileData.summary) {
-        updateData.linkedin_bio = profileData.bio || profileData.summary;
+      if (profileData.bio || profileData.summary || profileData.about) {
+        updateData.linkedin_bio = profileData.bio || profileData.summary || profileData.about;
       }
 
       // Extract skills
-      if (Array.isArray(profileData.skills)) {
+      if (Array.isArray(profileData.skills) && profileData.skills.length > 0) {
         updateData.linkedin_skills = profileData.skills;
+      } else if (profileData.topSkillsByEndorsements) {
+        updateData.linkedin_skills = profileData.topSkillsByEndorsements.split(", ");
       }
       
       // Extract languages if available
@@ -193,22 +194,22 @@ export const CompanyContacts = ({
       }
       
       // Extract address and country if available
-      if (profileData.address) {
-        updateData.address = profileData.address;
+      if (profileData.address || profileData.addressWithoutCountry) {
+        updateData.address = profileData.address || profileData.addressWithoutCountry;
       }
       
-      if (profileData.country) {
-        updateData.country = profileData.country;
+      if (profileData.country || profileData.addressCountryOnly) {
+        updateData.country = profileData.country || profileData.addressCountryOnly;
       }
       
       // Extract position if available
-      if (profileData.position) {
-        updateData.position = profileData.position;
+      if (profileData.position || profileData.headline || profileData.jobTitle) {
+        updateData.position = profileData.position || profileData.headline || profileData.jobTitle;
       }
       
       // Extract mobile number if available
-      if (profileData.mobilePhone || profileData.mobile_phone) {
-        updateData.mobilePhone = profileData.mobilePhone || profileData.mobile_phone;
+      if (profileData.mobilePhone || profileData.mobileNumber) {
+        updateData.mobilePhone = profileData.mobilePhone || profileData.mobileNumber;
       }
       
       // Extract job start date if available
@@ -223,23 +224,48 @@ export const CompanyContacts = ({
         );
       }
 
-      // Extract experience
+      // Extract experience from both formats
       if (Array.isArray(profileData.experiences)) {
-        updateData.linkedin_experience = profileData.experiences.map(exp => 
-          `${exp.title || ''} at ${exp.company || ''} (${exp.starts_at?.month ? exp.starts_at.month + '/' : ''}${exp.starts_at?.year || ''}-${exp.ends_at?.month ? exp.ends_at.month + '/' : ''}${exp.ends_at?.year || 'Present'})`
-        );
+        if (profileData.experiences[0] && (profileData.experiences[0].title || profileData.experiences[0].company)) {
+          // Standard format
+          updateData.linkedin_experience = profileData.experiences.map(exp => 
+            `${exp.title || ''} at ${exp.company || ''} (${exp.starts_at?.month ? exp.starts_at.month + '/' : ''}${exp.starts_at?.year || ''}-${exp.ends_at?.month ? exp.ends_at.month + '/' : ''}${exp.ends_at?.year || 'Present'})`
+          );
+        } else {
+          // Alternative format with subtitle/caption
+          const formattedExperiences = [];
+          for (const exp of profileData.experiences) {
+            if (exp.title && (exp.subtitle || exp.caption)) {
+              formattedExperiences.push(`${exp.title} at ${exp.subtitle || ''} ${exp.caption || ''}`);
+            }
+          }
+          if (formattedExperiences.length > 0) {
+            updateData.linkedin_experience = formattedExperiences;
+          }
+        }
       }
 
       // Extract posts
-      if (Array.isArray(profileData.posts)) {
+      if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
         updateData.linkedin_posts = profileData.posts.map(post => ({
           id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          content: post.content || post.text,
-          timestamp: post.timestamp || post.date,
+          content: post.content || post.text || '',
+          timestamp: post.timestamp || post.date || new Date().toISOString(),
           likes: post.likes || 0,
           comments: post.comments || 0,
-          url: post.url
+          url: post.url || null
         }));
+      }
+
+      // If no meaningful data was found, notify the user
+      if (Object.keys(updateData).length <= 1) { // Only has last_enriched
+        toast({
+          title: "No Profile Data Found",
+          description: "No useful LinkedIn profile data could be retrieved.",
+          variant: "default"
+        });
+        setIsEnrichingContact(false);
+        return;
       }
 
       console.log("Updating contact with data:", updateData);
@@ -256,7 +282,11 @@ export const CompanyContacts = ({
       }
 
       // Update local state
-      const updatedContact = { ...contact, ...updateData };
+      const updatedContact = { 
+        ...contact,
+        ...updateData // Add all the update data
+      };
+      
       const updatedContacts = contacts.map(c => 
         c.id === contact.id ? updatedContact : c
       );
@@ -282,57 +312,6 @@ export const CompanyContacts = ({
           description: "Could not retrieve additional data. Please try again later.",
           variant: "destructive"
         });
-      }
-      
-      // For development purposes, generate mock data
-      if (!contact.linkedin_posts) {
-        setTimeout(() => {
-          const mockData = {
-            linkedin_bio: "Experienced marketing professional with over 10 years in digital strategy and brand development. Passionate about creating data-driven campaigns that deliver measurable results.",
-            position: "Marketing Director",
-            job_start_date: "2020-06-01",
-            languages: ["English", "Spanish", "French"],
-            mobilePhone: "+1 555-123-4567",
-            address: "123 Business Ave, Suite 400",
-            country: "United States",
-            linkedin_posts: [
-              {
-                id: "post1",
-                content: "Excited to announce our company's new initiative on sustainable business practices! We're committed to reducing our carbon footprint by 30% over the next two years. #Sustainability #BusinessEthics",
-                timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-                likes: 42,
-                comments: 7
-              },
-              {
-                id: "post2",
-                content: "Just finished reading 'The Innovator's Dilemma' by Clayton Christensen. Highly recommend for anyone interested in understanding disruptive innovation and why established companies often fail to adapt. What business books have impacted your thinking? #Innovation #BusinessStrategy",
-                timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-                likes: 28,
-                comments: 12
-              }
-            ],
-            linkedin_skills: ["Digital Marketing", "Content Strategy", "SEO", "Team Leadership", "Project Management"],
-            linkedin_education: ["MBA in Marketing at Stanford University (2010-2012)", "BS in Business Administration at UCLA (2006-2010)"],
-            linkedin_experience: [
-              "Marketing Director at TechCorp (2018-Present)",
-              "Senior Marketing Manager at Digital Solutions Inc. (2014-2018)",
-              "Marketing Associate at Marketing Pros (2012-2014)"
-            ],
-            last_enriched: new Date().toISOString()
-          };
-          
-          // Update local state with mock data
-          const updatedContact = { ...contact, ...mockData };
-          const updatedContacts = contacts.map(c => 
-            c.id === contact.id ? updatedContact : c
-          );
-          setContacts(updatedContacts);
-          
-          toast({
-            title: "Using Sample Data",
-            description: "Using mock data for demonstration purposes.",
-          });
-        }, 2000);
       }
     } finally {
       setIsEnrichingContact(false);

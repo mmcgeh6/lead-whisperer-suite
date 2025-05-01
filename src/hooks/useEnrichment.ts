@@ -292,13 +292,13 @@ export const useEnrichment = (company: Company | null) => {
         toast({
           title: "Network Error",
           description: "Could not connect to the enrichment service. Using mock data instead.",
-          variant: "warning"
+          variant: "default"
         });
       } else {
         toast({
           title: "Enrichment Failed",
           description: "Could not retrieve additional data. Using sample data instead.",
-          variant: "warning"
+          variant: "default"
         });
       }
       
@@ -448,49 +448,16 @@ export const useEnrichment = (company: Company | null) => {
       if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
         toast({
           title: "Network Error",
-          description: "Could not connect to the email search service. Using generated email instead.",
-          variant: "warning"
+          description: "Could not connect to the email search service.",
+          variant: "default"
         });
       } else {
         toast({
           title: "Email Search Failed",
-          description: "There was an error searching for the email. Using generated email instead.",
-          variant: "warning"
+          description: "There was an error searching for the email.",
+          variant: "default"
         });
       }
-      
-      // Generate a mock email for demonstration
-      setTimeout(() => {
-        const domain = company.website ? 
-          new URL(company.website).hostname.replace('www.', '') : 
-          `${company.name.toLowerCase().replace(/\s+/g, '')}.com`;
-        
-        const mockEmail = `${contact.firstName.toLowerCase()}.${contact.lastName.toLowerCase()}@${domain}`;
-        
-        // Update the contact record in Supabase
-        supabase
-          .from('contacts')
-          .update({ email: mockEmail })
-          .eq('id', contact.id)
-          .then(({ error }) => {
-            if (error) {
-              console.error("Error updating contact with mock email:", error);
-              return;
-            }
-            
-            // Update local state
-            const updatedContact = { ...contact, email: mockEmail };
-            const updatedContacts = contacts.map(c => 
-              c.id === contact.id ? updatedContact : c
-            );
-            setContacts(updatedContacts);
-            
-            toast({
-              title: "Using Generated Email",
-              description: `Generated sample email: ${mockEmail}`,
-            });
-          });
-      }, 1000);
     } finally {
       setIsFindingEmail(false);
     }
@@ -551,44 +518,70 @@ export const useEnrichment = (company: Company | null) => {
         const profileData = Array.isArray(data) ? data[0] : data;
         
         // Prepare the update data
-        const updateData: any = {
+        const updateData: Record<string, any> = {
           last_enriched: new Date().toISOString()
         };
 
         // Extract bio
-        if (profileData.bio || profileData.summary) {
-          updateData.linkedin_bio = profileData.bio || profileData.summary;
+        if (profileData.bio || profileData.summary || profileData.about) {
+          updateData.linkedin_bio = profileData.bio || profileData.summary || profileData.about;
         }
 
         // Extract skills
-        if (Array.isArray(profileData.skills)) {
+        if (Array.isArray(profileData.skills) && profileData.skills.length > 0) {
           updateData.linkedin_skills = profileData.skills;
+        } else if (profileData.topSkillsByEndorsements) {
+          updateData.linkedin_skills = profileData.topSkillsByEndorsements.split(", ");
         }
 
         // Extract education
-        if (Array.isArray(profileData.education)) {
+        if (Array.isArray(profileData.education) && profileData.education.length > 0) {
           updateData.linkedin_education = profileData.education.map((edu: any) => 
             `${edu.degree || ''} ${edu.field_of_study || ''} at ${edu.school_name || ''} (${edu.starts_at?.year || ''}-${edu.ends_at?.year || 'Present'})`
           );
         }
 
         // Extract experience
-        if (Array.isArray(profileData.experiences)) {
+        if (Array.isArray(profileData.experiences) && profileData.experiences.length > 0) {
           updateData.linkedin_experience = profileData.experiences.map((exp: any) => 
             `${exp.title || ''} at ${exp.company || ''} (${exp.starts_at?.month ? exp.starts_at.month + '/' : ''}${exp.starts_at?.year || ''}-${exp.ends_at?.month ? exp.ends_at.month + '/' : ''}${exp.ends_at?.year || 'Present'})`
           );
+        } else if (Array.isArray(profileData.experiences)) {
+          const formattedExperiences = [];
+          for (const exp of profileData.experiences) {
+            if (exp.title && (exp.subtitle || exp.caption)) {
+              formattedExperiences.push(`${exp.title} at ${exp.subtitle || ''} ${exp.caption || ''}`);
+            }
+          }
+          if (formattedExperiences.length > 0) {
+            updateData.linkedin_experience = formattedExperiences;
+          }
         }
 
-        // Extract posts
-        if (Array.isArray(profileData.posts)) {
-          updateData.linkedin_posts = profileData.posts.map((post: any) => ({
+        // Extract posts if available
+        if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
+          // Convert LinkedInPost objects to a format suitable for jsonb column
+          const formattedPosts = profileData.posts.map((post: any) => ({
             id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            content: post.content || post.text,
-            timestamp: post.timestamp || post.date,
+            content: post.content || post.text || '',
+            timestamp: post.timestamp || post.date || new Date().toISOString(),
             likes: post.likes || 0,
             comments: post.comments || 0,
-            url: post.url
+            url: post.url || null
           }));
+          
+          updateData.linkedin_posts = formattedPosts;
+        }
+
+        // If no meaningful data was found, notify the user
+        if (Object.keys(updateData).length <= 1) { // Only has last_enriched
+          toast({
+            title: "No Profile Data Found",
+            description: "No useful LinkedIn profile data could be retrieved.",
+            variant: "default"
+          });
+          setIsEnrichingContact(false);
+          return;
         }
 
         // Update the contact in Supabase
@@ -602,8 +595,17 @@ export const useEnrichment = (company: Company | null) => {
           throw new Error("Failed to update contact with LinkedIn data");
         }
 
-        // Update local state
-        const updatedContact = { ...contact, ...updateData };
+        // Update local state - convert from supabase format to Contact type
+        const updatedContact = { 
+          ...contact, 
+          linkedin_bio: updateData.linkedin_bio,
+          linkedin_skills: updateData.linkedin_skills,
+          linkedin_education: updateData.linkedin_education,
+          linkedin_experience: updateData.linkedin_experience,
+          linkedin_posts: updateData.linkedin_posts,
+          last_enriched: updateData.last_enriched
+        };
+        
         const updatedContacts = contacts.map(c => 
           c.id === contact.id ? updatedContact : c
         );
@@ -624,71 +626,16 @@ export const useEnrichment = (company: Company | null) => {
       if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
         toast({
           title: "Network Error",
-          description: "Could not connect to the enrichment service. Using sample profile data instead.",
-          variant: "warning"
+          description: "Could not connect to the enrichment service.",
+          variant: "default"
         });
       } else {
         toast({
           title: "Enrichment Failed",
-          description: "Could not retrieve LinkedIn data. Using sample profile data instead.",
-          variant: "warning"
+          description: "Could not retrieve LinkedIn data.",
+          variant: "default"
         });
       }
-      
-      // Generate mock data for the contact
-      setTimeout(() => {
-        // Create properly typed mock data that aligns with Contact type
-        const mockData: Partial<Contact> = {
-          linkedin_bio: `Experienced ${contact.title || "professional"} with over 5 years in ${company?.industry || "the industry"}. Passionate about delivering exceptional results and building successful client relationships.`,
-          linkedin_skills: ["Communication", "Project Management", "Leadership", "Client Relations", contact.title || "Industry Knowledge"],
-          linkedin_education: ["Bachelor's Degree at State University (2012-2016)"],
-          linkedin_experience: [
-            `${contact.title || "Professional"} at ${company?.name || "Current Company"} (2020-Present)`,
-            "Associate at Previous Company (2016-2020)"
-          ],
-          linkedin_posts: [
-            {
-              id: `post-${Date.now()}-1`,
-              content: `Just finished a great project at ${company?.name || "our company"}! Excited about the results we achieved for our clients.`,
-              timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-              likes: Math.floor(Math.random() * 50) + 5,
-              comments: Math.floor(Math.random() * 10) + 1
-            },
-            {
-              id: `post-${Date.now()}-2`,
-              content: `Attended an industry conference last week. Great insights on the future of ${company?.industry || "our industry"}!`,
-              timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-              likes: Math.floor(Math.random() * 30) + 3,
-              comments: Math.floor(Math.random() * 8) + 1
-            }
-          ],
-          last_enriched: new Date().toISOString()
-        };
-        
-        // Update the contact in Supabase
-        supabase
-          .from('contacts')
-          .update(mockData)
-          .eq('id', contact.id)
-          .then(({ error }) => {
-            if (error) {
-              console.error("Error updating contact with mock data:", error);
-              return;
-            }
-            
-            // Update local state with the mock data
-            const updatedContact = { ...contact, ...mockData };
-            const updatedContacts = contacts.map(c => 
-              c.id === contact.id ? updatedContact : c
-            );
-            setContacts(updatedContacts);
-            
-            toast({
-              title: "Using Sample Data",
-              description: "Using mock profile data since the webhook couldn't be reached.",
-            });
-          });
-      }, 1000);
     } finally {
       setIsEnrichingContact(false);
     }
