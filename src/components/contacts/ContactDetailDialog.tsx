@@ -18,6 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface ContactDetailDialogProps {
   contact: Contact | null;
@@ -63,19 +64,30 @@ export const ContactDetailDialog = ({
         return exp;
       }
       
-      // Added special case handling for objects with title and subComponents
+      // Special handling for objects with title and subComponents structure
       if (typeof exp === 'object' && exp !== null && exp.title && exp.subComponents) {
-        let formatted = exp.title;
+        let formatted = exp.title || '';
         
-        // Handle subComponents by converting to string or joining if array
-        if (Array.isArray(exp.subComponents)) {
-          formatted += `: ${exp.subComponents.map(sc => 
-            typeof sc === 'string' ? sc : JSON.stringify(sc)
-          ).join(', ')}`;
-        } else if (typeof exp.subComponents === 'object') {
-          formatted += `: ${JSON.stringify(exp.subComponents)}`;
-        } else {
-          formatted += `: ${String(exp.subComponents)}`;
+        // Extract text from subComponents if possible
+        if (Array.isArray(exp.subComponents) && exp.subComponents.length > 0) {
+          const extractedTexts = exp.subComponents
+            .map((sc: any) => {
+              if (typeof sc === 'string') return sc;
+              if (sc && typeof sc === 'object' && sc.text) return sc.text;
+              return null;
+            })
+            .filter(Boolean)
+            .join(', ');
+          
+          if (extractedTexts) {
+            formatted += `: ${extractedTexts}`;
+          }
+        } else if (typeof exp.subComponents === 'object' && exp.subComponents !== null) {
+          if (exp.subComponents.text) {
+            formatted += `: ${exp.subComponents.text}`;
+          } else {
+            formatted += `: ${JSON.stringify(exp.subComponents)}`;
+          }
         }
         
         return formatted;
@@ -124,6 +136,33 @@ export const ContactDetailDialog = ({
     });
   };
   
+  // Parse and extract skill information from complex objects
+  const formatSkills = (skills: any[]): string[] => {
+    if (!Array.isArray(skills)) return [];
+    
+    return skills.map(skill => {
+      // If skill is already a string, return it
+      if (typeof skill === 'string') {
+        return skill;
+      }
+      
+      // Handle object with title and subComponents (LinkedIn skills format)
+      if (typeof skill === 'object' && skill !== null) {
+        if (skill.title) {
+          return skill.title;
+        }
+        
+        // Fall back to JSON string but clean it up
+        return JSON.stringify(skill)
+          .replace(/[{}"\\]/g, '') // Remove JSON syntax characters
+          .replace(/:/g, ': ')     // Add space after colons
+          .replace(/,/g, ', ');    // Add space after commas
+      }
+      
+      return String(skill);
+    });
+  };
+  
   // Safely format LinkedIn posts to prevent object rendering issues
   const safeLinkedInPosts = () => {
     if (!contact.linkedin_posts) return [];
@@ -145,9 +184,15 @@ export const ContactDetailDialog = ({
     }
   };
   
+  // Get initials for avatar
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+  
   const jobDuration = getJobDuration();
   const formattedExperience = contact.linkedin_experience ? formatExperienceData(contact.linkedin_experience) : [];
   const formattedPosts = safeLinkedInPosts();
+  const formattedSkills = contact.linkedin_skills ? formatSkills(contact.linkedin_skills) : [];
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -216,7 +261,6 @@ export const ContactDetailDialog = ({
             <TabsList className="mb-4">
               <TabsTrigger value="details">Contact Details</TabsTrigger>
               <TabsTrigger value="profile">LinkedIn Profile</TabsTrigger>
-              <TabsTrigger value="posts">LinkedIn Posts</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
             
@@ -352,65 +396,104 @@ export const ContactDetailDialog = ({
             </TabsContent>
             
             <TabsContent value="profile" className="space-y-6">
-              {contact.linkedin_bio ? (
-                <div>
-                  <h3 className="text-lg font-medium mb-3">About</h3>
-                  <p className="text-gray-700 whitespace-pre-line">
-                    {typeof contact.linkedin_bio === 'string' 
-                      ? contact.linkedin_bio 
-                      : JSON.stringify(contact.linkedin_bio)}
-                  </p>
+              {contact.linkedin_bio || formattedSkills.length > 0 || formattedExperience.length > 0 || 
+               contact.linkedin_education || formattedPosts.length > 0 ? (
+                <div className="space-y-8">
+                  {/* LinkedIn Bio */}
+                  {contact.linkedin_bio && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">About</h3>
+                      <p className="text-gray-700 whitespace-pre-line">
+                        {typeof contact.linkedin_bio === 'string' 
+                          ? contact.linkedin_bio 
+                          : JSON.stringify(contact.linkedin_bio)}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Skills Section */}
+                  {formattedSkills.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Skills</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {formattedSkills.map((skill, index) => (
+                          <Badge key={index} variant="outline" className="px-3 py-1">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Experience Section */}
+                  {formattedExperience.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Experience</h3>
+                      <div className="space-y-2">
+                        {formattedExperience.map((exp, index) => (
+                          <div key={index} className="border-l-2 border-gray-200 pl-3">
+                            {exp}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Education Section */}
+                  {contact.linkedin_education && contact.linkedin_education.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Education</h3>
+                      <div className="space-y-2">
+                        {contact.linkedin_education.map((edu, index) => (
+                          <div key={index} className="border-l-2 border-gray-200 pl-3">
+                            {typeof edu === 'string' ? edu : JSON.stringify(edu)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* LinkedIn Posts - Now integrated into the LinkedIn profile tab */}
+                  {formattedPosts.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Recent Posts</h3>
+                      <div className="space-y-4">
+                        {formattedPosts.map((post, index) => (
+                          <div key={post.id || index} className="border rounded-md p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback>{getInitials(contact.firstName, contact.lastName)}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-medium">{contact.firstName} {contact.lastName}</div>
+                                <div className="text-xs text-gray-500">
+                                  {post.timestamp ? new Date(post.timestamp).toLocaleDateString() : ""}
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-gray-700 mb-3 whitespace-pre-line">{post.content}</p>
+                            <div className="flex items-center text-sm text-gray-500 space-x-4">
+                              <span>{post.likes} likes</span>
+                              <span>{post.comments} comments</span>
+                              {post.url && (
+                                <a 
+                                  href={post.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline flex items-center"
+                                >
+                                  View on LinkedIn
+                                  <ExternalLink className="h-3 w-3 ml-1" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="text-gray-500 italic">
-                  No LinkedIn bio available. Enrich this contact to fetch their LinkedIn profile data.
-                </div>
-              )}
-              
-              {/* Skills Section */}
-              {contact.linkedin_skills && contact.linkedin_skills.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-medium mb-3">Skills</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {contact.linkedin_skills.map((skill, index) => (
-                      <Badge key={index} variant="outline" className="px-3 py-1">
-                        {typeof skill === 'string' ? skill : JSON.stringify(skill)}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Experience Section */}
-              {formattedExperience.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-medium mb-3">Experience</h3>
-                  <div className="space-y-2">
-                    {formattedExperience.map((exp, index) => (
-                      <div key={index} className="border-l-2 border-gray-200 pl-3">
-                        {exp}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Education Section */}
-              {contact.linkedin_education && contact.linkedin_education.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-medium mb-3">Education</h3>
-                  <div className="space-y-2">
-                    {contact.linkedin_education.map((edu, index) => (
-                      <div key={index} className="border-l-2 border-gray-200 pl-3">
-                        {typeof edu === 'string' ? edu : JSON.stringify(edu)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {!contact.linkedin_bio && !contact.linkedin_skills && 
-               !formattedExperience.length && !contact.linkedin_education && (
                 <div className="text-center py-8">
                   <p className="text-gray-500 mb-4">No LinkedIn profile data available.</p>
                   {contact.linkedin_url ? (
@@ -424,54 +507,6 @@ export const ContactDetailDialog = ({
                     <p className="text-sm text-gray-500">
                       Add a LinkedIn URL to this contact to enable enrichment.
                     </p>
-                  )}
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="posts">
-              {formattedPosts && formattedPosts.length > 0 ? (
-                <div className="space-y-6">
-                  {formattedPosts.map((post) => (
-                    <div key={post.id} className="border rounded-md p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="font-medium">
-                          {contact.firstName} {contact.lastName}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {post.timestamp ? new Date(post.timestamp).toLocaleDateString() : ""}
-                        </div>
-                      </div>
-                      <p className="text-gray-700 mb-3 whitespace-pre-line">{post.content}</p>
-                      <div className="flex items-center text-sm text-gray-500 space-x-4">
-                        <span>{post.likes} likes</span>
-                        <span>{post.comments} comments</span>
-                        {post.url && (
-                          <a 
-                            href={post.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-center"
-                          >
-                            View on LinkedIn
-                            <ExternalLink className="h-3 w-3 ml-1" />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">No LinkedIn posts available.</p>
-                  {contact.linkedin_url && (
-                    <Button 
-                      onClick={() => onEnrichContact(contact)} 
-                      disabled={isEnrichingContact}
-                      className="mt-4"
-                    >
-                      {isEnrichingContact ? "Enriching..." : "Fetch LinkedIn Posts"}
-                    </Button>
                   )}
                 </div>
               )}

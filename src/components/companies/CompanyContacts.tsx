@@ -1,3 +1,4 @@
+
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ContactList } from "@/components/leads/ContactList";
@@ -138,15 +139,26 @@ export const CompanyContacts = ({
       if (typeof exp === 'object' && exp !== null && exp.title && exp.subComponents) {
         let formatted = exp.title;
         
-        // Handle subComponents by converting to string or joining if array
+        // Handle subComponents by extracting text when possible
         if (Array.isArray(exp.subComponents)) {
-          formatted += `: ${exp.subComponents.map((sc: any) => 
-            typeof sc === 'string' ? sc : JSON.stringify(sc)
-          ).join(', ')}`;
-        } else if (typeof exp.subComponents === 'object') {
-          formatted += `: ${JSON.stringify(exp.subComponents)}`;
-        } else {
-          formatted += `: ${String(exp.subComponents)}`;
+          const extractedTexts = exp.subComponents
+            .map((sc: any) => {
+              if (typeof sc === 'string') return sc;
+              if (sc && typeof sc === 'object' && sc.text) return sc.text;
+              return null;
+            })
+            .filter(Boolean)
+            .join(', ');
+          
+          if (extractedTexts) {
+            formatted += `: ${extractedTexts}`;
+          }
+        } else if (typeof exp.subComponents === 'object' && exp.subComponents !== null) {
+          if (exp.subComponents.text) {
+            formatted += `: ${exp.subComponents.text}`;
+          } else {
+            formatted += `: ${JSON.stringify(exp.subComponents)}`;
+          }
         }
         
         return formatted;
@@ -211,6 +223,33 @@ export const CompanyContacts = ({
     }));
   };
   
+  // Parse and extract skill information from complex objects
+  const formatSkills = (skills: any[]): string[] => {
+    if (!Array.isArray(skills)) return [];
+    
+    return skills.map(skill => {
+      // If skill is already a string, return it
+      if (typeof skill === 'string') {
+        return skill;
+      }
+      
+      // Handle object with title and subComponents (LinkedIn skills format)
+      if (typeof skill === 'object' && skill !== null) {
+        if (skill.title) {
+          return skill.title;
+        }
+        
+        // Fall back to JSON string but clean it up
+        return JSON.stringify(skill)
+          .replace(/[{}"\\]/g, '') // Remove JSON syntax characters
+          .replace(/:/g, ': ')     // Add space after colons
+          .replace(/,/g, ', ');    // Add space after commas
+      }
+      
+      return String(skill);
+    });
+  };
+  
   // Function to enrich contact with LinkedIn data
   const handleEnrichContact = async (contact: Contact) => {
     if (!contact.linkedin_url) {
@@ -227,7 +266,7 @@ export const CompanyContacts = ({
     try {
       console.log("Enriching contact with LinkedIn URL:", contact.linkedin_url);
       
-      // Use webhook URL for enrichment - note the updated URL from user input
+      // Use webhook URL for enrichment
       const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/4904a13e-c99a-46fe-b724-6eaace77eec0";
       
       // Add timeout for the request
@@ -268,9 +307,9 @@ export const CompanyContacts = ({
         updateData.linkedin_bio = profileData.bio || profileData.summary || profileData.about;
       }
 
-      // Extract skills
+      // Extract skills and ensure they are properly formatted
       if (Array.isArray(profileData.skills) && profileData.skills.length > 0) {
-        updateData.linkedin_skills = profileData.skills;
+        updateData.linkedin_skills = formatSkills(profileData.skills);
       } else if (profileData.topSkillsByEndorsements) {
         updateData.linkedin_skills = profileData.topSkillsByEndorsements.split(", ");
       }
@@ -313,19 +352,13 @@ export const CompanyContacts = ({
 
       // Extract experience and process to ensure it's properly formatted
       if (Array.isArray(profileData.experiences)) {
-        if (profileData.experiences[0] && (profileData.experiences[0].title || profileData.experiences[0].company)) {
-          // Standard format
-          updateData.linkedin_experience = processExperienceData(profileData.experiences);
-        } else {
-          // Alternative format with subtitle/caption
-          updateData.linkedin_experience = processExperienceData(profileData.experiences);
-        }
+        updateData.linkedin_experience = processExperienceData(profileData.experiences);
       }
 
       // Extract posts and format properly
       if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
         const formattedPosts = formatLinkedInPosts(profileData.posts);
-        // Store as stringified JSON to work with Supabase jsonb type
+        // Store as array to work with Supabase jsonb type
         updateData.linkedin_posts = formattedPosts;
       }
 
