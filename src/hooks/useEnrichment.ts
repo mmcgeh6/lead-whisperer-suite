@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Company, Contact, Employee, LinkedInPost } from "@/types";
 import { useAppContext } from "@/context/AppContext";
@@ -638,8 +637,15 @@ export const useEnrichment = (company: Company | null) => {
       
       // Generate mock data for the contact
       setTimeout(() => {
-        const mockData = {
+        // Create properly typed mock data that aligns with Contact type
+        const mockData: Partial<Contact> = {
           linkedin_bio: `Experienced ${contact.title || "professional"} with over 5 years in ${company?.industry || "the industry"}. Passionate about delivering exceptional results and building successful client relationships.`,
+          linkedin_skills: ["Communication", "Project Management", "Leadership", "Client Relations", contact.title || "Industry Knowledge"],
+          linkedin_education: ["Bachelor's Degree at State University (2012-2016)"],
+          linkedin_experience: [
+            `${contact.title || "Professional"} at ${company?.name || "Current Company"} (2020-Present)`,
+            "Associate at Previous Company (2016-2020)"
+          ],
           linkedin_posts: [
             {
               id: `post-${Date.now()}-1`,
@@ -656,12 +662,6 @@ export const useEnrichment = (company: Company | null) => {
               comments: Math.floor(Math.random() * 8) + 1
             }
           ],
-          linkedin_skills: ["Communication", "Project Management", "Leadership", "Client Relations", contact.title || "Industry Knowledge"],
-          linkedin_education: ["Bachelor's Degree at State University (2012-2016)"],
-          linkedin_experience: [
-            `${contact.title || "Professional"} at ${company?.name || "Current Company"} (2020-Present)`,
-            "Associate at Previous Company (2016-2020)"
-          ],
           last_enriched: new Date().toISOString()
         };
         
@@ -676,8 +676,8 @@ export const useEnrichment = (company: Company | null) => {
               return;
             }
             
-            // Update local state with the mock data - using type cast to avoid type mismatch
-            const updatedContact = { ...contact, ...mockData as unknown as Partial<Contact> };
+            // Update local state with the mock data
+            const updatedContact = { ...contact, ...mockData };
             const updatedContacts = contacts.map(c => 
               c.id === contact.id ? updatedContact : c
             );
