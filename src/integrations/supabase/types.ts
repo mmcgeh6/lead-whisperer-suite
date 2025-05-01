@@ -13,11 +13,14 @@ export type Database = {
         Row: {
           apifyapolloapikey: string | null
           apolloapikey: string | null
+          companyenrichmentwebhook: string | null
           companyresearchwebhook: string | null
           created_at: string | null
+          emailfinderwebhook: string | null
           growthresearchwebhook: string | null
           id: string
           leadprovider: string | null
+          linkedinenrichmentwebhook: string | null
           marketresearchwebhook: string | null
           techresearchwebhook: string | null
           updated_at: string | null
@@ -25,11 +28,14 @@ export type Database = {
         Insert: {
           apifyapolloapikey?: string | null
           apolloapikey?: string | null
+          companyenrichmentwebhook?: string | null
           companyresearchwebhook?: string | null
           created_at?: string | null
+          emailfinderwebhook?: string | null
           growthresearchwebhook?: string | null
           id: string
           leadprovider?: string | null
+          linkedinenrichmentwebhook?: string | null
           marketresearchwebhook?: string | null
           techresearchwebhook?: string | null
           updated_at?: string | null
@@ -37,11 +43,14 @@ export type Database = {
         Update: {
           apifyapolloapikey?: string | null
           apolloapikey?: string | null
+          companyenrichmentwebhook?: string | null
           companyresearchwebhook?: string | null
           created_at?: string | null
+          emailfinderwebhook?: string | null
           growthresearchwebhook?: string | null
           id?: string
           leadprovider?: string | null
+          linkedinenrichmentwebhook?: string | null
           marketresearchwebhook?: string | null
           techresearchwebhook?: string | null
           updated_at?: string | null

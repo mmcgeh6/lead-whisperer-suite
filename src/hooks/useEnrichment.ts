@@ -38,9 +38,9 @@ export const useEnrichment = (company: Company | null) => {
       
       if (data) {
         return {
-          emailFinder: data.emailfinderwebhook,
-          linkedinEnrichment: data.linkedinenrichmentwebhook,
-          companyEnrichment: data.companyenrichmentwebhook
+          emailFinder: data.emailfinderwebhook || "https://n8n-service-el78.onrender.com/webhook-test/755b751b-eb85-4350-ae99-2508ad2d3f31",
+          linkedinEnrichment: data.linkedinenrichmentwebhook || "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90",
+          companyEnrichment: data.companyenrichmentwebhook || "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90"
         };
       }
       

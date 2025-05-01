@@ -45,7 +45,7 @@ export const WebhookSettings = () => {
         // Fetch webhook settings from Supabase
         const { data, error } = await supabase
           .from('app_settings')
-          .select('*')
+          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook')
           .eq('id', 'default')
           .single();
           
