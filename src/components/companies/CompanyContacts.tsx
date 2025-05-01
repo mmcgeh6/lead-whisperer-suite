@@ -165,7 +165,8 @@ export const CompanyContacts = ({
             if (exp.ends_at) {
               formatted += `${exp.ends_at.month ? exp.ends_at.month + '/' : ''}${exp.ends_at.year || 'Present'})`;
             } else {
-              formatted += 'Present)`;
+              // Fixed: This was the problematic line - mixed quotes
+              formatted += 'Present)';
             }
           }
           
