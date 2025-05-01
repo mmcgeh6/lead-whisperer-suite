@@ -65,78 +65,58 @@ export const ContactDetailDialog = ({
       }
       
       // Handle complex object with title and subComponents
-      if (typeof exp === 'object' && exp !== null && exp.title && exp.subComponents) {
-        let formatted = exp.title || '';
-        
-        // Handle subComponents safely
-        if (exp.subComponents) {
-          if (typeof exp.subComponents === 'string') {
-            formatted += `: ${exp.subComponents}`;
-          } else if (Array.isArray(exp.subComponents) && exp.subComponents.length > 0) {
-            const extractedTexts = exp.subComponents
-              .map((sc: any) => {
-                if (typeof sc === 'string') return sc;
-                if (sc && typeof sc === 'object' && sc.text) return sc.text;
-                return null;
-              })
-              .filter(Boolean)
-              .join(', ');
-            
-            if (extractedTexts) {
-              formatted += `: ${extractedTexts}`;
-            }
-          } else if (typeof exp.subComponents === 'object' && exp.subComponents !== null) {
-            if (exp.subComponents.text) {
-              formatted += `: ${exp.subComponents.text}`;
+      if (typeof exp === 'object' && exp !== null) {
+        if (exp.title && exp.subComponents) {
+          let formatted = exp.title || '';
+          
+          // Handle subComponents safely
+          if (exp.subComponents) {
+            if (typeof exp.subComponents === 'string') {
+              formatted += `: ${exp.subComponents}`;
+            } else if (Array.isArray(exp.subComponents) && exp.subComponents.length > 0) {
+              const extractedTexts = exp.subComponents
+                .map((sc: any) => {
+                  if (typeof sc === 'string') return sc;
+                  if (sc && typeof sc === 'object' && sc.text) return sc.text;
+                  return null;
+                })
+                .filter(Boolean)
+                .join(', ');
+              
+              if (extractedTexts) {
+                formatted += `: ${extractedTexts}`;
+              }
+            } else if (typeof exp.subComponents === 'object' && exp.subComponents !== null) {
+              if (exp.subComponents.text) {
+                formatted += `: ${exp.subComponents.text}`;
+              }
             }
           }
+          
+          return formatted;
         }
         
-        return formatted;
-      }
-      
-      // Handle object format with title, subtitle, etc.
-      if (typeof exp === 'object' && exp !== null) {
+        // Handle format with subtitle
         if (exp.title || exp.role || exp.position) {
           let formatted = exp.title || exp.role || exp.position || '';
           
-          if (exp.company || exp.organization) {
-            formatted += ` at ${exp.company || exp.organization}`;
-          } else if (exp.subtitle) {
-            formatted += ` at ${exp.subtitle}`;
+          if (exp.subtitle || exp.company || exp.organization) {
+            formatted += ` at ${exp.subtitle || exp.company || exp.organization}`;
           }
           
           if (exp.caption) {
             formatted += ` ${exp.caption}`;
           }
           
-          // Handle date ranges
-          if (exp.starts_at || exp.startDate || exp.start_date) {
-            const startObj = exp.starts_at || exp.startDate || exp.start_date;
-            const startYear = typeof startObj === 'object' ? startObj.year : 
-                             (typeof startObj === 'string' ? new Date(startObj).getFullYear() : '');
-            const startMonth = typeof startObj === 'object' ? (startObj.month ? startObj.month + '/' : '') : '';
-            
-            formatted += ` (${startMonth}${startYear}-`;
-            
-            if (exp.ends_at || exp.endDate || exp.end_date) {
-              const endObj = exp.ends_at || exp.endDate || exp.end_date;
-              const endYear = typeof endObj === 'object' ? endObj.year : 
-                             (typeof endObj === 'string' ? new Date(endObj).getFullYear() : 'Present');
-              const endMonth = typeof endObj === 'object' ? (endObj.month ? endObj.month + '/' : '') : '';
-              
-              formatted += `${endMonth}${endYear || 'Present'})`;
-            } else {
-              formatted += 'Present)';
-            }
-          }
-          
           return formatted;
         }
+        
+        // Return a stringified version as fallback
+        return JSON.stringify(exp);
       }
       
       // As fallback, convert to string
-      return typeof exp === 'object' ? JSON.stringify(exp) : String(exp);
+      return String(exp);
     });
   };
   
@@ -177,8 +157,13 @@ export const ContactDetailDialog = ({
         return edu;
       }
       
-      // Handle object format
+      // Handle object format with title and caption (common format in responses)
       if (typeof edu === 'object' && edu !== null) {
+        if (edu.title && edu.caption) {
+          return `${edu.title} ${edu.caption}`;
+        }
+        
+        // Handle more detailed format with school_name, degree, etc.
         let formatted = '';
         
         if (edu.degree && edu.field_of_study) {
@@ -486,7 +471,7 @@ export const ContactDetailDialog = ({
                 formattedPosts.length > 0) ? (
                 <div className="space-y-8">
                   {/* LinkedIn Bio/About */}
-                  {(contact.linkedin_bio || contact.about) && (
+                  {(contact.about || contact.linkedin_bio) && (
                     <div>
                       <h3 className="text-lg font-medium mb-3">About</h3>
                       <p className="text-gray-700 whitespace-pre-line">
@@ -585,7 +570,16 @@ export const ContactDetailDialog = ({
                       onClick={() => onEnrichContact(contact)} 
                       disabled={isEnrichingContact}
                     >
-                      {isEnrichingContact ? "Enriching..." : "Enrich from LinkedIn"}
+                      {isEnrichingContact ? 
+                        <span className="flex items-center gap-1">
+                          <span className="animate-pulse mr-2">●</span>
+                          Enriching...
+                        </span> : 
+                        <span className="flex items-center gap-1">
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Enrich from LinkedIn
+                        </span>
+                      }
                     </Button>
                   ) : (
                     <p className="text-sm text-gray-500">

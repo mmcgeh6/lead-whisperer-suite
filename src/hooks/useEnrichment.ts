@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Company, Contact, Employee, LinkedInPost } from "@/types";
 import { useAppContext } from "@/context/AppContext";
@@ -480,18 +479,19 @@ export const useEnrichment = (company: Company | null) => {
     try {
       console.log("Enriching contact with LinkedIn URL:", contact.linkedin_url);
       
-      // Get the LinkedIn enrichment webhook URL
-      const webhookUrls = await getWebhookUrls();
-      const webhookUrl = webhookUrls.linkedinEnrichment;
-      
+      // Show initial toast to indicate process has started
       toast({
         title: "Profile Enrichment Started",
         description: "Attempting to retrieve LinkedIn data...",
       });
       
-      // Add timeout for the request
+      // Get the LinkedIn enrichment webhook URL
+      const webhookUrls = await getWebhookUrls();
+      const webhookUrl = webhookUrls.linkedinEnrichment;
+      
+      // Add timeout for the request with a longer timeout (30 seconds)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
       try {
         const response = await fetch(webhookUrl, {
@@ -518,6 +518,16 @@ export const useEnrichment = (company: Company | null) => {
         // Process the received data
         const profileData = Array.isArray(data) ? data[0] : data;
         
+        if (!profileData) {
+          toast({
+            title: "No Data Found",
+            description: "No profile data was returned from the enrichment service.",
+            variant: "default"
+          });
+          setIsEnrichingContact(false);
+          return;
+        }
+        
         // Prepare the update data
         const updateData: Record<string, any> = {
           last_enriched: new Date().toISOString()
@@ -543,25 +553,25 @@ export const useEnrichment = (company: Company | null) => {
         }
 
         // Extract education
-        if (Array.isArray(profileData.educations || profileData.education) && (profileData.educations || profileData.education).length > 0) {
+        if (Array.isArray(profileData.educations || profileData.education)) {
           const educationData = profileData.educations || profileData.education;
           updateData.linkedin_education = educationData;
         }
 
         // Extract experience
-        if (Array.isArray(profileData.job_history || profileData.experiences) && (profileData.job_history || profileData.experiences).length > 0) {
+        if (Array.isArray(profileData.job_history || profileData.experiences)) {
           const experienceData = profileData.job_history || profileData.experiences;
           updateData.linkedin_experience = experienceData;
         }
 
         // Extract languages
-        if (Array.isArray(profileData.languages) && profileData.languages.length > 0) {
+        if (Array.isArray(profileData.languages)) {
           updateData.languages = profileData.languages;
         }
 
         // Extract mobile phone
-        if (profileData.mobilePhone || profileData.mobileNumber) {
-          updateData.mobile_phone = profileData.mobilePhone || profileData.mobileNumber;
+        if (profileData.mobileNumber || profileData.mobilePhone) {
+          updateData.mobile_phone = profileData.mobileNumber || profileData.mobilePhone;
         }
 
         // Extract address information
@@ -584,19 +594,41 @@ export const useEnrichment = (company: Company | null) => {
           updateData.job_start_date = profileData.jobStartDate || profileData.current_job.start_date;
         }
 
-        // Extract posts if available
-        if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
-          // Format posts to match the LinkedInPost type
-          const formattedPosts = profileData.posts.map((post: any) => ({
-            id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            content: post.content || post.text || post.profile_post_text || '',
-            timestamp: post.timestamp || post.date || post.profile_posted_at?.date || new Date().toISOString(),
-            likes: post.likes || post.profile_stats?.total_reactions || 0,
-            comments: post.comments || post.profile_stats?.comments || 0,
-            url: post.url || null
-          }));
+        // Extract posts if available - handle the new format
+        if (profileData.profile_post_text || (profileData.posts && profileData.posts.length > 0)) {
+          let formattedPosts: LinkedInPost[] = [];
           
-          updateData.linkedin_posts = formattedPosts;
+          // Handle the new format with profile_post_text
+          if (profileData.profile_post_text) {
+            const postId = `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            const postDate = profileData.profile_posted_at?.date || new Date().toISOString();
+            const likes = profileData.profile_stats?.total_reactions || 0;
+            const comments = profileData.profile_stats?.comments || 0;
+            
+            formattedPosts.push({
+              id: postId,
+              content: profileData.profile_post_text,
+              timestamp: postDate,
+              likes: likes,
+              comments: comments,
+              url: null
+            });
+          }
+          // Handle the previous format with posts array
+          else if (Array.isArray(profileData.posts)) {
+            formattedPosts = profileData.posts.map((post: any) => ({
+              id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+              content: post.content || post.text || post.profile_post_text || '',
+              timestamp: post.timestamp || post.date || post.profile_posted_at?.date || new Date().toISOString(),
+              likes: post.likes || post.profile_stats?.total_reactions || 0,
+              comments: post.comments || post.profile_stats?.comments || 0,
+              url: post.url || null
+            }));
+          }
+          
+          if (formattedPosts.length > 0) {
+            updateData.linkedin_posts = formattedPosts;
+          }
         }
 
         // If no meaningful data was found, notify the user
@@ -648,6 +680,7 @@ export const useEnrichment = (company: Company | null) => {
         );
         setContacts(updatedContacts);
 
+        // Show success toast after all operations are complete
         toast({
           title: "Contact Enriched",
           description: "Successfully retrieved LinkedIn data for this contact.",
@@ -669,7 +702,7 @@ export const useEnrichment = (company: Company | null) => {
       } else {
         toast({
           title: "Enrichment Failed",
-          description: "Could not retrieve LinkedIn data.",
+          description: "Could not retrieve LinkedIn data: " + (error instanceof Error ? error.message : "Unknown error"),
           variant: "default"
         });
       }

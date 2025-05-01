@@ -12,6 +12,7 @@ const DebugConsole: React.FC = () => {
   const [isMinimized, setIsMinimized] = useState(true);
   const [hasErrors, setHasErrors] = useState(false);
   const [hasNewLogs, setHasNewLogs] = useState(false);
+  const [webhookResponses, setWebhookResponses] = useState<any[]>([]);
   
   useEffect(() => {
     // Always show debug console in development or on specific domains
@@ -37,11 +38,28 @@ const DebugConsole: React.FC = () => {
       error: console.error
     };
     
+    // Create a function to capture webhook responses
+    const captureWebhookResponse = (data: any) => {
+      if (data && typeof data === 'object') {
+        setWebhookResponses(prev => [...prev, {
+          timestamp: new Date().toISOString(),
+          data
+        }]);
+        setHasNewLogs(true);
+      }
+    };
+
     // Override console methods to capture logs
     console.log = (...args) => {
       originalConsole.log(...args);
       const timestamp = new Date().toLocaleTimeString();
       setHasNewLogs(true);
+      
+      // Check if this is a webhook response
+      if (args.length > 0 && args[0] === "Contact enrichment data received:" && args.length > 1) {
+        captureWebhookResponse(args[1]);
+      }
+      
       setLogs(prev => [...prev, `[${timestamp}] LOG: ${args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ')}`].slice(-100)); // Keep only most recent 100 logs
@@ -121,6 +139,7 @@ const DebugConsole: React.FC = () => {
     setLogs([]);
     setHasErrors(false);
     setHasNewLogs(false);
+    setWebhookResponses([]);
     localStorage.setItem('debugConsoleLogs', JSON.stringify([]));
   };
   
@@ -134,7 +153,7 @@ const DebugConsole: React.FC = () => {
         console.error("Could not copy logs:", err);
       });
   };
-  
+
   // Make sure the console is always visible and accessible
   return (
     <div className="fixed bottom-4 right-4 z-50">
@@ -170,15 +189,44 @@ const DebugConsole: React.FC = () => {
               </Button>
             </div>
           </div>
-          <div className="border-t border-gray-700 pt-2 overflow-auto max-h-[calc(80vh-50px)]">
-            {logs.length === 0 ? (
-              <p className="text-gray-400 italic">No logs yet</p>
-            ) : (
-              <pre className="text-xs font-mono whitespace-pre-wrap break-words">
-                {logs.join('\n')}
-              </pre>
-            )}
-          </div>
+          
+          <Tabs defaultValue="logs" className="w-full">
+            <TabsList className="mb-2 bg-gray-700">
+              <TabsTrigger value="logs" className="data-[state=active]:bg-gray-600">Logs</TabsTrigger>
+              <TabsTrigger value="webhook" className="data-[state=active]:bg-gray-600">
+                Webhook Responses {webhookResponses.length > 0 && <span className="ml-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">{webhookResponses.length}</span>}
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="logs" className="border-t border-gray-700 pt-2 overflow-auto max-h-[calc(80vh-90px)]">
+              {logs.length === 0 ? (
+                <p className="text-gray-400 italic">No logs yet</p>
+              ) : (
+                <pre className="text-xs font-mono whitespace-pre-wrap break-words">
+                  {logs.join('\n')}
+                </pre>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="webhook" className="border-t border-gray-700 pt-2 overflow-auto max-h-[calc(80vh-90px)]">
+              {webhookResponses.length === 0 ? (
+                <p className="text-gray-400 italic">No webhook responses captured yet</p>
+              ) : (
+                <div className="space-y-4">
+                  {webhookResponses.map((response, index) => (
+                    <div key={index} className="border border-gray-600 rounded p-2">
+                      <div className="text-xs text-gray-400 mb-1">
+                        Received at: {new Date(response.timestamp).toLocaleTimeString()}
+                      </div>
+                      <pre className="text-xs font-mono whitespace-pre-wrap break-words overflow-auto max-h-[300px]">
+                        {JSON.stringify(response.data, null, 2)}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       )}
     </div>
