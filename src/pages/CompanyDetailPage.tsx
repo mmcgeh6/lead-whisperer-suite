@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -14,6 +15,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/comp
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { SimilarCompanies } from "@/components/insights/SimilarCompanies";
+import { supabase } from "@/integrations/supabase/client";
+import { Contact } from "@/types";
 
 // Define interfaces for the employee data
 interface Employee {
@@ -28,7 +31,7 @@ interface Employee {
 
 const CompanyDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { companies, contacts, updateCompany } = useAppContext();
+  const { companies, contacts, updateCompany, setContacts } = useAppContext();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -36,7 +39,6 @@ const CompanyDetailPage = () => {
   const [researchSheetOpen, setResearchSheetOpen] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
-  const [employeeData, setEmployeeData] = useState<Employee[]>([]);
   
   const company = companies.find((c) => c.id === id);
   const companyContacts = contacts.filter((c) => c.companyId === id);
@@ -59,6 +61,105 @@ const CompanyDetailPage = () => {
   const handleContactSelect = (contactId: string) => {
     setSelectedContactId(contactId);
     setContactDialogOpen(true);
+  };
+  
+  // Function to create contacts from employee data
+  const createContactsFromEmployees = async (employeeData: Employee[]) => {
+    if (!employeeData.length || !company) return;
+    
+    try {
+      const newContacts: Contact[] = [];
+      
+      // Create contacts for each employee
+      for (const employee of employeeData) {
+        // Extract names
+        const fullName = employee.name || employee.employee_name || "";
+        let firstName = fullName;
+        let lastName = "";
+        
+        // Try to split the name into first and last
+        if (fullName.includes(" ")) {
+          const nameParts = fullName.split(" ");
+          firstName = nameParts[0];
+          lastName = nameParts.slice(1).join(" ");
+        }
+        
+        // Check if this contact already exists (by LinkedIn URL)
+        const linkedinUrl = employee.linkedinUrl || employee.employee_profile_url;
+        const existingContact = contacts.find(c => 
+          c.linkedin_url === linkedinUrl || 
+          (c.firstName === firstName && c.lastName === lastName && c.companyId === company.id)
+        );
+        
+        if (existingContact) {
+          console.log(`Contact already exists: ${fullName}`);
+          continue; // Skip if contact already exists
+        }
+        
+        // Prepare contact data for Supabase
+        const contactData = {
+          first_name: firstName,
+          last_name: lastName,
+          position: employee.title || employee.employee_position || "",
+          company_id: company.id,
+          linkedin_url: linkedinUrl || null,
+          notes: `Added automatically from LinkedIn data enrichment on ${new Date().toLocaleDateString()}`
+        };
+        
+        // Insert into Supabase
+        const { data: newContact, error } = await supabase
+          .from('contacts')
+          .insert(contactData)
+          .select()
+          .single();
+        
+        if (error) {
+          console.error("Error creating contact:", error);
+          continue;
+        }
+        
+        // Format for the application state
+        if (newContact) {
+          newContacts.push({
+            id: newContact.id,
+            firstName: newContact.first_name,
+            lastName: newContact.last_name,
+            email: newContact.email || "",
+            phone: newContact.phone || "",
+            title: newContact.position || "",
+            companyId: newContact.company_id,
+            notes: newContact.notes || "",
+            linkedin_url: newContact.linkedin_url || undefined,
+            createdAt: newContact.created_at,
+            updatedAt: newContact.updated_at
+          });
+        }
+      }
+      
+      if (newContacts.length > 0) {
+        // Update the contacts in the state
+        setContacts([...contacts, ...newContacts]);
+        
+        toast({
+          title: "Contacts Created",
+          description: `Added ${newContacts.length} new contacts from LinkedIn data.`,
+        });
+      } else {
+        toast({
+          title: "No New Contacts Added",
+          description: "All employees already exist as contacts or couldn't be added.",
+          variant: "default"
+        });
+      }
+      
+    } catch (error) {
+      console.error("Error creating contacts from employees:", error);
+      toast({
+        title: "Error Adding Contacts",
+        description: "Failed to create contacts from employee data.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleEnrichCompany = async () => {
@@ -123,39 +224,40 @@ const CompanyDetailPage = () => {
       }
       
       // Process employee data
+      let employeeData: Employee[] = [];
+      
       if (companyData && Array.isArray(companyData.employees)) {
         console.log("Setting employee data:", companyData.employees);
         
         // Format the employee data
-        const formattedEmployees: Employee[] = companyData.employees.map((emp: any) => ({
+        employeeData = companyData.employees.map((emp: any) => ({
           name: emp.employee_name || emp.name || "",
           title: emp.employee_position || emp.title || "",
           linkedinUrl: emp.employee_profile_url || emp.linkedinUrl || "",
           employee_photo: emp.employee_photo || ""
         }));
         
-        setEmployeeData(formattedEmployees);
-        toast({
-          title: "Employee Data Retrieved",
-          description: `Found ${formattedEmployees.length} employees from LinkedIn.`,
-        });
       } else if (companyData && companyData.profile && Array.isArray(companyData.profile.employees)) {
         // Alternative data structure
         console.log("Setting employee data from profile:", companyData.profile.employees);
         
         // Format the employee data
-        const formattedEmployees: Employee[] = companyData.profile.employees.map((emp: any) => ({
+        employeeData = companyData.profile.employees.map((emp: any) => ({
           name: emp.employee_name || emp.name || "",
           title: emp.employee_position || emp.title || "",
           linkedinUrl: emp.employee_profile_url || emp.linkedinUrl || "",
           employee_photo: emp.employee_photo || ""
         }));
-        
-        setEmployeeData(formattedEmployees);
+      }
+      
+      // Create contacts from the employee data
+      if (employeeData.length > 0) {
         toast({
           title: "Employee Data Retrieved",
-          description: `Found ${formattedEmployees.length} employees from LinkedIn.`,
+          description: `Found ${employeeData.length} employees from LinkedIn. Adding as contacts...`,
         });
+        
+        await createContactsFromEmployees(employeeData);
       }
 
       toast({
@@ -182,7 +284,7 @@ const CompanyDetailPage = () => {
       
       // Fall back to mock data for testing purposes
       // Only use mock data if the webhook failed completely
-      if (similarCompanies.length === 0 && employeeData.length === 0) {
+      if (similarCompanies.length === 0) {
         setTimeout(() => {
           const mockData = {
             similarCompanies: [
@@ -214,7 +316,9 @@ const CompanyDetailPage = () => {
           
           // Process the mock data
           setSimilarCompanies(mockData.similarCompanies);
-          setEmployeeData(mockData.employees);
+          
+          // Create contacts from mock employee data
+          createContactsFromEmployees(mockData.employees);
           
           toast({
             title: "Using Sample Data",
@@ -371,13 +475,28 @@ const CompanyDetailPage = () => {
         {/* Module 2: Contacts */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Contacts</CardTitle>
-            <Button 
-              size="sm" 
-              onClick={() => navigate(`/contacts/new?companyId=${company.id}`)}
-            >
-              Add Contact
-            </Button>
+            <div>
+              <CardTitle>Contacts</CardTitle>
+              <CardDescription>
+                Company contacts and LinkedIn-sourced employees
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleEnrichCompany}
+                disabled={isEnriching || !company.linkedin_url}
+              >
+                {isEnriching ? "Finding Employees..." : "Find Employees"}
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={() => navigate(`/contacts/new?companyId=${company.id}`)}
+              >
+                Add Contact
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <ContactList companyId={company.id} onContactSelect={handleContactSelect} />
@@ -400,18 +519,29 @@ const CompanyDetailPage = () => {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
-                  <div className="flex items-center">
-                    <Mail className="h-4 w-4 mr-3 text-gray-500" />
-                    <a href={`mailto:${selectedContact.email}`} className="text-blue-500 hover:underline">
-                      {selectedContact.email}
-                    </a>
-                  </div>
+                  {selectedContact.email && (
+                    <div className="flex items-center">
+                      <Mail className="h-4 w-4 mr-3 text-gray-500" />
+                      <a href={`mailto:${selectedContact.email}`} className="text-blue-500 hover:underline">
+                        {selectedContact.email}
+                      </a>
+                    </div>
+                  )}
                   
                   {selectedContact.phone && (
                     <div className="flex items-center">
                       <Phone className="h-4 w-4 mr-3 text-gray-500" />
                       <a href={`tel:${selectedContact.phone}`} className="text-blue-500 hover:underline">
                         {selectedContact.phone}
+                      </a>
+                    </div>
+                  )}
+                  
+                  {selectedContact.linkedin_url && (
+                    <div className="flex items-center">
+                      <ExternalLink className="h-4 w-4 mr-3 text-gray-500" />
+                      <a href={selectedContact.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                        LinkedIn Profile
                       </a>
                     </div>
                   )}
@@ -449,55 +579,6 @@ const CompanyDetailPage = () => {
         {/* Similar Companies - New section */}
         {similarCompanies && similarCompanies.length > 0 && (
           <SimilarCompanies companies={similarCompanies} />
-        )}
-
-        {/* Employee Data - Display if available */}
-        {employeeData && employeeData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Employee Insights
-              </CardTitle>
-              <CardDescription>
-                Key employees at {company.name}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="divide-y">
-                {employeeData.map((employee, index) => (
-                  <li key={index} className="py-3 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                      {employee.employee_photo && (
-                        <div className="w-10 h-10 rounded-full overflow-hidden">
-                          <img 
-                            src={employee.employee_photo} 
-                            alt={employee.name} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <div>
-                        <h4 className="font-medium">{employee.name}</h4>
-                        <p className="text-sm text-gray-600">{employee.title}</p>
-                      </div>
-                    </div>
-                    {employee.linkedinUrl && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => window.open(employee.linkedinUrl, "_blank")}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        View Profile
-                      </Button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
         )}
         
         {/* Module 3: Personalized Outreach */}

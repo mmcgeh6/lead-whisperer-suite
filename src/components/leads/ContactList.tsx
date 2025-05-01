@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { ExternalLink } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface ContactListProps {
   companyId?: string;
@@ -93,6 +95,11 @@ export const ContactList = ({ companyId, onContactSelect }: ContactListProps) =>
     }
   };
   
+  // Get initials from a name for the avatar fallback
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+  
   return (
     <div>
       {isLoading ? (
@@ -117,7 +124,7 @@ export const ContactList = ({ companyId, onContactSelect }: ContactListProps) =>
                 <TableHead>Name</TableHead>
                 <TableHead>Title</TableHead>
                 {!companyId && <TableHead>Company</TableHead>}
-                <TableHead>Email</TableHead>
+                <TableHead>LinkedIn</TableHead>
                 <TableHead>Added</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -128,14 +135,36 @@ export const ContactList = ({ companyId, onContactSelect }: ContactListProps) =>
                   key={contact.id} 
                   className="cursor-pointer hover:bg-gray-50"
                 >
-                  <TableCell className="font-medium">
-                    {contact.firstName} {contact.lastName}
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>{getInitials(contact.firstName, contact.lastName)}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">
+                        {contact.firstName} {contact.lastName}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell>{contact.title}</TableCell>
                   {!companyId && (
                     <TableCell>{getCompanyName(contact.companyId)}</TableCell>
                   )}
-                  <TableCell>{contact.email}</TableCell>
+                  <TableCell>
+                    {contact.linkedin_url ? (
+                      <a 
+                        href={contact.linkedin_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline flex items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>Profile</span>
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>{formatDistanceToNow(new Date(contact.createdAt), { addSuffix: true })}</TableCell>
                   <TableCell className="text-right">
                     <Button 

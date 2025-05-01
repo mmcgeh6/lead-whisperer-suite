@@ -4,6 +4,8 @@ import { useAppContext } from "@/context/AppContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ExternalLink, Mail, Phone, Building } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const ContactDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,13 +29,23 @@ const ContactDetailPage = () => {
     );
   }
   
+  // Get initials for avatar
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+  
   return (
     <Layout>
       <div className="space-y-8">
         <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold">{contact.firstName} {contact.lastName}</h1>
-            <p className="text-gray-500 mt-1">{contact.title} at {company?.name || "Unknown Company"}</p>
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16 text-lg">
+              <AvatarFallback>{getInitials(contact.firstName, contact.lastName)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-3xl font-bold">{contact.firstName} {contact.lastName}</h1>
+              <p className="text-gray-500 mt-1">{contact.title} at {company?.name || "Unknown Company"}</p>
+            </div>
           </div>
           <div className="space-x-4">
             <Button 
@@ -58,21 +70,75 @@ const ContactDetailPage = () => {
           <Card>
             <CardContent className="pt-6">
               <h3 className="font-medium mb-4">Contact Details</h3>
-              <div className="space-y-2">
-                <div>
-                  <div className="text-sm text-gray-500">Email</div>
-                  <div>{contact.email}</div>
+              <div className="space-y-3">
+                {contact.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <div className="text-sm text-gray-500">Email</div>
+                      <div>
+                        <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">
+                          {contact.email}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {contact.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <div className="text-sm text-gray-500">Phone</div>
+                      <div>
+                        <a href={`tel:${contact.phone}`} className="text-blue-600 hover:underline">
+                          {contact.phone}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-2">
+                  <Building className="h-4 w-4 text-gray-500" />
+                  <div>
+                    <div className="text-sm text-gray-500">Company</div>
+                    <div>
+                      {company ? (
+                        <a 
+                          href={`/leads/company/${company.id}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {company.name}
+                        </a>
+                      ) : (
+                        "Unknown Company"
+                      )}
+                    </div>
+                  </div>
                 </div>
+                
+                {contact.linkedin_url && (
+                  <div className="flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <div className="text-sm text-gray-500">LinkedIn</div>
+                      <div>
+                        <a 
+                          href={contact.linkedin_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 hover:underline"
+                        >
+                          View Profile
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div>
-                  <div className="text-sm text-gray-500">Phone</div>
-                  <div>{contact.phone || "Not provided"}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Company</div>
-                  <div>{company?.name || "Unknown Company"}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Added</div>
+                  <div className="text-sm text-gray-500 mt-2">Added</div>
                   <div>{new Date(contact.createdAt).toLocaleDateString()}</div>
                 </div>
               </div>
