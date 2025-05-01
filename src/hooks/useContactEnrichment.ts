@@ -55,6 +55,7 @@ export const useContactEnrichment = (contact: Contact, setContacts: (contacts: C
       const profileData = Array.isArray(data) ? data[0] : data;
       
       // Prepare the update data - only include fields that exist in our database schema
+      // This is the fixed part - we're only including fields that we know exist in the database
       const updateData: Record<string, any> = {
         last_enriched: new Date().toISOString()
       };
@@ -112,10 +113,11 @@ export const useContactEnrichment = (contact: Contact, setContacts: (contacts: C
         updateData.job_start_date = profileData.jobStartDate || profileData.current_job.start_date;
       }
 
-      // Extract languages if available
-      if (Array.isArray(profileData.languages) && profileData.languages.length > 0) {
-        updateData.languages = profileData.languages;
-      }
+      // IMPORTANT: Do not include the languages field as it doesn't exist in the database schema
+      // Removing this problematic code:
+      // if (Array.isArray(profileData.languages) && profileData.languages.length > 0) {
+      //   updateData.languages = profileData.languages;
+      // }
 
       // Extract skills
       if (Array.isArray(profileData.skills) && profileData.skills.length > 0) {
