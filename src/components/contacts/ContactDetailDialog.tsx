@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -56,13 +57,13 @@ export function ContactDetailDialog({
           <div className="flex gap-2">
             <Button 
               variant="outline" 
-              onClick={() => contact && onFindEmail(contact)}
+              onClick={() => onFindEmail(contact)}
               disabled={isFindingEmail || !contact}
             >
               {isFindingEmail ? "Finding Email..." : "Find Email"}
             </Button>
             <Button
-              onClick={() => contact && onEnrichContact(contact)}
+              onClick={() => onEnrichContact(contact)}
               disabled={isEnrichingContact || !contact}
             >
               {isEnrichingContact ? "Enriching..." : "Enrich Contact"}
@@ -71,7 +72,7 @@ export function ContactDetailDialog({
           {onEditContact && (
             <Button
               variant="default"
-              onClick={() => contact && onEditContact(contact.id)}
+              onClick={() => onEditContact(contact.id)}
             >
               Edit Contact
             </Button>
@@ -89,7 +90,7 @@ export function ContactDetailDialog({
             <ContactDetailsTab 
               contact={contact} 
               isFindingEmail={isFindingEmail} 
-              onFindEmail={onFindEmail}
+              onFindEmail={() => onFindEmail(contact)}
             />
           </TabsContent>
           
@@ -97,7 +98,7 @@ export function ContactDetailDialog({
             <LinkedInInfoTab 
               contact={contact} 
               isEnriching={isEnrichingContact} 
-              onEnrichContact={onEnrichContact}
+              onEnrichContact={() => onEnrichContact(contact)}
             />
           </TabsContent>
           
