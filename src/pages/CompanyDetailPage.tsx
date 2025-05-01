@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -8,11 +9,11 @@ import { CompanyResearch } from "@/components/research/CompanyResearch";
 import { PersonalizedOutreach } from "@/components/outreach/PersonalizedOutreach";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Building2, MapPin, Users, Globe, Mail, Phone, Briefcase, Hash, Network, ExternalLink } from "lucide-react";
+import { Building2, MapPin, Users, Globe, Mail, Phone, Briefcase, Hash, Network, ExternalLink, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { SimilarCompanies } from "@/components/insights/SimilarCompanies";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact } from "@/types";
