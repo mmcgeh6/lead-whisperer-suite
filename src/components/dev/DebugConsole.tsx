@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronUp, ChevronDown, RotateCcw, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 /**
  * A component that displays console logs in the UI for debugging
