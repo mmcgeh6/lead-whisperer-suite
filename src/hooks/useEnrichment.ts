@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Company, Contact, Employee, LinkedInPost } from "@/types";
 import { useAppContext } from "@/context/AppContext";
@@ -26,6 +25,41 @@ export const useEnrichment = (company: Company | null) => {
       handleEnrichContact: () => {}
     };
   }
+  
+  // Function to get webhook URLs from settings
+  const getWebhookUrls = async () => {
+    try {
+      // Try to get webhooks from Supabase first
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook')
+        .eq('id', 'default')
+        .single();
+      
+      if (data) {
+        return {
+          emailFinder: data.emailfinderwebhook,
+          linkedinEnrichment: data.linkedinenrichmentwebhook,
+          companyEnrichment: data.companyenrichmentwebhook
+        };
+      }
+      
+      // If not in Supabase, try localStorage
+      return {
+        emailFinder: localStorage.getItem('emailFinderWebhook') || "https://n8n-service-el78.onrender.com/webhook-test/755b751b-eb85-4350-ae99-2508ad2d3f31",
+        linkedinEnrichment: localStorage.getItem('linkedinEnrichmentWebhook') || "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90",
+        companyEnrichment: localStorage.getItem('companyEnrichmentWebhook') || "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90"
+      };
+    } catch (error) {
+      console.error("Error fetching webhook URLs:", error);
+      // Use default webhooks as fallback
+      return {
+        emailFinder: "https://n8n-service-el78.onrender.com/webhook-test/755b751b-eb85-4350-ae99-2508ad2d3f31",
+        linkedinEnrichment: "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90",
+        companyEnrichment: "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90"
+      };
+    }
+  };
   
   // Function to create contacts from employee data
   const createContactsFromEmployees = async (employeeData: Employee[]) => {
@@ -141,8 +175,9 @@ export const useEnrichment = (company: Company | null) => {
     try {
       console.log("Enriching company with LinkedIn URL:", company.linkedin_url);
       
-      // Use test webhook URL
-      const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90";
+      // Get the company enrichment webhook URL
+      const webhookUrls = await getWebhookUrls();
+      const webhookUrl = webhookUrls.companyEnrichment;
       
       // Add timeout for the request
       const controller = new AbortController();
@@ -295,7 +330,7 @@ export const useEnrichment = (company: Company | null) => {
     }
   };
   
-  // Function to find email using the n8n webhook
+  // Function to find email using the webhook
   const handleFindEmail = async (contact: Contact) => {
     if (!contact.firstName || !contact.lastName || !company?.name) {
       toast({
@@ -310,6 +345,10 @@ export const useEnrichment = (company: Company | null) => {
     console.log("Starting email search for:", contact.firstName, contact.lastName, "at", company.name);
     
     try {
+      // Get the email finder webhook URL
+      const webhookUrls = await getWebhookUrls();
+      const webhookUrl = webhookUrls.emailFinder;
+      
       // Prepare the data to send to the webhook
       const requestData = {
         firstName: contact.firstName,
@@ -321,8 +360,8 @@ export const useEnrichment = (company: Company | null) => {
 
       console.log("Sending request data:", requestData);
 
-      // Call the n8n webhook to find the email
-      const response = await fetch("https://n8n-service-el78.onrender.com/webhook-test/755b751b-eb85-4350-ae99-2508ad2d3f31", {
+      // Call the webhook to find the email
+      const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -396,8 +435,9 @@ export const useEnrichment = (company: Company | null) => {
     try {
       console.log("Enriching contact with LinkedIn URL:", contact.linkedin_url);
       
-      // Use webhook URL for enrichment
-      const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90";
+      // Get the LinkedIn enrichment webhook URL
+      const webhookUrls = await getWebhookUrls();
+      const webhookUrl = webhookUrls.linkedinEnrichment;
       
       // Add timeout for the request
       const controller = new AbortController();

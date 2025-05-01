@@ -3,6 +3,7 @@ import { Layout } from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmailSettings } from "@/components/settings/EmailSettings";
 import { ApiConnectionsManager } from "@/components/settings/ApiConnectionsManager";
+import { WebhookSettings } from "@/components/settings/WebhookSettings";
 
 const SettingsPage = () => {
   return (
@@ -19,6 +20,7 @@ const SettingsPage = () => {
           <TabsList>
             <TabsTrigger value="email">Email</TabsTrigger>
             <TabsTrigger value="api">API Connections</TabsTrigger>
+            <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
             <TabsTrigger value="general">General</TabsTrigger>
           </TabsList>
           
@@ -28,6 +30,10 @@ const SettingsPage = () => {
           
           <TabsContent value="api" className="mt-6">
             <ApiConnectionsManager />
+          </TabsContent>
+          
+          <TabsContent value="webhooks" className="mt-6">
+            <WebhookSettings />
           </TabsContent>
           
           <TabsContent value="general" className="mt-6">
