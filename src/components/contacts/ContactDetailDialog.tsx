@@ -63,9 +63,26 @@ export const ContactDetailDialog = ({
         return exp;
       }
       
+      // Added special case handling for objects with title and subComponents
+      if (typeof exp === 'object' && exp !== null && exp.title && exp.subComponents) {
+        let formatted = exp.title;
+        
+        // Handle subComponents by converting to string or joining if array
+        if (Array.isArray(exp.subComponents)) {
+          formatted += `: ${exp.subComponents.map(sc => 
+            typeof sc === 'string' ? sc : JSON.stringify(sc)
+          ).join(', ')}`;
+        } else if (typeof exp.subComponents === 'object') {
+          formatted += `: ${JSON.stringify(exp.subComponents)}`;
+        } else {
+          formatted += `: ${String(exp.subComponents)}`;
+        }
+        
+        return formatted;
+      }
+      
       // Handle object format with title, subtitle, etc.
       if (typeof exp === 'object' && exp !== null) {
-        // Format for the alternative data structure
         if (exp.title && (exp.subtitle || exp.caption)) {
           let formatted = exp.title;
           
@@ -80,7 +97,7 @@ export const ContactDetailDialog = ({
           return formatted;
         }
         
-        // Format for the standard structure
+        // Handle standard structure
         if (exp.company || exp.title) {
           let formatted = exp.title || '';
           
@@ -107,8 +124,30 @@ export const ContactDetailDialog = ({
     });
   };
   
+  // Safely format LinkedIn posts to prevent object rendering issues
+  const safeLinkedInPosts = () => {
+    if (!contact.linkedin_posts) return [];
+    
+    try {
+      return Array.isArray(contact.linkedin_posts) 
+        ? contact.linkedin_posts.map(post => ({
+            id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            content: typeof post.content === 'string' ? post.content : JSON.stringify(post.content),
+            timestamp: post.timestamp || new Date().toISOString(),
+            likes: post.likes || 0,
+            comments: post.comments || 0,
+            url: post.url || null
+          }))
+        : [];
+    } catch (error) {
+      console.error("Error formatting LinkedIn posts:", error);
+      return [];
+    }
+  };
+  
   const jobDuration = getJobDuration();
   const formattedExperience = contact.linkedin_experience ? formatExperienceData(contact.linkedin_experience) : [];
+  const formattedPosts = safeLinkedInPosts();
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -289,7 +328,7 @@ export const ContactDetailDialog = ({
                         <div className="flex flex-wrap gap-1">
                           {contact.languages.map((language, index) => (
                             <Badge key={index} variant="secondary" className="text-xs">
-                              {language}
+                              {typeof language === 'string' ? language : JSON.stringify(language)}
                             </Badge>
                           ))}
                         </div>
@@ -317,7 +356,9 @@ export const ContactDetailDialog = ({
                 <div>
                   <h3 className="text-lg font-medium mb-3">About</h3>
                   <p className="text-gray-700 whitespace-pre-line">
-                    {contact.linkedin_bio}
+                    {typeof contact.linkedin_bio === 'string' 
+                      ? contact.linkedin_bio 
+                      : JSON.stringify(contact.linkedin_bio)}
                   </p>
                 </div>
               ) : (
@@ -333,7 +374,7 @@ export const ContactDetailDialog = ({
                   <div className="flex flex-wrap gap-2">
                     {contact.linkedin_skills.map((skill, index) => (
                       <Badge key={index} variant="outline" className="px-3 py-1">
-                        {skill}
+                        {typeof skill === 'string' ? skill : JSON.stringify(skill)}
                       </Badge>
                     ))}
                   </div>
@@ -361,7 +402,7 @@ export const ContactDetailDialog = ({
                   <div className="space-y-2">
                     {contact.linkedin_education.map((edu, index) => (
                       <div key={index} className="border-l-2 border-gray-200 pl-3">
-                        {edu}
+                        {typeof edu === 'string' ? edu : JSON.stringify(edu)}
                       </div>
                     ))}
                   </div>
@@ -389,9 +430,9 @@ export const ContactDetailDialog = ({
             </TabsContent>
             
             <TabsContent value="posts">
-              {contact.linkedin_posts && contact.linkedin_posts.length > 0 ? (
+              {formattedPosts && formattedPosts.length > 0 ? (
                 <div className="space-y-6">
-                  {contact.linkedin_posts.map((post) => (
+                  {formattedPosts.map((post) => (
                     <div key={post.id} className="border rounded-md p-4">
                       <div className="flex justify-between items-start mb-3">
                         <div className="font-medium">

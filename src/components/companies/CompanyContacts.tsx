@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ContactList } from "@/components/leads/ContactList";
@@ -135,6 +134,24 @@ export const CompanyContacts = ({
         return exp;
       }
       
+      // Added special case handling for objects with title and subComponents
+      if (typeof exp === 'object' && exp !== null && exp.title && exp.subComponents) {
+        let formatted = exp.title;
+        
+        // Handle subComponents by converting to string or joining if array
+        if (Array.isArray(exp.subComponents)) {
+          formatted += `: ${exp.subComponents.map((sc: any) => 
+            typeof sc === 'string' ? sc : JSON.stringify(sc)
+          ).join(', ')}`;
+        } else if (typeof exp.subComponents === 'object') {
+          formatted += `: ${JSON.stringify(exp.subComponents)}`;
+        } else {
+          formatted += `: ${String(exp.subComponents)}`;
+        }
+        
+        return formatted;
+      }
+      
       // Handle object format with title, subtitle, etc.
       if (typeof exp === 'object' && exp !== null) {
         if (exp.title && (exp.subtitle || exp.caption)) {
@@ -165,7 +182,6 @@ export const CompanyContacts = ({
             if (exp.ends_at) {
               formatted += `${exp.ends_at.month ? exp.ends_at.month + '/' : ''}${exp.ends_at.year || 'Present'})`;
             } else {
-              // Fixed: This was the problematic line - mixed quotes
               formatted += 'Present)';
             }
           }
@@ -185,7 +201,9 @@ export const CompanyContacts = ({
     
     return posts.map(post => ({
       id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      content: post.content || post.text || '',
+      content: typeof post.content === 'string' ? post.content : 
+               typeof post.text === 'string' ? post.text : 
+               JSON.stringify(post.content || post.text || ''),
       timestamp: post.timestamp || post.date || new Date().toISOString(),
       likes: post.likes || 0,
       comments: post.comments || 0,
