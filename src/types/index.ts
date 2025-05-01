@@ -40,6 +40,21 @@ export interface Contact {
   updatedAt: string;
   notes: string;
   linkedin_url?: string;
+  linkedin_bio?: string;
+  linkedin_posts?: LinkedInPost[];
+  linkedin_skills?: string[];
+  linkedin_education?: string[];
+  linkedin_experience?: string[];
+  last_enriched?: string;
+}
+
+export interface LinkedInPost {
+  id: string;
+  content: string;
+  timestamp: string;
+  likes: number;
+  comments: number;
+  url?: string;
 }
 
 export interface CompanyInsights {

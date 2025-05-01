@@ -8,7 +8,7 @@ import { CompanyResearch } from "@/components/research/CompanyResearch";
 import { PersonalizedOutreach } from "@/components/outreach/PersonalizedOutreach";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Building2, MapPin, Users, Globe, Mail, Phone, Briefcase, Hash, Network, ExternalLink, Search } from "lucide-react";
+import { Building2, MapPin, Users, Globe, Mail, Phone, Briefcase, Hash, Network, ExternalLink, Search, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,7 @@ const CompanyDetailPage = () => {
   const [isEnriching, setIsEnriching] = useState(false);
   const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
   const [isFindingEmail, setIsFindingEmail] = useState(false);
+  const [isEnrichingContact, setIsEnrichingContact] = useState(false);
   
   const company = companies.find((c) => c.id === id);
   const companyContacts = contacts.filter((c) => c.companyId === id);
@@ -331,8 +332,6 @@ const CompanyDetailPage = () => {
     }
   };
   
-  
-  
   // Function to find email using the n8n webhook
   const handleFindEmail = async (contact) => {
     if (!contact.firstName || !contact.lastName || !company?.name) {
@@ -420,6 +419,143 @@ const CompanyDetailPage = () => {
       });
     } finally {
       setIsFindingEmail(false);
+    }
+  };
+  
+  // Function to enrich contact with LinkedIn data
+  const handleEnrichContact = async (contact) => {
+    if (!contact.linkedin_url) {
+      toast({
+        title: "LinkedIn URL Missing",
+        description: "This contact doesn't have a LinkedIn URL. Please add it first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsEnrichingContact(true);
+    
+    try {
+      console.log("Enriching contact with LinkedIn URL:", contact.linkedin_url);
+      
+      // Use webhook URL for enrichment
+      const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90";
+      
+      // Add timeout for the request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ 
+          linkedinUrl: contact.linkedin_url,
+          type: "person"
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`Failed with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Contact enrichment data received:", data);
+      
+      // Process the received data
+      const profileData = Array.isArray(data) ? data[0] : data;
+      
+      // Prepare the update data
+      const updateData: any = {
+        last_enriched: new Date().toISOString()
+      };
+
+      // Extract bio
+      if (profileData.bio || profileData.summary) {
+        updateData.linkedin_bio = profileData.bio || profileData.summary;
+      }
+
+      // Extract skills
+      if (Array.isArray(profileData.skills)) {
+        updateData.linkedin_skills = profileData.skills;
+      }
+
+      // Extract education
+      if (Array.isArray(profileData.education)) {
+        updateData.linkedin_education = profileData.education.map(edu => 
+          `${edu.degree || ''} ${edu.field_of_study || ''} at ${edu.school_name || ''} (${edu.starts_at?.year || ''}-${edu.ends_at?.year || 'Present'})`
+        );
+      }
+
+      // Extract experience
+      if (Array.isArray(profileData.experiences)) {
+        updateData.linkedin_experience = profileData.experiences.map(exp => 
+          `${exp.title || ''} at ${exp.company || ''} (${exp.starts_at?.month ? exp.starts_at.month + '/' : ''}${exp.starts_at?.year || ''}-${exp.ends_at?.month ? exp.ends_at.month + '/' : ''}${exp.ends_at?.year || 'Present'})`
+        );
+      }
+
+      // Extract posts
+      if (Array.isArray(profileData.posts)) {
+        updateData.linkedin_posts = profileData.posts.map(post => ({
+          id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: post.content || post.text,
+          timestamp: post.timestamp || post.date,
+          likes: post.likes || 0,
+          comments: post.comments || 0,
+          url: post.url
+        }));
+      }
+
+      // Update the contact in Supabase
+      const { error } = await supabase
+        .from('contacts')
+        .update(updateData)
+        .eq('id', contact.id);
+
+      if (error) {
+        console.error("Error updating contact:", error);
+        throw new Error("Failed to update contact with LinkedIn data");
+      }
+
+      // Update local state
+      const updatedContact = { ...contact, ...updateData };
+      const updatedContacts = contacts.map(c => 
+        c.id === contact.id ? updatedContact : c
+      );
+      setContacts(updatedContacts);
+      
+      // If this was the selected contact, update it
+      if (selectedContact && selectedContact.id === contact.id) {
+        setSelectedContactId(contact.id);
+      }
+
+      toast({
+        title: "Contact Enriched",
+        description: "Successfully retrieved LinkedIn data for this contact.",
+      });
+      
+    } catch (error) {
+      console.error("Error enriching contact:", error);
+      
+      if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+        toast({
+          title: "Network Error",
+          description: "Could not connect to the enrichment service. Please check your internet connection and try again.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Enrichment Failed",
+          description: "Could not retrieve additional data. Please try again later.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsEnrichingContact(false);
     }
   };
   
@@ -654,12 +790,41 @@ const CompanyDetailPage = () => {
                   {selectedContact.linkedin_url && (
                     <div className="flex items-center">
                       <ExternalLink className="h-4 w-4 mr-3 text-gray-500" />
-                      <a href={selectedContact.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                        LinkedIn Profile
-                      </a>
+                      <div className="flex gap-2 items-center">
+                        <a href={selectedContact.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                          LinkedIn Profile
+                        </a>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleEnrichContact(selectedContact)}
+                          disabled={isEnrichingContact}
+                          className="h-7 px-2 py-1 ml-2 border border-gray-200"
+                        >
+                          {isEnrichingContact ? 
+                            <span className="flex items-center gap-1">
+                              <span className="animate-pulse">●</span> 
+                              Enriching...
+                            </span> : 
+                            <span className="flex items-center gap-1">
+                              <RefreshCw className="h-3 w-3" /> 
+                              Enrich Contact
+                            </span>
+                          }
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
+                
+                {selectedContact.linkedin_bio && (
+                  <div>
+                    <h4 className="font-medium mb-2">LinkedIn Bio</h4>
+                    <p className="text-gray-600 whitespace-pre-line text-sm">
+                      {selectedContact.linkedin_bio}
+                    </p>
+                  </div>
+                )}
                 
                 <div>
                   <h4 className="font-medium mb-2">Notes</h4>
@@ -709,10 +874,4 @@ const CompanyDetailPage = () => {
         <CompanyInsights companyId={company.id} />
         
         {/* Module 5: Company Research */}
-        <CompanyResearch companyId={company.id} />
-      </div>
-    </Layout>
-  );
-};
-
-export default CompanyDetailPage;
+        <CompanyResearch companyId
