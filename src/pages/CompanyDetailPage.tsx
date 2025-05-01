@@ -26,8 +26,7 @@ const CompanyDetailPage = () => {
   const companyContacts = contacts.filter((c) => c.companyId === id);
   const selectedContact = companyContacts.find(c => c.id === selectedContactId) || null;
   
-  // IMPORTANT: Always create a default props object to ensure consistent hook calls
-  // whether the company is found or not
+  // Create enrichment props with proper null handling
   const enrichmentProps = useEnrichment(company || null);
   
   if (!company) {

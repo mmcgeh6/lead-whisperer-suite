@@ -53,7 +53,62 @@ export const ContactDetailDialog = ({
     }
   };
   
+  // Format experience data to handle the complex structure
+  const formatExperienceData = (experience: any[]): string[] => {
+    if (!Array.isArray(experience)) return [];
+    
+    return experience.map(exp => {
+      // Handle string format (already formatted)
+      if (typeof exp === 'string') {
+        return exp;
+      }
+      
+      // Handle object format with title, subtitle, etc.
+      if (typeof exp === 'object' && exp !== null) {
+        // Format for the alternative data structure
+        if (exp.title && (exp.subtitle || exp.caption)) {
+          let formatted = exp.title;
+          
+          if (exp.subtitle) {
+            formatted += ` at ${exp.subtitle}`;
+          }
+          
+          if (exp.caption) {
+            formatted += ` ${exp.caption}`;
+          }
+          
+          return formatted;
+        }
+        
+        // Format for the standard structure
+        if (exp.company || exp.title) {
+          let formatted = exp.title || '';
+          
+          if (exp.company) {
+            formatted += ` at ${exp.company}`;
+          }
+          
+          if (exp.starts_at) {
+            formatted += ` (${exp.starts_at.month ? exp.starts_at.month + '/' : ''}${exp.starts_at.year || ''}-`;
+            
+            if (exp.ends_at) {
+              formatted += `${exp.ends_at.month ? exp.ends_at.month + '/' : ''}${exp.ends_at.year || 'Present'})`;
+            } else {
+              formatted += 'Present)';
+            }
+          }
+          
+          return formatted;
+        }
+      }
+      
+      // As fallback, convert to string
+      return JSON.stringify(exp);
+    });
+  };
+  
   const jobDuration = getJobDuration();
+  const formattedExperience = contact.linkedin_experience ? formatExperienceData(contact.linkedin_experience) : [];
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -286,11 +341,11 @@ export const ContactDetailDialog = ({
               )}
               
               {/* Experience Section */}
-              {contact.linkedin_experience && contact.linkedin_experience.length > 0 && (
+              {formattedExperience.length > 0 && (
                 <div>
                   <h3 className="text-lg font-medium mb-3">Experience</h3>
                   <div className="space-y-2">
-                    {contact.linkedin_experience.map((exp, index) => (
+                    {formattedExperience.map((exp, index) => (
                       <div key={index} className="border-l-2 border-gray-200 pl-3">
                         {exp}
                       </div>
@@ -314,7 +369,7 @@ export const ContactDetailDialog = ({
               )}
               
               {!contact.linkedin_bio && !contact.linkedin_skills && 
-               !contact.linkedin_experience && !contact.linkedin_education && (
+               !formattedExperience.length && !contact.linkedin_education && (
                 <div className="text-center py-8">
                   <p className="text-gray-500 mb-4">No LinkedIn profile data available.</p>
                   {contact.linkedin_url ? (

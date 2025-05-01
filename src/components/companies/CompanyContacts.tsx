@@ -1,3 +1,4 @@
+
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ContactList } from "@/components/leads/ContactList";
@@ -5,7 +6,7 @@ import { ContactDetailDialog } from "@/components/contacts/ContactDetailDialog";
 import { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { useNavigate } from "react-router-dom";
-import { Contact } from "@/types";
+import { Contact, LinkedInPost } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -124,6 +125,73 @@ export const CompanyContacts = ({
     }
   };
   
+  // Process LinkedIn experience data to ensure it's in the correct format
+  const processExperienceData = (experiences: any[]): string[] => {
+    if (!Array.isArray(experiences)) return [];
+
+    return experiences.map(exp => {
+      // Handle string format (already formatted)
+      if (typeof exp === 'string') {
+        return exp;
+      }
+      
+      // Handle object format with title, subtitle, etc.
+      if (typeof exp === 'object' && exp !== null) {
+        if (exp.title && (exp.subtitle || exp.caption)) {
+          let formatted = exp.title;
+          
+          if (exp.subtitle) {
+            formatted += ` at ${exp.subtitle}`;
+          }
+          
+          if (exp.caption) {
+            formatted += ` ${exp.caption}`;
+          }
+          
+          return formatted;
+        }
+        
+        // Handle standard format
+        if (exp.company || exp.title) {
+          let formatted = exp.title || '';
+          
+          if (exp.company) {
+            formatted += ` at ${exp.company}`;
+          }
+          
+          if (exp.starts_at) {
+            formatted += ` (${exp.starts_at.month ? exp.starts_at.month + '/' : ''}${exp.starts_at.year || ''}-`;
+            
+            if (exp.ends_at) {
+              formatted += `${exp.ends_at.month ? exp.ends_at.month + '/' : ''}${exp.ends_at.year || 'Present'})`;
+            } else {
+              formatted += 'Present)`;
+            }
+          }
+          
+          return formatted;
+        }
+      }
+      
+      // As fallback, convert to string
+      return JSON.stringify(exp);
+    });
+  };
+  
+  // Format LinkedIn posts to ensure they match the expected type
+  const formatLinkedInPosts = (posts: any[]): LinkedInPost[] => {
+    if (!Array.isArray(posts)) return [];
+    
+    return posts.map(post => ({
+      id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      content: post.content || post.text || '',
+      timestamp: post.timestamp || post.date || new Date().toISOString(),
+      likes: post.likes || 0,
+      comments: post.comments || 0,
+      url: post.url || null
+    }));
+  };
+  
   // Function to enrich contact with LinkedIn data
   const handleEnrichContact = async (contact: Contact) => {
     if (!contact.linkedin_url) {
@@ -140,8 +208,8 @@ export const CompanyContacts = ({
     try {
       console.log("Enriching contact with LinkedIn URL:", contact.linkedin_url);
       
-      // Use webhook URL for enrichment
-      const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90";
+      // Use webhook URL for enrichment - note the updated URL from user input
+      const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/4904a13e-c99a-46fe-b724-6eaace77eec0";
       
       // Add timeout for the request
       const controller = new AbortController();
@@ -209,7 +277,7 @@ export const CompanyContacts = ({
       
       // Extract mobile number if available
       if (profileData.mobilePhone || profileData.mobileNumber) {
-        updateData.mobilePhone = profileData.mobilePhone || profileData.mobileNumber;
+        updateData.mobile_phone = profileData.mobilePhone || profileData.mobileNumber;
       }
       
       // Extract job start date if available
@@ -217,44 +285,29 @@ export const CompanyContacts = ({
         updateData.job_start_date = profileData.jobStartDate || profileData.current_job.start_date;
       }
 
-      // Extract education
+      // Extract education and store as formatted strings
       if (Array.isArray(profileData.education)) {
-        updateData.linkedin_education = profileData.education.map(edu => 
+        updateData.linkedin_education = profileData.education.map((edu: any) => 
           `${edu.degree || ''} ${edu.field_of_study || ''} at ${edu.school_name || ''} (${edu.starts_at?.year || ''}-${edu.ends_at?.year || 'Present'})`
         );
       }
 
-      // Extract experience from both formats
+      // Extract experience and process to ensure it's properly formatted
       if (Array.isArray(profileData.experiences)) {
         if (profileData.experiences[0] && (profileData.experiences[0].title || profileData.experiences[0].company)) {
           // Standard format
-          updateData.linkedin_experience = profileData.experiences.map(exp => 
-            `${exp.title || ''} at ${exp.company || ''} (${exp.starts_at?.month ? exp.starts_at.month + '/' : ''}${exp.starts_at?.year || ''}-${exp.ends_at?.month ? exp.ends_at.month + '/' : ''}${exp.ends_at?.year || 'Present'})`
-          );
+          updateData.linkedin_experience = processExperienceData(profileData.experiences);
         } else {
           // Alternative format with subtitle/caption
-          const formattedExperiences = [];
-          for (const exp of profileData.experiences) {
-            if (exp.title && (exp.subtitle || exp.caption)) {
-              formattedExperiences.push(`${exp.title} at ${exp.subtitle || ''} ${exp.caption || ''}`);
-            }
-          }
-          if (formattedExperiences.length > 0) {
-            updateData.linkedin_experience = formattedExperiences;
-          }
+          updateData.linkedin_experience = processExperienceData(profileData.experiences);
         }
       }
 
-      // Extract posts
+      // Extract posts and format properly
       if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
-        updateData.linkedin_posts = profileData.posts.map(post => ({
-          id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          content: post.content || post.text || '',
-          timestamp: post.timestamp || post.date || new Date().toISOString(),
-          likes: post.likes || 0,
-          comments: post.comments || 0,
-          url: post.url || null
-        }));
+        const formattedPosts = formatLinkedInPosts(profileData.posts);
+        // Store as stringified JSON to work with Supabase jsonb type
+        updateData.linkedin_posts = formattedPosts;
       }
 
       // If no meaningful data was found, notify the user
@@ -284,7 +337,18 @@ export const CompanyContacts = ({
       // Update local state
       const updatedContact = { 
         ...contact,
-        ...updateData // Add all the update data
+        linkedin_bio: updateData.linkedin_bio,
+        linkedin_skills: updateData.linkedin_skills,
+        linkedin_experience: updateData.linkedin_experience,
+        linkedin_education: updateData.linkedin_education,
+        linkedin_posts: updateData.linkedin_posts,
+        last_enriched: updateData.last_enriched,
+        mobilePhone: updateData.mobile_phone,
+        address: updateData.address,
+        country: updateData.country,
+        position: updateData.position,
+        job_start_date: updateData.job_start_date,
+        languages: updateData.languages
       };
       
       const updatedContacts = contacts.map(c => 
