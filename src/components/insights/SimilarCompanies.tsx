@@ -21,6 +21,9 @@ export const SimilarCompanies: React.FC<SimilarCompaniesProps> = ({ companies })
     return null;
   }
 
+  // Debug log to verify data coming in
+  console.log("Similar Companies data received:", companies);
+
   return (
     <Card>
       <CardHeader>
