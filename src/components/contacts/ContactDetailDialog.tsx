@@ -31,6 +31,13 @@ export function ContactDetailDialog({
 }: ContactDetailDialogProps) {
   if (!contact) return null;
 
+  // Find the company for this contact (to pass to ContactDetailsTab)
+  const getCompanyForContact = () => {
+    return { id: contact.companyId, name: "" }; // Basic company object
+  };
+
+  const company = getCompanyForContact();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
@@ -89,8 +96,11 @@ export function ContactDetailDialog({
           <TabsContent value="details">
             <ContactDetailsTab 
               contact={contact} 
+              company={company}
               isFindingEmail={isFindingEmail} 
+              isEnriching={isEnrichingContact}
               onFindEmail={() => onFindEmail(contact)}
+              onEnrichContact={() => onEnrichContact(contact)}
             />
           </TabsContent>
           

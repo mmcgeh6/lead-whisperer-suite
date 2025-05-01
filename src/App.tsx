@@ -64,7 +64,7 @@ function App() {
               />
               
               <Route
-                path="/leads/new"
+                path="/leads/company/new"
                 element={
                   <ProtectedRoute>
                     <CompanyFormPage />
@@ -73,7 +73,7 @@ function App() {
               />
               
               <Route
-                path="/leads/edit/:id"
+                path="/leads/company/:id/edit"
                 element={
                   <ProtectedRoute>
                     <CompanyFormPage />
@@ -109,7 +109,7 @@ function App() {
               />
               
               <Route
-                path="/search"
+                path="/leads/search"
                 element={
                   <ProtectedRoute>
                     <LeadSearchPage />

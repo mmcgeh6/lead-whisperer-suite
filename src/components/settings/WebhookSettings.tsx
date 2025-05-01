@@ -14,12 +14,17 @@ import { useAuth } from "@/context/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Separator } from "@/components/ui/separator";
 
 // Schema for webhook settings form
 const webhookSettingsSchema = z.object({
   emailFinderWebhook: z.string().url().optional().or(z.literal("")),
   linkedinEnrichmentWebhook: z.string().url().optional().or(z.literal("")),
   companyEnrichmentWebhook: z.string().url().optional().or(z.literal("")),
+  companyResearchWebhook: z.string().url().optional().or(z.literal("")),
+  marketResearchWebhook: z.string().url().optional().or(z.literal("")),
+  growthResearchWebhook: z.string().url().optional().or(z.literal("")),
+  techResearchWebhook: z.string().url().optional().or(z.literal(""))
 });
 
 type WebhookSettingsValues = z.infer<typeof webhookSettingsSchema>;
@@ -37,6 +42,10 @@ export const WebhookSettings = () => {
       emailFinderWebhook: '',
       linkedinEnrichmentWebhook: '',
       companyEnrichmentWebhook: '',
+      companyResearchWebhook: '',
+      marketResearchWebhook: '',
+      growthResearchWebhook: '',
+      techResearchWebhook: ''
     },
   });
   
@@ -47,7 +56,7 @@ export const WebhookSettings = () => {
         // Fetch webhook settings from Supabase
         const { data, error } = await supabase
           .from('app_settings')
-          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook')
+          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, companyresearchwebhook, marketresearchwebhook, growthresearchwebhook, techresearchwebhook')
           .eq('id', 'default')
           .single();
           
@@ -68,6 +77,22 @@ export const WebhookSettings = () => {
           
           if (data.companyenrichmentwebhook) {
             form.setValue('companyEnrichmentWebhook', data.companyenrichmentwebhook);
+          }
+
+          if (data.companyresearchwebhook) {
+            form.setValue('companyResearchWebhook', data.companyresearchwebhook);
+          }
+
+          if (data.marketresearchwebhook) {
+            form.setValue('marketResearchWebhook', data.marketresearchwebhook);
+          }
+
+          if (data.growthresearchwebhook) {
+            form.setValue('growthResearchWebhook', data.growthresearchwebhook);
+          }
+
+          if (data.techresearchwebhook) {
+            form.setValue('techResearchWebhook', data.techresearchwebhook);
           }
         }
       } catch (error) {
@@ -97,6 +122,10 @@ export const WebhookSettings = () => {
           emailfinderwebhook: data.emailFinderWebhook,
           linkedinenrichmentwebhook: data.linkedinEnrichmentWebhook,
           companyenrichmentwebhook: data.companyEnrichmentWebhook,
+          companyresearchwebhook: data.companyResearchWebhook,
+          marketresearchwebhook: data.marketResearchWebhook,
+          growthresearchwebhook: data.growthResearchWebhook,
+          techresearchwebhook: data.techResearchWebhook,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       
@@ -108,6 +137,10 @@ export const WebhookSettings = () => {
       localStorage.setItem('emailFinderWebhook', data.emailFinderWebhook || '');
       localStorage.setItem('linkedinEnrichmentWebhook', data.linkedinEnrichmentWebhook || '');
       localStorage.setItem('companyEnrichmentWebhook', data.companyEnrichmentWebhook || '');
+      localStorage.setItem('companyResearchWebhook', data.companyResearchWebhook || '');
+      localStorage.setItem('marketResearchWebhook', data.marketResearchWebhook || '');
+      localStorage.setItem('growthResearchWebhook', data.growthResearchWebhook || '');
+      localStorage.setItem('techResearchWebhook', data.techResearchWebhook || '');
       
       // Redirect to settings page with saved parameter and tab
       navigate('/settings?saved=webhooks&tab=webhooks');
@@ -156,65 +189,157 @@ export const WebhookSettings = () => {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="emailFinderWebhook"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Finder Webhook</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="url"
-                      placeholder="https://example.com/webhook/email-finder"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Webhook endpoint for finding contact email addresses
-                  </FormDescription>
-                </FormItem>
-              )}
-            />
+            <div>
+              <h3 className="text-lg font-medium mb-3">Contact & Company Enrichment</h3>
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="emailFinderWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Finder Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/email-finder"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook endpoint for finding contact email addresses
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="linkedinEnrichmentWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>LinkedIn Enrichment Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/linkedin-enrichment"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook endpoint for enriching contacts with LinkedIn data
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="companyEnrichmentWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company Enrichment Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/company-enrichment"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook endpoint for enriching companies with additional data
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
             
-            <FormField
-              control={form.control}
-              name="linkedinEnrichmentWebhook"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>LinkedIn Enrichment Webhook</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="url"
-                      placeholder="https://example.com/webhook/linkedin-enrichment"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Webhook endpoint for enriching contacts with LinkedIn data
-                  </FormDescription>
-                </FormItem>
-              )}
-            />
+            <Separator className="my-4" />
             
-            <FormField
-              control={form.control}
-              name="companyEnrichmentWebhook"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company Enrichment Webhook</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="url"
-                      placeholder="https://example.com/webhook/company-enrichment"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Webhook endpoint for enriching companies with additional data
-                  </FormDescription>
-                </FormItem>
-              )}
-            />
+            <div>
+              <h3 className="text-lg font-medium mb-3">Research Webhooks</h3>
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="companyResearchWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Competitive Research Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/competitive-research"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook URL for competitive analysis research
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="marketResearchWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Market Challenges Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/market-challenges"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook URL for market challenges research
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="growthResearchWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Growth Opportunities Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/growth-opportunities"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook URL for growth opportunities research
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="techResearchWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Technology Stack Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/technology-stack"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook URL for technology stack research
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
             
             <div className="flex justify-end">
               <Button type="submit" disabled={isLoading}>

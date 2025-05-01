@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -46,12 +47,16 @@ export const CompanyList = ({
   const handleEditCompany = (id: string) => {
     navigate(`/leads/company/${id}/edit`);
   };
+
+  const handleAddCompany = () => {
+    navigate("/leads/company/new");
+  };
   
   if (displayCompanies.length === 0) {
     return (
       <Card className="p-6 text-center">
         <p className="text-gray-500 mb-4">No companies found</p>
-        <Button onClick={() => navigate("/leads/company/new")}>
+        <Button onClick={handleAddCompany}>
           Add Your First Company
         </Button>
       </Card>

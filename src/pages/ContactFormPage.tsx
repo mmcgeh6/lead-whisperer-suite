@@ -1,13 +1,15 @@
 
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import { Layout } from "@/components/Layout";
 import { ContactForm } from "@/components/leads/ContactForm";
 
 const ContactFormPage = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { contacts } = useAppContext();
   
+  const companyId = searchParams.get("companyId");
   const contact = id ? contacts.find((c) => c.id === id) : undefined;
   const isEditing = !!contact;
   

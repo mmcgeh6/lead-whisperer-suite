@@ -163,7 +163,11 @@ export const ContactForm = ({ initialData }: ContactFormProps) => {
       }
       
       // Redirect back to company detail or leads page
-      navigate(companyIdFromUrl ? `/leads/${companyIdFromUrl}` : "/leads");
+      if (companyIdFromUrl) {
+        navigate(`/leads/company/${companyIdFromUrl}`);
+      } else {
+        navigate("/leads");
+      }
     } catch (error) {
       console.error("Error saving contact:", error);
       toast({
