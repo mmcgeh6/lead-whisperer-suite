@@ -25,16 +25,8 @@ const CompanyDetailPage = () => {
   const companyContacts = contacts.filter((c) => c.companyId === id);
   const selectedContact = companyContacts.find(c => c.id === selectedContactId) || null;
   
-  // Use the enrichment custom hook
-  const {
-    isEnriching,
-    similarCompanies,
-    isFindingEmail,
-    isEnrichingContact,
-    handleEnrichCompany,
-    handleFindEmail,
-    handleEnrichContact
-  } = company ? useEnrichment(company) : {
+  // Only call useEnrichment if company exists to avoid conditional hook calls
+  const enrichmentProps = company ? useEnrichment(company) : {
     isEnriching: false,
     similarCompanies: [],
     isFindingEmail: false,
@@ -69,8 +61,8 @@ const CompanyDetailPage = () => {
         {/* Company Banner */}
         <CompanyBanner 
           company={company} 
-          isEnriching={isEnriching} 
-          handleEnrichCompany={handleEnrichCompany} 
+          isEnriching={enrichmentProps.isEnriching} 
+          handleEnrichCompany={enrichmentProps.handleEnrichCompany} 
         />
 
         {/* Module 1: About Company */}
@@ -79,8 +71,8 @@ const CompanyDetailPage = () => {
         {/* Module 2: Contacts */}
         <CompanyContacts 
           companyId={company.id}
-          isEnriching={isEnriching}
-          handleEnrichCompany={handleEnrichCompany}
+          isEnriching={enrichmentProps.isEnriching}
+          handleEnrichCompany={enrichmentProps.handleEnrichCompany}
           onContactSelect={handleContactSelect}
         />
 
@@ -89,15 +81,15 @@ const CompanyDetailPage = () => {
           contact={selectedContact}
           open={contactDialogOpen}
           onOpenChange={setContactDialogOpen}
-          onFindEmail={handleFindEmail}
-          onEnrichContact={handleEnrichContact}
-          isFindingEmail={isFindingEmail}
-          isEnrichingContact={isEnrichingContact}
+          onFindEmail={enrichmentProps.handleFindEmail}
+          onEnrichContact={enrichmentProps.handleEnrichContact}
+          isFindingEmail={enrichmentProps.isFindingEmail}
+          isEnrichingContact={enrichmentProps.isEnrichingContact}
         />
         
         {/* Similar Companies - New section */}
-        {similarCompanies && similarCompanies.length > 0 && (
-          <SimilarCompanies companies={similarCompanies} />
+        {enrichmentProps.similarCompanies && enrichmentProps.similarCompanies.length > 0 && (
+          <SimilarCompanies companies={enrichmentProps.similarCompanies} />
         )}
         
         {/* Module 3: Personalized Outreach */}

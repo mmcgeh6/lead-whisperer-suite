@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useEnrichment = (company: Company) => {
+  // Always call all hooks at the top level, regardless of conditions
   const { contacts, setContacts } = useAppContext();
   const { toast } = useToast();
   const [isEnriching, setIsEnriching] = useState(false);
