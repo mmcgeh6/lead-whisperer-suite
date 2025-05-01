@@ -5,7 +5,7 @@ import { useAppContext } from "@/context/AppContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-export const useEnrichment = (company: Company) => {
+export const useEnrichment = (company: Company | null) => {
   // Always call all hooks at the top level, regardless of conditions
   const { contacts, setContacts } = useAppContext();
   const { toast } = useToast();
@@ -13,6 +13,19 @@ export const useEnrichment = (company: Company) => {
   const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
   const [isFindingEmail, setIsFindingEmail] = useState(false);
   const [isEnrichingContact, setIsEnrichingContact] = useState(false);
+  
+  // If no company is provided, return default values for all functions
+  if (!company) {
+    return {
+      isEnriching,
+      similarCompanies,
+      isFindingEmail,
+      isEnrichingContact,
+      handleEnrichCompany: () => {},
+      handleFindEmail: () => {},
+      handleEnrichContact: () => {}
+    };
+  }
   
   // Function to create contacts from employee data
   const createContactsFromEmployees = async (employeeData: Employee[]) => {

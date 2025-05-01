@@ -21,20 +21,14 @@ const CompanyDetailPage = () => {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   
+  // Find the company and related data
   const company = companies.find((c) => c.id === id);
   const companyContacts = contacts.filter((c) => c.companyId === id);
   const selectedContact = companyContacts.find(c => c.id === selectedContactId) || null;
   
-  // Only call useEnrichment if company exists to avoid conditional hook calls
-  const enrichmentProps = company ? useEnrichment(company) : {
-    isEnriching: false,
-    similarCompanies: [],
-    isFindingEmail: false,
-    isEnrichingContact: false,
-    handleEnrichCompany: () => {},
-    handleFindEmail: () => {},
-    handleEnrichContact: () => {}
-  };
+  // IMPORTANT: Always create a default props object to ensure consistent hook calls
+  // whether the company is found or not
+  const enrichmentProps = useEnrichment(company || null);
   
   if (!company) {
     return (
