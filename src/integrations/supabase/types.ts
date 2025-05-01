@@ -203,7 +203,9 @@ export type Database = {
           first_name: string
           headline: string | null
           id: string
+          job_history: string[] | null
           job_start_date: string | null
+          languages: string | null
           last_enriched: string | null
           last_name: string
           linkedin_bio: string | null
@@ -229,7 +231,9 @@ export type Database = {
           first_name: string
           headline?: string | null
           id?: string
+          job_history?: string[] | null
           job_start_date?: string | null
+          languages?: string | null
           last_enriched?: string | null
           last_name: string
           linkedin_bio?: string | null
@@ -255,7 +259,9 @@ export type Database = {
           first_name?: string
           headline?: string | null
           id?: string
+          job_history?: string[] | null
           job_start_date?: string | null
+          languages?: string | null
           last_enriched?: string | null
           last_name?: string
           linkedin_bio?: string | null

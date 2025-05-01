@@ -54,63 +54,100 @@ export const useContactEnrichment = (contact: Contact, setContacts: (contacts: C
       // Process the received data
       const profileData = Array.isArray(data) ? data[0] : data;
       
+      if (!profileData) {
+        toast({
+          title: "No Data Found",
+          description: "No profile data was returned from the enrichment service.",
+          variant: "default"
+        });
+        setIsEnriching(false);
+        return;
+      }
+      
       // Prepare the update data - only include fields that exist in our database schema
-      // This is the fixed part - we're only including fields that we know exist in the database
       const updateData: Record<string, any> = {
         last_enriched: new Date().toISOString()
       };
 
-      // Extract mobile number if available
-      if (profileData.mobileNumber) {
-        updateData.mobile_phone = profileData.mobileNumber;
+      try {
+        // Extract mobile number if available
+        if (profileData.mobileNumber) {
+          updateData.mobile_phone = profileData.mobileNumber;
+        }
+      } catch (error) {
+        console.log("Error extracting mobile phone:", error);
       }
 
-      // Extract headline/position
-      if (profileData.headline || profileData.position || profileData.jobTitle) {
-        updateData.headline = profileData.headline || profileData.position || profileData.jobTitle;
-        updateData.position = profileData.headline || profileData.position || profileData.jobTitle;
+      try {
+        // Extract headline/position
+        if (profileData.headline || profileData.position || profileData.jobTitle) {
+          updateData.headline = profileData.headline || profileData.position || profileData.jobTitle;
+          updateData.position = profileData.headline || profileData.position || profileData.jobTitle;
+        }
+      } catch (error) {
+        console.log("Error extracting headline/position:", error);
       }
 
-      // Extract bio/about
-      if (profileData.bio || profileData.summary || profileData.about) {
-        updateData.linkedin_bio = profileData.bio || profileData.summary || profileData.about;
-        updateData.about = profileData.about || profileData.bio || profileData.summary;
+      try {
+        // Extract bio/about
+        if (profileData.bio || profileData.summary || profileData.about) {
+          updateData.linkedin_bio = profileData.bio || profileData.summary || profileData.about;
+          updateData.about = profileData.about || profileData.bio || profileData.summary;
+        }
+      } catch (error) {
+        console.log("Error extracting bio/about:", error);
       }
 
-      // Extract location info if available
-      if (profileData.location || profileData.addressWithoutCountry) {
-        updateData.address = profileData.addressWithoutCountry || profileData.location;
-        
-        // Try to parse location string into components
-        const locationString = profileData.location || profileData.addressWithoutCountry;
-        if (locationString && typeof locationString === 'string') {
-          if (locationString.includes(",")) {
-            const parts = locationString.split(",").map(part => part.trim());
-            if (parts.length >= 2) {
-              updateData.city = parts[0];
-              updateData.country = parts[parts.length - 1];
+      try {
+        // Extract location info if available
+        if (profileData.location || profileData.addressWithoutCountry) {
+          updateData.address = profileData.addressWithoutCountry || profileData.location;
+          
+          // Try to parse location string into components
+          const locationString = profileData.location || profileData.addressWithoutCountry;
+          if (locationString && typeof locationString === 'string') {
+            if (locationString.includes(",")) {
+              const parts = locationString.split(",").map(part => part.trim());
+              if (parts.length >= 2) {
+                updateData.city = parts[0];
+                updateData.country = parts[parts.length - 1];
+              } else {
+                updateData.city = locationString;
+              }
             } else {
               updateData.city = locationString;
             }
-          } else {
-            updateData.city = locationString;
           }
         }
+      } catch (error) {
+        console.log("Error extracting location info:", error);
       }
       
-      // Extract city specifically if available
-      if (profileData.city) {
-        updateData.city = profileData.city;
+      try {
+        // Extract city specifically if available
+        if (profileData.city) {
+          updateData.city = profileData.city;
+        }
+      } catch (error) {
+        console.log("Error extracting city:", error);
       }
       
-      // Extract country specifically if available
-      if (profileData.country || profileData.addressCountryOnly) {
-        updateData.country = profileData.country || profileData.addressCountryOnly;
+      try {
+        // Extract country specifically if available
+        if (profileData.country || profileData.addressCountryOnly) {
+          updateData.country = profileData.country || profileData.addressCountryOnly;
+        }
+      } catch (error) {
+        console.log("Error extracting country:", error);
       }
 
-      // Extract job start date if available
-      if (profileData.jobStartDate || (profileData.current_job && profileData.current_job.start_date)) {
-        updateData.job_start_date = profileData.jobStartDate || profileData.current_job.start_date;
+      try {
+        // Extract job start date if available
+        if (profileData.jobStartDate || (profileData.current_job && profileData.current_job.start_date)) {
+          updateData.job_start_date = profileData.jobStartDate || profileData.current_job.start_date;
+        }
+      } catch (error) {
+        console.log("Error extracting job start date:", error);
       }
 
       // IMPORTANT: Do not include the languages field as it doesn't exist in the database schema
@@ -119,43 +156,70 @@ export const useContactEnrichment = (contact: Contact, setContacts: (contacts: C
       //   updateData.languages = profileData.languages;
       // }
 
-      // Extract skills
-      if (Array.isArray(profileData.skills) && profileData.skills.length > 0) {
-        updateData.linkedin_skills = profileData.skills;
-      } else if (profileData.topSkillsByEndorsements) {
-        updateData.linkedin_skills = profileData.topSkillsByEndorsements.split(", ");
+      try {
+        // Extract skills
+        if (Array.isArray(profileData.skills) && profileData.skills.length > 0) {
+          updateData.linkedin_skills = profileData.skills;
+        } else if (profileData.topSkillsByEndorsements) {
+          updateData.linkedin_skills = profileData.topSkillsByEndorsements.split(", ");
+        }
+      } catch (error) {
+        console.log("Error extracting skills:", error);
       }
 
-      // Extract education
-      if (Array.isArray(profileData.education) || Array.isArray(profileData.educations)) {
-        updateData.linkedin_education = profileData.educations || profileData.education;
+      try {
+        // Extract education
+        if (Array.isArray(profileData.education) || Array.isArray(profileData.educations)) {
+          updateData.linkedin_education = profileData.educations || profileData.education;
+        }
+      } catch (error) {
+        console.log("Error extracting education:", error);
       }
 
-      // Extract experience
-      if (Array.isArray(profileData.experiences) || Array.isArray(profileData.job_history)) {
-        updateData.linkedin_experience = profileData.job_history || profileData.experiences;
+      try {
+        // Extract experience
+        if (Array.isArray(profileData.experiences) || Array.isArray(profileData.job_history)) {
+          updateData.linkedin_experience = profileData.job_history || profileData.experiences;
+        }
+      } catch (error) {
+        console.log("Error extracting experience:", error);
       }
 
-      // Extract posts if available
-      if (profileData.profile_post_text) {
-        // Handle the new format with single post
-        updateData.linkedin_posts = [{
-          id: `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          content: profileData.profile_post_text,
-          timestamp: profileData.profile_posted_at?.date || new Date().toISOString(),
-          likes: profileData.profile_stats?.total_reactions || 0,
-          comments: profileData.profile_stats?.comments || 0,
-          url: null
-        }];
-      } else if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
-        updateData.linkedin_posts = profileData.posts.map(post => ({
-          id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          content: post.content || post.text || '',
-          timestamp: post.timestamp || post.date || new Date().toISOString(),
-          likes: post.likes || 0,
-          comments: post.comments || 0,
-          url: post.url || null
-        }));
+      try {
+        // Extract posts if available
+        if (profileData.profile_post_text) {
+          // Handle the new format with single post
+          updateData.linkedin_posts = [{
+            id: `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            content: profileData.profile_post_text,
+            timestamp: profileData.profile_posted_at?.date || new Date().toISOString(),
+            likes: profileData.profile_stats?.total_reactions || 0,
+            comments: profileData.profile_stats?.comments || 0,
+            url: null
+          }];
+        } else if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
+          updateData.linkedin_posts = profileData.posts.map(post => ({
+            id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            content: post.content || post.text || '',
+            timestamp: post.timestamp || post.date || new Date().toISOString(),
+            likes: post.likes || 0,
+            comments: post.comments || 0,
+            url: post.url || null
+          }));
+        }
+      } catch (error) {
+        console.log("Error extracting posts:", error);
+      }
+
+      // If no meaningful data was found, notify the user
+      if (Object.keys(updateData).length <= 1) { // Only has last_enriched
+        toast({
+          title: "No Profile Data Found",
+          description: "No useful LinkedIn profile data could be retrieved.",
+          variant: "default"
+        });
+        setIsEnriching(false);
+        return;
       }
 
       console.log("Updating contact with data:", updateData);
