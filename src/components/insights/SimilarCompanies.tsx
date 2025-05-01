@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,6 +9,9 @@ interface SimilarCompany {
   linkedinUrl?: string;
   industry?: string;
   location?: string;
+  // Add properties for the API response format
+  link?: string;
+  summary?: string;
 }
 
 interface SimilarCompaniesProps {
@@ -23,6 +25,21 @@ export const SimilarCompanies: React.FC<SimilarCompaniesProps> = ({ companies })
 
   // Debug log to verify data coming in
   console.log("Similar Companies data received:", companies);
+
+  // Transform data if necessary (handle different API response formats)
+  const formattedCompanies = companies.map(company => {
+    // If this is the API response format with link and summary
+    if (company.link && !company.linkedinUrl) {
+      return {
+        name: company.name || "Unknown company",
+        industry: company.summary || "Unknown industry",
+        location: company.location || "Unknown location",
+        linkedinUrl: company.link
+      };
+    }
+    // Otherwise use the existing format
+    return company;
+  });
 
   return (
     <Card>
@@ -46,7 +63,7 @@ export const SimilarCompanies: React.FC<SimilarCompaniesProps> = ({ companies })
             </TableRow>
           </TableHeader>
           <TableBody>
-            {companies.map((company, index) => (
+            {formattedCompanies.map((company, index) => (
               <TableRow key={index}>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
@@ -55,7 +72,7 @@ export const SimilarCompanies: React.FC<SimilarCompaniesProps> = ({ companies })
                   </div>
                 </TableCell>
                 <TableCell>
-                  {company.industry || "Unknown industry"}
+                  {company.industry || company.summary || "Unknown industry"}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -64,11 +81,11 @@ export const SimilarCompanies: React.FC<SimilarCompaniesProps> = ({ companies })
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  {company.linkedinUrl ? (
+                  {(company.linkedinUrl || company.link) ? (
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={() => window.open(company.linkedinUrl, "_blank")}
+                      onClick={() => window.open(company.linkedinUrl || company.link, "_blank")}
                       className="text-blue-600 hover:text-blue-800"
                     >
                       <ExternalLink className="h-4 w-4 mr-1" />

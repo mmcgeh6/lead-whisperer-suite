@@ -15,6 +15,17 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { SimilarCompanies } from "@/components/insights/SimilarCompanies";
 
+// Define interfaces for the employee data
+interface Employee {
+  name: string;
+  title: string;
+  linkedinUrl?: string;
+  employee_name?: string;
+  employee_position?: string;
+  employee_profile_url?: string;
+  employee_photo?: string;
+}
+
 const CompanyDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { companies, contacts, updateCompany } = useAppContext();
@@ -25,7 +36,7 @@ const CompanyDetailPage = () => {
   const [researchSheetOpen, setResearchSheetOpen] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
-  const [employeeData, setEmployeeData] = useState<any[]>([]);
+  const [employeeData, setEmployeeData] = useState<Employee[]>([]);
   
   const company = companies.find((c) => c.id === id);
   const companyContacts = contacts.filter((c) => c.companyId === id);
@@ -90,39 +101,60 @@ const CompanyDetailPage = () => {
       const data = await response.json();
       console.log("Enrichment data received:", data);
       
+      // Handle the array response format
+      const companyData = Array.isArray(data) ? data[0] : data;
+      
       // Process the received data - extract similarCompanies
-      if (data && Array.isArray(data.similarCompanies)) {
-        console.log("Setting similar companies:", data.similarCompanies);
-        setSimilarCompanies(data.similarCompanies);
+      if (companyData && Array.isArray(companyData.similar_companies)) {
+        console.log("Setting similar companies:", companyData.similar_companies);
+        setSimilarCompanies(companyData.similar_companies);
         toast({
           title: "Similar Companies Found",
-          description: `Found ${data.similarCompanies.length} similar companies.`,
+          description: `Found ${companyData.similar_companies.length} similar companies.`,
         });
-      } else if (data && data.profile && Array.isArray(data.profile.similarCompanies)) {
+      } else if (companyData && companyData.profile && Array.isArray(companyData.profile.similarCompanies)) {
         // Alternative data structure
-        console.log("Setting similar companies from profile:", data.profile.similarCompanies);
-        setSimilarCompanies(data.profile.similarCompanies);
+        console.log("Setting similar companies from profile:", companyData.profile.similarCompanies);
+        setSimilarCompanies(companyData.profile.similarCompanies);
         toast({
           title: "Similar Companies Found",
-          description: `Found ${data.profile.similarCompanies.length} similar companies.`,
+          description: `Found ${companyData.profile.similarCompanies.length} similar companies.`,
         });
       }
       
       // Process employee data
-      if (data && Array.isArray(data.employees)) {
-        console.log("Setting employee data:", data.employees);
-        setEmployeeData(data.employees);
+      if (companyData && Array.isArray(companyData.employees)) {
+        console.log("Setting employee data:", companyData.employees);
+        
+        // Format the employee data
+        const formattedEmployees: Employee[] = companyData.employees.map((emp: any) => ({
+          name: emp.employee_name || emp.name || "",
+          title: emp.employee_position || emp.title || "",
+          linkedinUrl: emp.employee_profile_url || emp.linkedinUrl || "",
+          employee_photo: emp.employee_photo || ""
+        }));
+        
+        setEmployeeData(formattedEmployees);
         toast({
           title: "Employee Data Retrieved",
-          description: `Found ${data.employees.length} employees from LinkedIn.`,
+          description: `Found ${formattedEmployees.length} employees from LinkedIn.`,
         });
-      } else if (data && data.profile && Array.isArray(data.profile.employees)) {
+      } else if (companyData && companyData.profile && Array.isArray(companyData.profile.employees)) {
         // Alternative data structure
-        console.log("Setting employee data from profile:", data.profile.employees);
-        setEmployeeData(data.profile.employees);
+        console.log("Setting employee data from profile:", companyData.profile.employees);
+        
+        // Format the employee data
+        const formattedEmployees: Employee[] = companyData.profile.employees.map((emp: any) => ({
+          name: emp.employee_name || emp.name || "",
+          title: emp.employee_position || emp.title || "",
+          linkedinUrl: emp.employee_profile_url || emp.linkedinUrl || "",
+          employee_photo: emp.employee_photo || ""
+        }));
+        
+        setEmployeeData(formattedEmployees);
         toast({
           title: "Employee Data Retrieved",
-          description: `Found ${data.profile.employees.length} employees from LinkedIn.`,
+          description: `Found ${formattedEmployees.length} employees from LinkedIn.`,
         });
       }
 
@@ -160,18 +192,18 @@ const CompanyDetailPage = () => {
                 location: "San Francisco, CA", 
                 linkedinUrl: "http://www.linkedin.com/company/green-gardens" 
               },
-            { 
-              name: "Pacific Lawn Care", 
-              industry: "Landscaping & Gardening",
-              location: "Seattle, WA", 
-              linkedinUrl: "http://www.linkedin.com/company/pacific-lawn" 
-            },
-            { 
-              name: "Urban Forestry Inc", 
-              industry: "Landscaping & Urban Planning",
-              location: "Portland, OR", 
-              linkedinUrl: "http://www.linkedin.com/company/urban-forestry" 
-            }
+              { 
+                name: "Pacific Lawn Care", 
+                industry: "Landscaping & Gardening",
+                location: "Seattle, WA", 
+                linkedinUrl: "http://www.linkedin.com/company/pacific-lawn" 
+              },
+              { 
+                name: "Urban Forestry Inc", 
+                industry: "Landscaping & Urban Planning",
+                location: "Portland, OR", 
+                linkedinUrl: "http://www.linkedin.com/company/urban-forestry" 
+              }
             ],
             employees: [
               { name: "John Smith", title: "Landscape Designer", linkedinUrl: "http://linkedin.com/in/johnsmith" },
@@ -435,9 +467,20 @@ const CompanyDetailPage = () => {
               <ul className="divide-y">
                 {employeeData.map((employee, index) => (
                   <li key={index} className="py-3 flex justify-between items-center">
-                    <div>
-                      <h4 className="font-medium">{employee.name}</h4>
-                      <p className="text-sm text-gray-600">{employee.title}</p>
+                    <div className="flex items-center gap-4">
+                      {employee.employee_photo && (
+                        <div className="w-10 h-10 rounded-full overflow-hidden">
+                          <img 
+                            src={employee.employee_photo} 
+                            alt={employee.name} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="font-medium">{employee.name}</h4>
+                        <p className="text-sm text-gray-600">{employee.title}</p>
+                      </div>
                     </div>
                     {employee.linkedinUrl && (
                       <Button 
@@ -446,6 +489,7 @@ const CompanyDetailPage = () => {
                         onClick={() => window.open(employee.linkedinUrl, "_blank")}
                         className="text-blue-600 hover:text-blue-800"
                       >
+                        <ExternalLink className="h-4 w-4 mr-1" />
                         View Profile
                       </Button>
                     )}
