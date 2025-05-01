@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -331,6 +330,98 @@ const CompanyDetailPage = () => {
     }
   };
   
+  const [isFindingEmail, setIsFindingEmail] = useState(false);
+  
+  // Function to find email using the n8n webhook
+  const handleFindEmail = async (contact) => {
+    if (!contact.firstName || !contact.lastName || !company?.name) {
+      toast({
+        title: "Missing Information",
+        description: "Contact first name, last name and company name are required to search for an email.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsFindingEmail(true);
+    console.log("Starting email search for:", contact.firstName, contact.lastName, "at", company.name);
+    
+    try {
+      // Prepare the data to send to the webhook
+      const requestData = {
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        companyName: company.name,
+        companyDomain: company.website ? new URL(company.website).hostname.replace('www.', '') : null,
+        linkedinUrl: contact.linkedin_url
+      };
+
+      console.log("Sending request data:", requestData);
+
+      // Call the n8n webhook to find the email
+      const response = await fetch("https://n8n-service-el78.onrender.com/webhook-test/755b751b-eb85-4350-ae99-2508ad2d3f31", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed with status: ${response.status}`);
+      }
+
+      // Parse the response
+      const data = await response.json();
+      console.log("Email finder response:", data);
+
+      // Check if the email was found
+      if (data && data.email) {
+        // Update the contact record in Supabase
+        const { error } = await supabase
+          .from('contacts')
+          .update({ email: data.email })
+          .eq('id', contact.id);
+
+        if (error) {
+          console.error("Error updating contact:", error);
+          throw new Error("Failed to update contact record");
+        }
+
+        // Update local state
+        const updatedContact = { ...contact, email: data.email };
+        const updatedContacts = contacts.map(c => 
+          c.id === contact.id ? updatedContact : c
+        );
+        setContacts(updatedContacts);
+        
+        // If this was the selected contact, update it
+        if (selectedContact && selectedContact.id === contact.id) {
+          setSelectedContactId(contact.id);
+        }
+
+        toast({
+          title: "Email Found",
+          description: `Found email: ${data.email}`,
+        });
+      } else {
+        toast({
+          title: "No Email Found",
+          description: "Couldn't find an email address for this contact.",
+        });
+      }
+    } catch (error) {
+      console.error("Error finding email:", error);
+      toast({
+        title: "Email Search Failed",
+        description: "There was an error searching for the email. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsFindingEmail(false);
+    }
+  };
+  
   return (
     <Layout>
       <div className="space-y-8">
@@ -519,14 +610,36 @@ const CompanyDetailPage = () => {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
-                  {selectedContact.email && (
-                    <div className="flex items-center">
-                      <Mail className="h-4 w-4 mr-3 text-gray-500" />
-                      <a href={`mailto:${selectedContact.email}`} className="text-blue-500 hover:underline">
-                        {selectedContact.email}
-                      </a>
+                  <div className="flex items-center">
+                    <Mail className="h-4 w-4 mr-3 text-gray-500" />
+                    <div className="flex items-center gap-2">
+                      {selectedContact.email ? (
+                        <a href={`mailto:${selectedContact.email}`} className="text-blue-500 hover:underline">
+                          {selectedContact.email}
+                        </a>
+                      ) : (
+                        <span className="text-gray-500">No email available</span>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleFindEmail(selectedContact)}
+                        disabled={isFindingEmail}
+                        className="h-7 px-2 py-1 ml-2 border border-gray-200"
+                      >
+                        {isFindingEmail ? 
+                          <span className="flex items-center gap-1">
+                            <span className="animate-pulse">●</span> 
+                            Finding...
+                          </span> : 
+                          <span className="flex items-center gap-1">
+                            <Search className="h-3 w-3" /> 
+                            Find Email
+                          </span>
+                        }
+                      </Button>
                     </div>
-                  )}
+                  </div>
                   
                   {selectedContact.phone && (
                     <div className="flex items-center">
