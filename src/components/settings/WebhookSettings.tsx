@@ -13,6 +13,7 @@ import { Save } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // Schema for webhook settings form
 const webhookSettingsSchema = z.object({
@@ -27,6 +28,7 @@ export const WebhookSettings = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   
   // Initialize form
   const form = useForm<WebhookSettingsValues>({
@@ -107,10 +109,8 @@ export const WebhookSettings = () => {
       localStorage.setItem('linkedinEnrichmentWebhook', data.linkedinEnrichmentWebhook || '');
       localStorage.setItem('companyEnrichmentWebhook', data.companyEnrichmentWebhook || '');
       
-      toast({
-        title: "Webhook Settings Saved",
-        description: "Your webhook settings have been successfully saved.",
-      });
+      // Redirect to settings page with saved parameter and tab
+      navigate('/settings?saved=webhooks&tab=webhooks');
     } catch (error) {
       console.error("Error saving webhook settings:", error);
       toast({

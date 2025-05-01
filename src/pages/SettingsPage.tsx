@@ -5,10 +5,26 @@ import { EmailSettings } from "@/components/settings/EmailSettings";
 import { ApiConnectionsManager } from "@/components/settings/ApiConnectionsManager";
 import { WebhookSettings } from "@/components/settings/WebhookSettings";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, Info } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const SettingsPage = () => {
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
+  const savedParam = searchParams.get('saved');
+  
+  useEffect(() => {
+    if (savedParam === 'webhooks') {
+      toast({
+        title: "Webhook Settings Saved",
+        description: "Your webhook settings have been successfully updated.",
+      });
+    }
+  }, [savedParam, toast]);
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -19,7 +35,7 @@ const SettingsPage = () => {
           </p>
         </div>
         
-        <Tabs defaultValue="email">
+        <Tabs defaultValue={searchParams.get('tab') || "email"}>
           <TabsList>
             <TabsTrigger value="email">Email</TabsTrigger>
             <TabsTrigger value="api">API Connections</TabsTrigger>
