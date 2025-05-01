@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -39,6 +38,7 @@ const CompanyDetailPage = () => {
   const [researchSheetOpen, setResearchSheetOpen] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
+  const [isFindingEmail, setIsFindingEmail] = useState(false);
   
   const company = companies.find((c) => c.id === id);
   const companyContacts = contacts.filter((c) => c.companyId === id);
@@ -331,7 +331,7 @@ const CompanyDetailPage = () => {
     }
   };
   
-  const [isFindingEmail, setIsFindingEmail] = useState(false);
+  
   
   // Function to find email using the n8n webhook
   const handleFindEmail = async (contact) => {
