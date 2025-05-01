@@ -8,7 +8,7 @@ import { CompanyResearch } from "@/components/research/CompanyResearch";
 import { PersonalizedOutreach } from "@/components/outreach/PersonalizedOutreach";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Building2, MapPin, Users, Globe, Mail, Phone, Briefcase, Hash, Network } from "lucide-react";
+import { Building2, MapPin, Users, Globe, Mail, Phone, Briefcase, Hash, Network, ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
