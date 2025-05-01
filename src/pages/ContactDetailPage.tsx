@@ -59,6 +59,7 @@ const ContactDetailPage = () => {
     }
 
     setIsFindingEmail(true);
+    console.log("Starting email search for:", contact.firstName, contact.lastName, "at", company.name);
     
     try {
       // Prepare the data to send to the webhook
@@ -69,6 +70,8 @@ const ContactDetailPage = () => {
         companyDomain: company.website ? new URL(company.website).hostname.replace('www.', '') : null,
         linkedinUrl: contact.linkedin_url
       };
+
+      console.log("Sending request data:", requestData);
 
       // Call the n8n webhook to find the email
       const response = await fetch("https://n8n-service-el78.onrender.com/webhook-test/755b751b-eb85-4350-ae99-2508ad2d3f31", {
@@ -183,7 +186,7 @@ const ContactDetailPage = () => {
                         size="sm" 
                         onClick={handleFindEmail}
                         disabled={isFindingEmail}
-                        className="h-7 px-2 py-1"
+                        className="h-7 px-2 py-1 ml-2 border border-gray-200"
                       >
                         {isFindingEmail ? 
                           <span className="flex items-center gap-1">
