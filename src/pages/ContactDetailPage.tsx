@@ -348,15 +348,6 @@ const ContactDetailPage = () => {
     }
   };
   
-  // Format LinkedIn post date
-  const formatPostDate = (timestamp: string) => {
-    if (!timestamp) return "";
-    try {
-      return format(new Date(timestamp), 'MMM d, yyyy');
-    } catch (error) {
-      return timestamp;
-    }
-  };
   
   // The rest of the component remains the same
   return (
