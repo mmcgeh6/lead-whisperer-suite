@@ -33,7 +33,9 @@ export interface Contact {
   lastName: string;
   email: string;
   phone: string;
+  mobilePhone?: string; // Added mobile phone
   title: string;
+  position?: string; // Added position (distinct from title)
   companyId: string;
   createdAt: string;
   updatedAt: string;
@@ -41,10 +43,14 @@ export interface Contact {
   linkedin_url?: string;
   linkedin_bio?: string;
   linkedin_posts?: LinkedInPost[];
-  linkedin_skills?: string[];
+  linkedin_skills?: string[]; // For skills list
   linkedin_education?: string[];
   linkedin_experience?: string[];
   last_enriched?: string;
+  job_start_date?: string; // For job duration calculation
+  address?: string; // Adding address
+  country?: string; // Adding country
+  languages?: string[]; // Adding languages field
 }
 
 export interface LinkedInPost {
