@@ -11,6 +11,7 @@ const DebugConsole: React.FC = () => {
   const [isVisible, setIsVisible] = useState(true);
   const [isMinimized, setIsMinimized] = useState(true);
   const [hasErrors, setHasErrors] = useState(false);
+  const [hasNewLogs, setHasNewLogs] = useState(false);
   
   useEffect(() => {
     // Always show debug console in development or on specific domains
@@ -40,16 +41,18 @@ const DebugConsole: React.FC = () => {
     console.log = (...args) => {
       originalConsole.log(...args);
       const timestamp = new Date().toLocaleTimeString();
+      setHasNewLogs(true);
       setLogs(prev => [...prev, `[${timestamp}] LOG: ${args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ')}`].slice(-100)); // Keep only most recent 100 logs
     };
     
     console.warn = (...args) => {
       originalConsole.warn(...args);
       const timestamp = new Date().toLocaleTimeString();
+      setHasNewLogs(true);
       setLogs(prev => [...prev, `[${timestamp}] WARN: ${args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ')}`].slice(-100));
     };
     
@@ -57,8 +60,13 @@ const DebugConsole: React.FC = () => {
       originalConsole.error(...args);
       const timestamp = new Date().toLocaleTimeString();
       setHasErrors(true);
+      setHasNewLogs(true);
       setLogs(prev => [...prev, `[${timestamp}] ERROR: ${args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        arg instanceof Error 
+          ? `${arg.name}: ${arg.message}\n${arg.stack}` 
+          : typeof arg === 'object' 
+            ? JSON.stringify(arg, null, 2) 
+            : String(arg)
       ).join(' ')}`].slice(-100));
       setIsMinimized(false); // Auto-expand on errors
     };
@@ -84,6 +92,13 @@ const DebugConsole: React.FC = () => {
     };
   }, []);
   
+  // Reset hasNewLogs when expanding the console
+  useEffect(() => {
+    if (!isMinimized) {
+      setHasNewLogs(false);
+    }
+  }, [isMinimized]);
+  
   // Save logs to localStorage when they change
   useEffect(() => {
     if (logs.length > 0) {
@@ -105,6 +120,7 @@ const DebugConsole: React.FC = () => {
   const clearLogs = () => {
     setLogs([]);
     setHasErrors(false);
+    setHasNewLogs(false);
     localStorage.setItem('debugConsoleLogs', JSON.stringify([]));
   };
   
@@ -126,10 +142,10 @@ const DebugConsole: React.FC = () => {
         <Button 
           onClick={() => setIsMinimized(false)}
           variant="outline"
-          className={`bg-gray-800 text-white hover:bg-gray-700 flex items-center ${hasErrors ? 'border-red-500 animate-pulse' : ''}`}
+          className={`bg-gray-800 text-white hover:bg-gray-700 flex items-center ${hasErrors ? 'border-red-500' : ''} ${hasNewLogs ? 'animate-pulse' : ''}`}
         >
-          <ChevronUp className="h-4 w-4 mr-2" />
-          {hasErrors ? 'Show Errors' : 'Show Debug Logs'}
+          <Bug className={`h-4 w-4 mr-2 ${hasErrors ? 'text-red-500' : ''}`} />
+          {hasErrors ? 'Show Errors' : 'Debug Console'}
           <span className={`ml-2 ${hasErrors ? 'bg-red-500' : 'bg-blue-500'} text-white rounded-full w-5 h-5 flex items-center justify-center text-xs`}>
             {logs.length > 0 ? (logs.length > 99 ? '99+' : logs.length) : 0}
           </span>

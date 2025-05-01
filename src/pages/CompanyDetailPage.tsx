@@ -8,19 +8,25 @@ import { CompanyInsights } from "@/components/insights/CompanyInsights";
 import { CompanyResearch } from "@/components/research/CompanyResearch";
 import { PersonalizedOutreach } from "@/components/outreach/PersonalizedOutreach";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, MapPin, Users, Globe, Mail, Phone, Briefcase, Hash } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Building2, MapPin, Users, Globe, Mail, Phone, Briefcase, Hash, Network } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
+import { SimilarCompanies } from "@/components/insights/SimilarCompanies";
 
 const CompanyDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { companies, contacts } = useAppContext();
+  const { companies, contacts, updateCompany } = useAppContext();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [researchSheetOpen, setResearchSheetOpen] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
+  const [employeeData, setEmployeeData] = useState<any[]>([]);
   
   const company = companies.find((c) => c.id === id);
   const companyContacts = contacts.filter((c) => c.companyId === id);
@@ -43,6 +49,72 @@ const CompanyDetailPage = () => {
   const handleContactSelect = (contactId: string) => {
     setSelectedContactId(contactId);
     setContactDialogOpen(true);
+  };
+  
+  const handleEnrichCompany = async () => {
+    if (!company.linkedin_url) {
+      toast({
+        title: "LinkedIn URL Missing",
+        description: "This company doesn't have a LinkedIn URL. Please add it first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsEnriching(true);
+    const webhookUrl = "https://n8n-service-el78.onrender.com/webhook/af95b526-404c-4a13-9ca2-2d918b7d4e90";
+
+    try {
+      console.log("Enriching company with LinkedIn URL:", company.linkedin_url);
+      
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ linkedinUrl: company.linkedin_url })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Enrichment data received:", data);
+      
+      // Extract similar companies and employee data
+      if (data.similarCompanies && Array.isArray(data.similarCompanies)) {
+        setSimilarCompanies(data.similarCompanies);
+      }
+      
+      if (data.employees && Array.isArray(data.employees)) {
+        setEmployeeData(data.employees);
+        
+        // Add employees as contacts if they don't exist yet
+        if (data.employees.length > 0) {
+          // In a real app, you would add these as contacts
+          toast({
+            title: "Employee Data Retrieved",
+            description: `Found ${data.employees.length} employees from LinkedIn.`,
+          });
+        }
+      }
+
+      toast({
+        title: "Company Enriched",
+        description: "Successfully retrieved additional data for this company.",
+      });
+      
+    } catch (error) {
+      console.error("Error enriching company:", error);
+      toast({
+        title: "Enrichment Failed",
+        description: "Could not retrieve additional data. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsEnriching(false);
+    }
   };
   
   return (
@@ -107,6 +179,13 @@ const CompanyDetailPage = () => {
                 </div>
               </div>
               <div className="flex gap-3 md:self-start">
+                <Button 
+                  variant="secondary"
+                  onClick={handleEnrichCompany}
+                  disabled={isEnriching || !company.linkedin_url}
+                >
+                  {isEnriching ? "Enriching..." : "Enrich Company"}
+                </Button>
                 <Button variant="outline" onClick={() => window.open(company.website, "_blank")}>
                   Visit Website
                 </Button>
@@ -249,7 +328,12 @@ const CompanyDetailPage = () => {
           </DialogContent>
         </Dialog>
         
-        {/* Module 3: Personalized Outreach (Now at Company Level) */}
+        {/* Similar Companies - New section */}
+        {similarCompanies.length > 0 && (
+          <SimilarCompanies companies={similarCompanies} />
+        )}
+        
+        {/* Module 3: Personalized Outreach */}
         <Card>
           <CardHeader>
             <CardTitle>Personalized Outreach</CardTitle>
@@ -262,7 +346,7 @@ const CompanyDetailPage = () => {
         {/* Module 4: Company Insights */}
         <CompanyInsights companyId={company.id} />
         
-        {/* Module 5: Company Research (New section) */}
+        {/* Module 5: Company Research */}
         <CompanyResearch companyId={company.id} />
       </div>
     </Layout>
