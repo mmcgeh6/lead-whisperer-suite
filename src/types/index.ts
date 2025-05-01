@@ -45,16 +45,11 @@ export interface Contact {
   linkedin_bio?: string;
   linkedin_posts?: LinkedInPost[];
   linkedin_skills?: string[];
-  linkedin_education?: string[];
-  linkedin_experience?: string[];
+  linkedin_education?: string[] | any[];
+  linkedin_experience?: string[] | any[];
   last_enriched?: string;
   job_start_date?: string;
-  address?: string;
-  city?: string;
-  country?: string;
-  languages?: string[];
   headline?: string;
-  about?: string;
 }
 
 export interface LinkedInPost {

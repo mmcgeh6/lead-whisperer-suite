@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ContactList } from "@/components/leads/ContactList";
@@ -297,7 +296,7 @@ export const CompanyContacts = ({
       // Process the received data
       const profileData = Array.isArray(data) ? data[0] : data;
       
-      // Prepare the update data
+      // Prepare the update data - only include fields that exist in our database
       const updateData: Record<string, any> = {
         last_enriched: new Date().toISOString()
       };
@@ -314,52 +313,38 @@ export const CompanyContacts = ({
         updateData.linkedin_skills = profileData.topSkillsByEndorsements.split(", ");
       }
       
-      // Extract languages if available
-      if (Array.isArray(profileData.languages)) {
-        updateData.languages = profileData.languages;
-      }
-      
-      // Extract address and country if available
-      if (profileData.address || profileData.addressWithoutCountry) {
-        updateData.address = profileData.address || profileData.addressWithoutCountry;
-      }
-      
-      if (profileData.country || profileData.addressCountryOnly) {
-        updateData.country = profileData.country || profileData.addressCountryOnly;
-      }
-      
       // Extract position if available
       if (profileData.position || profileData.headline || profileData.jobTitle) {
         updateData.position = profileData.position || profileData.headline || profileData.jobTitle;
       }
-      
-      // Extract mobile number if available
-      if (profileData.mobilePhone || profileData.mobileNumber) {
-        updateData.mobile_phone = profileData.mobilePhone || profileData.mobileNumber;
-      }
-      
-      // Extract job start date if available
-      if (profileData.jobStartDate || (profileData.current_job && profileData.current_job.start_date)) {
-        updateData.job_start_date = profileData.jobStartDate || profileData.current_job.start_date;
-      }
 
       // Extract education and store as formatted strings
-      if (Array.isArray(profileData.education)) {
-        updateData.linkedin_education = profileData.education.map((edu: any) => 
-          `${edu.degree || ''} ${edu.field_of_study || ''} at ${edu.school_name || ''} (${edu.starts_at?.year || ''}-${edu.ends_at?.year || 'Present'})`
-        );
+      if (Array.isArray(profileData.education) || Array.isArray(profileData.educations)) {
+        const educationData = profileData.education || profileData.educations;
+        updateData.linkedin_education = educationData;
       }
 
       // Extract experience and process to ensure it's properly formatted
-      if (Array.isArray(profileData.experiences)) {
-        updateData.linkedin_experience = processExperienceData(profileData.experiences);
+      if (Array.isArray(profileData.experiences) || Array.isArray(profileData.job_history)) {
+        const experienceData = profileData.experiences || profileData.job_history;
+        updateData.linkedin_experience = processExperienceData(experienceData);
       }
 
       // Extract posts and format properly
       if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
         const formattedPosts = formatLinkedInPosts(profileData.posts);
-        // Store as array to work with Supabase jsonb type
         updateData.linkedin_posts = formattedPosts;
+      } else if (profileData.profile_post_text) {
+        // Handle the new format with just a single post
+        const postId = `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        updateData.linkedin_posts = [{
+          id: postId,
+          content: profileData.profile_post_text,
+          timestamp: profileData.profile_posted_at?.date || new Date().toISOString(),
+          likes: profileData.profile_stats?.total_reactions || 0,
+          comments: profileData.profile_stats?.comments || 0,
+          url: null
+        }];
       }
 
       // If no meaningful data was found, notify the user
@@ -375,7 +360,7 @@ export const CompanyContacts = ({
 
       console.log("Updating contact with data:", updateData);
       
-      // Update the contact in Supabase
+      // Update the contact in Supabase - using only fields that exist in our database
       const { error } = await supabase
         .from('contacts')
         .update(updateData)
@@ -395,12 +380,7 @@ export const CompanyContacts = ({
         linkedin_education: updateData.linkedin_education,
         linkedin_posts: updateData.linkedin_posts,
         last_enriched: updateData.last_enriched,
-        mobilePhone: updateData.mobile_phone,
-        address: updateData.address,
-        country: updateData.country,
-        position: updateData.position,
-        job_start_date: updateData.job_start_date,
-        languages: updateData.languages
+        position: updateData.position
       };
       
       const updatedContacts = contacts.map(c => 

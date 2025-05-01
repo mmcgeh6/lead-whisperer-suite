@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -97,7 +98,7 @@ const ContactDetailPage = () => {
       // Process the received data
       const profileData = Array.isArray(data) ? data[0] : data;
       
-      // Prepare the update data
+      // Prepare the update data - only include fields that exist in our database schema
       const updateData: Record<string, any> = {
         last_enriched: new Date().toISOString()
       };
@@ -119,6 +120,8 @@ const ContactDetailPage = () => {
         updateData.linkedin_education = profileData.education.map(edu => 
           `${edu.degree || ''} ${edu.field_of_study || ''} at ${edu.school_name || ''} (${edu.starts_at?.year || ''}-${edu.ends_at?.year || 'Present'})`
         );
+      } else if (Array.isArray(profileData.educations)) {
+        updateData.linkedin_education = profileData.educations;
       }
 
       // Extract experience
@@ -126,20 +129,22 @@ const ContactDetailPage = () => {
         updateData.linkedin_experience = profileData.experiences.map(exp => 
           `${exp.title || ''} at ${exp.company || ''} (${exp.starts_at?.month ? exp.starts_at.month + '/' : ''}${exp.starts_at?.year || ''}-${exp.ends_at?.month ? exp.ends_at.month + '/' : ''}${exp.ends_at?.year || 'Present'})`
         );
-      } else if (Array.isArray(profileData.experiences)) {
-        const formattedExperiences = [];
-        for (const exp of profileData.experiences) {
-          if (exp.title && (exp.subtitle || exp.caption)) {
-            formattedExperiences.push(`${exp.title} at ${exp.subtitle || ''} ${exp.caption || ''}`);
-          }
-        }
-        if (formattedExperiences.length > 0) {
-          updateData.linkedin_experience = formattedExperiences;
-        }
+      } else if (Array.isArray(profileData.job_history)) {
+        updateData.linkedin_experience = profileData.job_history;
       }
 
       // Extract posts if available
-      if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
+      if (profileData.profile_post_text) {
+        // Handle the new format with single post
+        updateData.linkedin_posts = [{
+          id: `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: profileData.profile_post_text,
+          timestamp: profileData.profile_posted_at?.date || new Date().toISOString(),
+          likes: profileData.profile_stats?.total_reactions || 0,
+          comments: profileData.profile_stats?.comments || 0,
+          url: null
+        }];
+      } else if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
         updateData.linkedin_posts = profileData.posts.map(post => ({
           id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           content: post.content || post.text || '',

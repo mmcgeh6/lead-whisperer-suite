@@ -528,7 +528,7 @@ export const useEnrichment = (company: Company | null) => {
           return;
         }
         
-        // Prepare the update data
+        // Prepare the update data - only include fields that exist in the database
         const updateData: Record<string, any> = {
           last_enriched: new Date().toISOString()
         };
@@ -536,13 +536,11 @@ export const useEnrichment = (company: Company | null) => {
         // Extract headline/position
         if (profileData.headline || profileData.position || profileData.jobTitle) {
           updateData.position = profileData.headline || profileData.position || profileData.jobTitle;
-          updateData.headline = profileData.headline || profileData.position || profileData.jobTitle;
         }
 
         // Extract bio/about
         if (profileData.bio || profileData.summary || profileData.about) {
           updateData.linkedin_bio = profileData.bio || profileData.summary || profileData.about;
-          updateData.about = profileData.bio || profileData.summary || profileData.about;
         }
 
         // Extract skills
@@ -562,36 +560,6 @@ export const useEnrichment = (company: Company | null) => {
         if (Array.isArray(profileData.job_history || profileData.experiences)) {
           const experienceData = profileData.job_history || profileData.experiences;
           updateData.linkedin_experience = experienceData;
-        }
-
-        // Extract languages
-        if (Array.isArray(profileData.languages)) {
-          updateData.languages = profileData.languages;
-        }
-
-        // Extract mobile phone
-        if (profileData.mobileNumber || profileData.mobilePhone) {
-          updateData.mobile_phone = profileData.mobileNumber || profileData.mobilePhone;
-        }
-
-        // Extract address information
-        if (profileData.address || profileData.addressWithoutCountry) {
-          updateData.address = profileData.address || profileData.addressWithoutCountry;
-        }
-
-        // Extract city if available
-        if (profileData.city) {
-          updateData.city = profileData.city;
-        }
-
-        // Extract country
-        if (profileData.country || profileData.addressCountryOnly) {
-          updateData.country = profileData.country || profileData.addressCountryOnly;
-        }
-
-        // Extract job start date
-        if (profileData.jobStartDate || (profileData.current_job && profileData.current_job.start_date)) {
-          updateData.job_start_date = profileData.jobStartDate || profileData.current_job.start_date;
         }
 
         // Extract posts if available - handle the new format
@@ -659,20 +627,12 @@ export const useEnrichment = (company: Company | null) => {
         const updatedContact = { 
           ...contact, 
           linkedin_bio: updateData.linkedin_bio,
-          about: updateData.about,
-          headline: updateData.headline,
+          position: updateData.position,
           linkedin_skills: updateData.linkedin_skills,
           linkedin_education: updateData.linkedin_education,
           linkedin_experience: updateData.linkedin_experience,
           linkedin_posts: updateData.linkedin_posts,
-          last_enriched: updateData.last_enriched,
-          mobilePhone: updateData.mobile_phone,
-          address: updateData.address,
-          city: updateData.city,
-          country: updateData.country,
-          position: updateData.position,
-          job_start_date: updateData.job_start_date,
-          languages: updateData.languages
+          last_enriched: updateData.last_enriched
         };
         
         const updatedContacts = contacts.map(c => 
