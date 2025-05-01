@@ -66,8 +66,73 @@ const CompanyDetailPage = () => {
     try {
       console.log("Enriching company with LinkedIn URL:", company.linkedin_url);
       
-      // Create synthetic data for testing since the webhook is failing
-      // Remove this in production and uncomment the fetch code below
+      // Use test webhook URL
+      const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90";
+      
+      // Add timeout for the request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ linkedinUrl: company.linkedin_url }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`Failed with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Enrichment data received:", data);
+      
+      // Process the received data
+      if (data.similarCompanies && Array.isArray(data.similarCompanies)) {
+        setSimilarCompanies(data.similarCompanies);
+        toast({
+          title: "Similar Companies Found",
+          description: `Found ${data.similarCompanies.length} similar companies.`,
+        });
+      }
+      
+      if (data.employees && Array.isArray(data.employees)) {
+        setEmployeeData(data.employees);
+        toast({
+          title: "Employee Data Retrieved",
+          description: `Found ${data.employees.length} employees from LinkedIn.`,
+        });
+      }
+
+      toast({
+        title: "Company Enriched",
+        description: "Successfully retrieved additional data for this company.",
+      });
+      
+    } catch (error) {
+      console.error("Error enriching company:", error);
+      
+      // If the error is related to network connectivity or CORS
+      if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+        toast({
+          title: "Network Error",
+          description: "Could not connect to the enrichment service. Please check your internet connection and try again.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Enrichment Failed",
+          description: "Could not retrieve additional data. Please try again later.",
+          variant: "destructive"
+        });
+      }
+      
+      // Fall back to mock data for testing purposes
+      // Comment out this section when the webhook is working correctly
       setTimeout(() => {
         const mockData = {
           similarCompanies: [
@@ -106,56 +171,18 @@ const CompanyDetailPage = () => {
           setEmployeeData(mockData.employees);
           
           toast({
-            title: "Employee Data Retrieved",
-            description: `Found ${mockData.employees.length} employees from LinkedIn.`,
+            title: "Employee Data Retrieved (Mock)",
+            description: `Using sample data for testing.`,
           });
         }
 
         toast({
-          title: "Company Enriched",
-          description: "Successfully retrieved additional data for this company.",
+          title: "Using Sample Data",
+          description: "Using mock data since the webhook couldn't be reached.",
         });
-        
-        setIsEnriching(false);
       }, 2000);
-      
-      /* Uncomment this section when the webhook is working correctly
-      // Use enhanced fetch with proper error handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch("https://n8n-service-el78.onrender.com/webhook/af95b526-404c-4a13-9ca2-2d918b7d4e90", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify({ linkedinUrl: company.linkedin_url }),
-        signal: controller.signal,
-        mode: 'no-cors', // This should help with CORS issues
-      });
-      
-      clearTimeout(timeoutId);
-
-      // Since we're using no-cors, we won't get a JSON response
-      // In a real implementation, you would need to handle this differently
-      // Maybe use a different proxy or backend service to make the call
-      
-      toast({
-        title: "Request Sent",
-        description: "The enrichment request was sent. Results will appear when available.",
-      });
-      
-      // In a real implementation, you might poll for results or use a WebSocket
-      */
-      
-    } catch (error) {
-      console.error("Error enriching company:", error);
-      toast({
-        title: "Enrichment Failed",
-        description: "Could not retrieve additional data. Please try again later.",
-        variant: "destructive"
-      });
+    } finally {
+      setIsEnriching(false);
     }
   };
   
@@ -381,6 +408,43 @@ const CompanyDetailPage = () => {
         {/* Similar Companies - New section */}
         {similarCompanies.length > 0 && (
           <SimilarCompanies companies={similarCompanies} />
+        )}
+
+        {/* Employee Data - Display if available */}
+        {employeeData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Employee Insights
+              </CardTitle>
+              <CardDescription>
+                Key employees at {company.name}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="divide-y">
+                {employeeData.map((employee, index) => (
+                  <li key={index} className="py-3 flex justify-between items-center">
+                    <div>
+                      <h4 className="font-medium">{employee.name}</h4>
+                      <p className="text-sm text-gray-600">{employee.title}</p>
+                    </div>
+                    {employee.linkedinUrl && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => window.open(employee.linkedinUrl, "_blank")}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        View Profile
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
         )}
         
         {/* Module 3: Personalized Outreach */}
