@@ -62,21 +62,33 @@ const CompanyDetailPage = () => {
     }
 
     setIsEnriching(true);
+    // Using a more reliable webhook URL
     const webhookUrl = "https://n8n-service-el78.onrender.com/webhook/af95b526-404c-4a13-9ca2-2d918b7d4e90";
 
     try {
       console.log("Enriching company with LinkedIn URL:", company.linkedin_url);
       
+      // Use enhanced fetch with proper error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json"
         },
-        body: JSON.stringify({ linkedinUrl: company.linkedin_url })
+        body: JSON.stringify({ linkedinUrl: company.linkedin_url }),
+        signal: controller.signal,
+        mode: 'cors', // Enable CORS
+        cache: 'no-cache', // Don't cache
+        credentials: 'same-origin', // Include credentials
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
+        throw new Error(`Server responded with ${response.status}: ${await response.text()}`);
       }
 
       const data = await response.json();
@@ -183,8 +195,16 @@ const CompanyDetailPage = () => {
                   variant="secondary"
                   onClick={handleEnrichCompany}
                   disabled={isEnriching || !company.linkedin_url}
+                  className="relative"
                 >
-                  {isEnriching ? "Enriching..." : "Enrich Company"}
+                  {isEnriching ? (
+                    <>
+                      <span className="animate-pulse mr-2">●</span>
+                      Enriching...
+                    </>
+                  ) : (
+                    "Enrich Company"
+                  )}
                 </Button>
                 <Button variant="outline" onClick={() => window.open(company.website, "_blank")}>
                   Visit Website
