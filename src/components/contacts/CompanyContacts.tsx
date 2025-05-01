@@ -1,3 +1,4 @@
+
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ContactList } from "@/components/leads/ContactList";
@@ -337,6 +338,16 @@ export const CompanyContacts = ({
       if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
         const formattedPosts = formatLinkedInPosts(profileData.posts);
         updateData.linkedin_posts = formattedPosts;
+      } else if (profileData.profile_post_text) {
+        // Handle single post format
+        updateData.linkedin_posts = [{
+          id: `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: profileData.profile_post_text,
+          timestamp: profileData.profile_posted_at?.date || new Date().toISOString(),
+          likes: profileData.profile_stats?.total_reactions || 0,
+          comments: profileData.profile_stats?.comments || 0,
+          url: null
+        }];
       }
 
       // If no meaningful data was found, notify the user

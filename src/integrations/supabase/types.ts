@@ -193,11 +193,17 @@ export type Database = {
       }
       contacts: {
         Row: {
+          about: string | null
+          address: string | null
+          city: string | null
           company_id: string
+          country: string | null
           created_at: string
           email: string | null
           first_name: string
+          headline: string | null
           id: string
+          job_start_date: string | null
           last_enriched: string | null
           last_name: string
           linkedin_bio: string | null
@@ -206,17 +212,24 @@ export type Database = {
           linkedin_posts: Json | null
           linkedin_skills: string[] | null
           linkedin_url: string | null
+          mobile_phone: string | null
           notes: string | null
           phone: string | null
           position: string | null
           updated_at: string
         }
         Insert: {
+          about?: string | null
+          address?: string | null
+          city?: string | null
           company_id: string
+          country?: string | null
           created_at?: string
           email?: string | null
           first_name: string
+          headline?: string | null
           id?: string
+          job_start_date?: string | null
           last_enriched?: string | null
           last_name: string
           linkedin_bio?: string | null
@@ -225,17 +238,24 @@ export type Database = {
           linkedin_posts?: Json | null
           linkedin_skills?: string[] | null
           linkedin_url?: string | null
+          mobile_phone?: string | null
           notes?: string | null
           phone?: string | null
           position?: string | null
           updated_at?: string
         }
         Update: {
+          about?: string | null
+          address?: string | null
+          city?: string | null
           company_id?: string
+          country?: string | null
           created_at?: string
           email?: string | null
           first_name?: string
+          headline?: string | null
           id?: string
+          job_start_date?: string | null
           last_enriched?: string | null
           last_name?: string
           linkedin_bio?: string | null
@@ -244,6 +264,7 @@ export type Database = {
           linkedin_posts?: Json | null
           linkedin_skills?: string[] | null
           linkedin_url?: string | null
+          mobile_phone?: string | null
           notes?: string | null
           phone?: string | null
           position?: string | null

@@ -50,6 +50,16 @@ const ContactDetailPage = () => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
   
+  // Format LinkedIn post date
+  const formatPostDate = (timestamp: string) => {
+    if (!timestamp) return "";
+    try {
+      return format(new Date(timestamp), 'MMM d, yyyy');
+    } catch (error) {
+      return timestamp;
+    }
+  };
+  
   // Function to enrich contact with LinkedIn data
   const handleEnrichContact = async () => {
     if (!contact.linkedin_url) {
@@ -107,17 +117,25 @@ const ContactDetailPage = () => {
         updateData.mobile_phone = profileData.mobileNumber;
       }
 
+      // Extract headline/position
+      if (profileData.headline || profileData.position || profileData.jobTitle) {
+        updateData.headline = profileData.headline || profileData.position || profileData.jobTitle;
+        updateData.position = profileData.headline || profileData.position || profileData.jobTitle;
+      }
+
       // Extract bio/about
       if (profileData.bio || profileData.summary || profileData.about) {
         updateData.linkedin_bio = profileData.bio || profileData.summary || profileData.about;
-        updateData.about = profileData.about;
+        updateData.about = profileData.about || profileData.bio || profileData.summary;
       }
 
       // Extract location info if available
       if (profileData.location || profileData.addressWithoutCountry) {
+        updateData.address = profileData.addressWithoutCountry || profileData.location;
+        
+        // Try to parse location string into components
         const locationString = profileData.location || profileData.addressWithoutCountry;
-        if (locationString) {
-          // Try to parse location string into components
+        if (locationString && typeof locationString === 'string') {
           if (locationString.includes(",")) {
             const parts = locationString.split(",").map(part => part.trim());
             if (parts.length >= 2) {
@@ -130,6 +148,21 @@ const ContactDetailPage = () => {
             updateData.city = locationString;
           }
         }
+      }
+      
+      // Extract city specifically if available
+      if (profileData.city) {
+        updateData.city = profileData.city;
+      }
+      
+      // Extract country specifically if available
+      if (profileData.country || profileData.addressCountryOnly) {
+        updateData.country = profileData.country || profileData.addressCountryOnly;
+      }
+
+      // Extract job start date if available
+      if (profileData.jobStartDate || (profileData.current_job && profileData.current_job.start_date)) {
+        updateData.job_start_date = profileData.jobStartDate || profileData.current_job.start_date;
       }
 
       // Extract languages if available
@@ -145,21 +178,13 @@ const ContactDetailPage = () => {
       }
 
       // Extract education
-      if (Array.isArray(profileData.education)) {
-        updateData.linkedin_education = profileData.education.map(edu => 
-          `${edu.degree || ''} ${edu.field_of_study || ''} at ${edu.school_name || ''} (${edu.starts_at?.year || ''}-${edu.ends_at?.year || 'Present'})`
-        );
-      } else if (Array.isArray(profileData.educations)) {
-        updateData.linkedin_education = profileData.educations;
+      if (Array.isArray(profileData.education) || Array.isArray(profileData.educations)) {
+        updateData.linkedin_education = profileData.educations || profileData.education;
       }
 
       // Extract experience
-      if (Array.isArray(profileData.experiences)) {
-        updateData.linkedin_experience = profileData.experiences.map(exp => 
-          `${exp.title || ''} at ${exp.company || ''} (${exp.starts_at?.month ? exp.starts_at.month + '/' : ''}${exp.starts_at?.year || ''}-${exp.ends_at?.month ? exp.ends_at.month + '/' : ''}${exp.ends_at?.year || 'Present'})`
-        );
-      } else if (Array.isArray(profileData.job_history)) {
-        updateData.linkedin_experience = profileData.job_history;
+      if (Array.isArray(profileData.experiences) || Array.isArray(profileData.job_history)) {
+        updateData.linkedin_experience = profileData.job_history || profileData.experiences;
       }
 
       // Extract posts if available
