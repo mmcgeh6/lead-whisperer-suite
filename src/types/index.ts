@@ -1,4 +1,3 @@
-
 export interface Company {
   id: string;
   name: string;
@@ -55,6 +54,16 @@ export interface LinkedInPost {
   likes: number;
   comments: number;
   url?: string;
+}
+
+export interface Employee {
+  name: string;
+  title: string;
+  linkedinUrl?: string;
+  employee_name?: string;
+  employee_position?: string;
+  employee_profile_url?: string;
+  employee_photo?: string;
 }
 
 export interface CompanyInsights {
