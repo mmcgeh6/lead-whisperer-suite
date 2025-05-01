@@ -301,9 +301,39 @@ export const CompanyContacts = ({
         last_enriched: new Date().toISOString()
       };
 
-      // Extract bio
+      // Extract mobile number if available
+      if (profileData.mobileNumber) {
+        updateData.mobile_phone = profileData.mobileNumber;
+      }
+
+      // Extract bio/about
       if (profileData.bio || profileData.summary || profileData.about) {
         updateData.linkedin_bio = profileData.bio || profileData.summary || profileData.about;
+        updateData.about = profileData.about;
+      }
+
+      // Extract location info if available
+      if (profileData.location || profileData.addressWithoutCountry) {
+        const locationString = profileData.location || profileData.addressWithoutCountry;
+        if (locationString) {
+          // Try to parse location string into components
+          if (locationString.includes(",")) {
+            const parts = locationString.split(",").map(part => part.trim());
+            if (parts.length >= 2) {
+              updateData.city = parts[0];
+              updateData.country = parts[parts.length - 1];
+            } else {
+              updateData.city = locationString;
+            }
+          } else {
+            updateData.city = locationString;
+          }
+        }
+      }
+
+      // Extract languages if available
+      if (Array.isArray(profileData.languages) && profileData.languages.length > 0) {
+        updateData.languages = profileData.languages;
       }
 
       // Extract skills and ensure they are properly formatted
@@ -372,16 +402,14 @@ export const CompanyContacts = ({
       }
 
       // Update local state
-      const updatedContact = { 
-        ...contact,
-        linkedin_bio: updateData.linkedin_bio,
-        linkedin_skills: updateData.linkedin_skills,
-        linkedin_experience: updateData.linkedin_experience,
-        linkedin_education: updateData.linkedin_education,
-        linkedin_posts: updateData.linkedin_posts,
-        last_enriched: updateData.last_enriched,
-        position: updateData.position
-      };
+      const updatedContact = { ...contact };
+
+      // Only update fields that were in the updateData object
+      for (const [key, value] of Object.entries(updateData)) {
+        // Convert snake_case keys to camelCase for the contact object
+        const camelKey = key.replace(/_([a-z])/g, (m, p1) => p1.toUpperCase());
+        (updatedContact as any)[camelKey] = value;
+      }
       
       const updatedContacts = contacts.map(c => 
         c.id === contact.id ? updatedContact : c

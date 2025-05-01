@@ -1,4 +1,3 @@
-
 export interface Company {
   id: string;
   name: string;
@@ -50,6 +49,11 @@ export interface Contact {
   last_enriched?: string;
   job_start_date?: string;
   headline?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  languages?: string[] | any[];
+  about?: string;
 }
 
 export interface LinkedInPost {

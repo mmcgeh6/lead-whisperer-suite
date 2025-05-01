@@ -208,6 +208,11 @@ export const ContactDetailDialog = ({
           return lang.name || lang.language;
         }
         
+        // Handle case with title property (from LinkedIn format)
+        if (lang.title) {
+          return lang.title;
+        }
+        
         // Handle proficiency level if available
         if (lang.language && lang.proficiency) {
           return `${lang.language} (${lang.proficiency})`;
@@ -255,11 +260,13 @@ export const ContactDetailDialog = ({
   };
   
   const jobDuration = getJobDuration();
-  const formattedExperience = contact.linkedin_experience ? formatExperienceData(contact.linkedin_experience) : [];
-  const formattedSkills = contact.linkedin_skills ? formatSkills(contact.linkedin_skills) : [];
-  const formattedEducation = contact.linkedin_education ? formatEducation(contact.linkedin_education) : [];
-  const formattedLanguages = contact.languages ? formatLanguages(contact.languages) : [];
+  const formattedExperience = contact?.linkedin_experience ? formatExperienceData(contact.linkedin_experience) : [];
+  const formattedSkills = contact?.linkedin_skills ? formatSkills(contact.linkedin_skills) : [];
+  const formattedEducation = contact?.linkedin_education ? formatEducation(contact.linkedin_education) : [];
+  const formattedLanguages = contact?.languages ? formatLanguages(contact.languages) : [];
   const formattedPosts = safeLinkedInPosts();
+  const contactBio = contact?.about || contact?.linkedin_bio;
+  const contactLocation = contact?.address || contact?.city || contact?.country;
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -267,17 +274,17 @@ export const ContactDetailDialog = ({
         <DialogHeader>
           <DialogTitle className="text-xl">Contact Details</DialogTitle>
           <DialogDescription>
-            View and manage contact information for {contact.firstName} {contact.lastName}
+            View and manage contact information for {contact?.firstName} {contact?.lastName}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6">
           <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
             <div>
               <h2 className="text-2xl font-semibold">
-                {contact.firstName} {contact.lastName}
+                {contact?.firstName} {contact?.lastName}
               </h2>
               <p className="text-gray-600">
-                {contact.headline || contact.position || contact.title}
+                {contact?.headline || contact?.position || contact?.title}
                 {jobDuration && (
                   <span className="ml-2 text-xs text-gray-500">
                     ({jobDuration})
@@ -290,7 +297,7 @@ export const ContactDetailDialog = ({
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => onFindEmail(contact)}
+                onClick={() => onFindEmail(contact!)}
                 disabled={isFindingEmail}
               >
                 {isFindingEmail ? 
@@ -307,8 +314,8 @@ export const ContactDetailDialog = ({
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => onEnrichContact(contact)}
-                disabled={isEnrichingContact || !contact.linkedin_url}
+                onClick={() => onEnrichContact(contact!)}
+                disabled={isEnrichingContact || !contact?.linkedin_url}
               >
                 {isEnrichingContact ? 
                   <span className="flex items-center gap-1">
@@ -339,7 +346,7 @@ export const ContactDetailDialog = ({
                     <div>
                       <div className="font-medium">Email</div>
                       <div>
-                        {contact.email ? (
+                        {contact?.email ? (
                           <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">
                             {contact.email}
                           </a>
@@ -350,9 +357,9 @@ export const ContactDetailDialog = ({
                     </div>
                   </div>
                   
-                  {(contact.phone || contact.mobilePhone) && (
+                  {(contact?.phone || contact?.mobilePhone) && (
                     <>
-                      {contact.phone && (
+                      {contact?.phone && (
                         <div className="flex items-start gap-3">
                           <Phone className="h-5 w-5 text-gray-500 mt-0.5" />
                           <div>
@@ -366,7 +373,7 @@ export const ContactDetailDialog = ({
                         </div>
                       )}
                       
-                      {contact.mobilePhone && (
+                      {contact?.mobilePhone && (
                         <div className="flex items-start gap-3">
                           <Phone className="h-5 w-5 text-gray-500 mt-0.5" />
                           <div>
@@ -382,12 +389,12 @@ export const ContactDetailDialog = ({
                     </>
                   )}
                   
-                  {(contact.position || contact.headline) && (
+                  {(contact?.position || contact?.headline) && (
                     <div className="flex items-start gap-3">
                       <Briefcase className="h-5 w-5 text-gray-500 mt-0.5" />
                       <div>
                         <div className="font-medium">Position</div>
-                        <div>{contact.position || contact.headline}</div>
+                        <div>{contact?.position || contact?.headline}</div>
                         {jobDuration && (
                           <div className="text-sm text-gray-500">
                             Duration: {jobDuration}
@@ -399,21 +406,21 @@ export const ContactDetailDialog = ({
                 </div>
                 
                 <div className="space-y-4">
-                  {(contact.address || contact.city || contact.country) && (
+                  {contactLocation && (
                     <div className="flex items-start gap-3">
                       <MapPin className="h-5 w-5 text-gray-500 mt-0.5" />
                       <div>
-                        <div className="font-medium">Address</div>
+                        <div className="font-medium">Location</div>
                         <div>
-                          {contact.address && <div>{contact.address}</div>}
-                          {contact.city && <div>{contact.city}</div>}
-                          {contact.country && <div>{contact.country}</div>}
+                          {contact?.address && <div>{contact.address}</div>}
+                          {contact?.city && <div>{contact.city}</div>}
+                          {contact?.country && <div>{contact.country}</div>}
                         </div>
                       </div>
                     </div>
                   )}
                   
-                  {contact.linkedin_url && (
+                  {contact?.linkedin_url && (
                     <div className="flex items-start gap-3">
                       <ExternalLink className="h-5 w-5 text-gray-500 mt-0.5" />
                       <div>
@@ -448,7 +455,7 @@ export const ContactDetailDialog = ({
                     </div>
                   )}
                   
-                  {contact.last_enriched && (
+                  {contact?.last_enriched && (
                     <div className="flex items-start gap-3">
                       <Clock className="h-5 w-5 text-gray-500 mt-0.5" />
                       <div>
@@ -464,18 +471,18 @@ export const ContactDetailDialog = ({
             </TabsContent>
             
             <TabsContent value="profile" className="space-y-6">
-              {(contact.linkedin_bio || contact.about || 
+              {(contactBio || 
                 formattedSkills.length > 0 || 
                 formattedExperience.length > 0 || 
                 formattedEducation.length > 0 || 
                 formattedPosts.length > 0) ? (
                 <div className="space-y-8">
                   {/* LinkedIn Bio/About */}
-                  {(contact.about || contact.linkedin_bio) && (
+                  {contactBio && (
                     <div>
                       <h3 className="text-lg font-medium mb-3">About</h3>
                       <p className="text-gray-700 whitespace-pre-line">
-                        {contact.about || contact.linkedin_bio}
+                        {contactBio}
                       </p>
                     </div>
                   )}
@@ -531,10 +538,10 @@ export const ContactDetailDialog = ({
                           <div key={post.id || index} className="border rounded-md p-4">
                             <div className="flex items-center gap-2 mb-2">
                               <Avatar className="h-8 w-8">
-                                <AvatarFallback>{getInitials(contact.firstName, contact.lastName)}</AvatarFallback>
+                                <AvatarFallback>{getInitials(contact!.firstName, contact!.lastName)}</AvatarFallback>
                               </Avatar>
                               <div>
-                                <div className="font-medium">{contact.firstName} {contact.lastName}</div>
+                                <div className="font-medium">{contact?.firstName} {contact?.lastName}</div>
                                 <div className="text-xs text-gray-500">
                                   {formatPostDate(post.timestamp)}
                                 </div>
@@ -565,9 +572,9 @@ export const ContactDetailDialog = ({
               ) : (
                 <div className="text-center py-8">
                   <p className="text-gray-500 mb-4">No LinkedIn profile data available.</p>
-                  {contact.linkedin_url ? (
+                  {contact?.linkedin_url ? (
                     <Button 
-                      onClick={() => onEnrichContact(contact)} 
+                      onClick={() => onEnrichContact(contact)}
                       disabled={isEnrichingContact}
                     >
                       {isEnrichingContact ? 
@@ -594,7 +601,7 @@ export const ContactDetailDialog = ({
               <div className="space-y-2">
                 <h3 className="text-lg font-medium mb-2">Notes</h3>
                 <div className="border rounded-md p-4 bg-gray-50 min-h-[100px] whitespace-pre-line">
-                  {contact.notes || "No notes available for this contact."}
+                  {contact?.notes || "No notes available for this contact."}
                 </div>
               </div>
             </TabsContent>
@@ -603,17 +610,17 @@ export const ContactDetailDialog = ({
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button 
               variant="outline" 
-              onClick={() => navigate(`/outreach/email?contactId=${contact.id}`)}
+              onClick={() => navigate(`/outreach/email?contactId=${contact?.id}`)}
             >
               Send Email
             </Button>
             <Button 
               variant="outline"
-              onClick={() => navigate(`/outreach/call-script?contactId=${contact.id}`)}
+              onClick={() => navigate(`/outreach/call-script?contactId=${contact?.id}`)}
             >
               Generate Call Script
             </Button>
-            <Button onClick={() => navigate(`/contacts/edit/${contact.id}`)}>
+            <Button onClick={() => navigate(`/contacts/edit/${contact?.id}`)}>
               Edit Contact
             </Button>
           </div>
