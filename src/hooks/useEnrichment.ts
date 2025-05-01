@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Company, Contact, Employee, LinkedInPost } from "@/types";
 import { useAppContext } from "@/context/AppContext";
@@ -522,9 +523,16 @@ export const useEnrichment = (company: Company | null) => {
           last_enriched: new Date().toISOString()
         };
 
-        // Extract bio
+        // Extract headline/position
+        if (profileData.headline || profileData.position || profileData.jobTitle) {
+          updateData.position = profileData.headline || profileData.position || profileData.jobTitle;
+          updateData.headline = profileData.headline || profileData.position || profileData.jobTitle;
+        }
+
+        // Extract bio/about
         if (profileData.bio || profileData.summary || profileData.about) {
           updateData.linkedin_bio = profileData.bio || profileData.summary || profileData.about;
+          updateData.about = profileData.bio || profileData.summary || profileData.about;
         }
 
         // Extract skills
@@ -535,38 +543,56 @@ export const useEnrichment = (company: Company | null) => {
         }
 
         // Extract education
-        if (Array.isArray(profileData.education) && profileData.education.length > 0) {
-          updateData.linkedin_education = profileData.education.map((edu: any) => 
-            `${edu.degree || ''} ${edu.field_of_study || ''} at ${edu.school_name || ''} (${edu.starts_at?.year || ''}-${edu.ends_at?.year || 'Present'})`
-          );
+        if (Array.isArray(profileData.educations || profileData.education) && (profileData.educations || profileData.education).length > 0) {
+          const educationData = profileData.educations || profileData.education;
+          updateData.linkedin_education = educationData;
         }
 
         // Extract experience
-        if (Array.isArray(profileData.experiences) && profileData.experiences.length > 0) {
-          updateData.linkedin_experience = profileData.experiences.map((exp: any) => 
-            `${exp.title || ''} at ${exp.company || ''} (${exp.starts_at?.month ? exp.starts_at.month + '/' : ''}${exp.starts_at?.year || ''}-${exp.ends_at?.month ? exp.ends_at.month + '/' : ''}${exp.ends_at?.year || 'Present'})`
-          );
-        } else if (Array.isArray(profileData.experiences)) {
-          const formattedExperiences = [];
-          for (const exp of profileData.experiences) {
-            if (exp.title && (exp.subtitle || exp.caption)) {
-              formattedExperiences.push(`${exp.title} at ${exp.subtitle || ''} ${exp.caption || ''}`);
-            }
-          }
-          if (formattedExperiences.length > 0) {
-            updateData.linkedin_experience = formattedExperiences;
-          }
+        if (Array.isArray(profileData.job_history || profileData.experiences) && (profileData.job_history || profileData.experiences).length > 0) {
+          const experienceData = profileData.job_history || profileData.experiences;
+          updateData.linkedin_experience = experienceData;
+        }
+
+        // Extract languages
+        if (Array.isArray(profileData.languages) && profileData.languages.length > 0) {
+          updateData.languages = profileData.languages;
+        }
+
+        // Extract mobile phone
+        if (profileData.mobilePhone || profileData.mobileNumber) {
+          updateData.mobile_phone = profileData.mobilePhone || profileData.mobileNumber;
+        }
+
+        // Extract address information
+        if (profileData.address || profileData.addressWithoutCountry) {
+          updateData.address = profileData.address || profileData.addressWithoutCountry;
+        }
+
+        // Extract city if available
+        if (profileData.city) {
+          updateData.city = profileData.city;
+        }
+
+        // Extract country
+        if (profileData.country || profileData.addressCountryOnly) {
+          updateData.country = profileData.country || profileData.addressCountryOnly;
+        }
+
+        // Extract job start date
+        if (profileData.jobStartDate || (profileData.current_job && profileData.current_job.start_date)) {
+          updateData.job_start_date = profileData.jobStartDate || profileData.current_job.start_date;
         }
 
         // Extract posts if available
         if (Array.isArray(profileData.posts) && profileData.posts.length > 0) {
-          // Convert LinkedInPost objects to a format suitable for jsonb column
+          // Format posts to match the LinkedInPost type
           const formattedPosts = profileData.posts.map((post: any) => ({
             id: post.id || `post-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            content: post.content || post.text || '',
-            timestamp: post.timestamp || post.date || new Date().toISOString(),
-            likes: post.likes || 0,
-            comments: post.comments || 0,
+            content: post.content || post.text || post.profile_post_text || '',
+            timestamp: post.timestamp || post.date || post.profile_posted_at?.date || new Date().toISOString(),
+            likes: post.likes || post.profile_stats?.total_reactions || 0,
+            comments: post.comments || post.profile_stats?.comments || 0,
             url: post.url || null
           }));
           
@@ -584,6 +610,8 @@ export const useEnrichment = (company: Company | null) => {
           return;
         }
 
+        console.log("Updating contact with data:", updateData);
+
         // Update the contact in Supabase
         const { error } = await supabase
           .from('contacts')
@@ -595,15 +623,24 @@ export const useEnrichment = (company: Company | null) => {
           throw new Error("Failed to update contact with LinkedIn data");
         }
 
-        // Update local state - convert from supabase format to Contact type
+        // Update local state
         const updatedContact = { 
           ...contact, 
           linkedin_bio: updateData.linkedin_bio,
+          about: updateData.about,
+          headline: updateData.headline,
           linkedin_skills: updateData.linkedin_skills,
           linkedin_education: updateData.linkedin_education,
           linkedin_experience: updateData.linkedin_experience,
           linkedin_posts: updateData.linkedin_posts,
-          last_enriched: updateData.last_enriched
+          last_enriched: updateData.last_enriched,
+          mobilePhone: updateData.mobile_phone,
+          address: updateData.address,
+          city: updateData.city,
+          country: updateData.country,
+          position: updateData.position,
+          job_start_date: updateData.job_start_date,
+          languages: updateData.languages
         };
         
         const updatedContacts = contacts.map(c => 

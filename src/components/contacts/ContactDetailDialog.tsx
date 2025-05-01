@@ -15,7 +15,7 @@ import {
   Clock 
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -64,29 +64,31 @@ export const ContactDetailDialog = ({
         return exp;
       }
       
-      // Special handling for objects with title and subComponents structure
+      // Handle complex object with title and subComponents
       if (typeof exp === 'object' && exp !== null && exp.title && exp.subComponents) {
         let formatted = exp.title || '';
         
-        // Extract text from subComponents if possible
-        if (Array.isArray(exp.subComponents) && exp.subComponents.length > 0) {
-          const extractedTexts = exp.subComponents
-            .map((sc: any) => {
-              if (typeof sc === 'string') return sc;
-              if (sc && typeof sc === 'object' && sc.text) return sc.text;
-              return null;
-            })
-            .filter(Boolean)
-            .join(', ');
-          
-          if (extractedTexts) {
-            formatted += `: ${extractedTexts}`;
-          }
-        } else if (typeof exp.subComponents === 'object' && exp.subComponents !== null) {
-          if (exp.subComponents.text) {
-            formatted += `: ${exp.subComponents.text}`;
-          } else {
-            formatted += `: ${JSON.stringify(exp.subComponents)}`;
+        // Handle subComponents safely
+        if (exp.subComponents) {
+          if (typeof exp.subComponents === 'string') {
+            formatted += `: ${exp.subComponents}`;
+          } else if (Array.isArray(exp.subComponents) && exp.subComponents.length > 0) {
+            const extractedTexts = exp.subComponents
+              .map((sc: any) => {
+                if (typeof sc === 'string') return sc;
+                if (sc && typeof sc === 'object' && sc.text) return sc.text;
+                return null;
+              })
+              .filter(Boolean)
+              .join(', ');
+            
+            if (extractedTexts) {
+              formatted += `: ${extractedTexts}`;
+            }
+          } else if (typeof exp.subComponents === 'object' && exp.subComponents !== null) {
+            if (exp.subComponents.text) {
+              formatted += `: ${exp.subComponents.text}`;
+            }
           }
         }
         
@@ -95,10 +97,12 @@ export const ContactDetailDialog = ({
       
       // Handle object format with title, subtitle, etc.
       if (typeof exp === 'object' && exp !== null) {
-        if (exp.title && (exp.subtitle || exp.caption)) {
-          let formatted = exp.title;
+        if (exp.title || exp.role || exp.position) {
+          let formatted = exp.title || exp.role || exp.position || '';
           
-          if (exp.subtitle) {
+          if (exp.company || exp.organization) {
+            formatted += ` at ${exp.company || exp.organization}`;
+          } else if (exp.subtitle) {
             formatted += ` at ${exp.subtitle}`;
           }
           
@@ -106,22 +110,22 @@ export const ContactDetailDialog = ({
             formatted += ` ${exp.caption}`;
           }
           
-          return formatted;
-        }
-        
-        // Handle standard structure
-        if (exp.company || exp.title) {
-          let formatted = exp.title || '';
-          
-          if (exp.company) {
-            formatted += ` at ${exp.company}`;
-          }
-          
-          if (exp.starts_at) {
-            formatted += ` (${exp.starts_at.month ? exp.starts_at.month + '/' : ''}${exp.starts_at.year || ''}-`;
+          // Handle date ranges
+          if (exp.starts_at || exp.startDate || exp.start_date) {
+            const startObj = exp.starts_at || exp.startDate || exp.start_date;
+            const startYear = typeof startObj === 'object' ? startObj.year : 
+                             (typeof startObj === 'string' ? new Date(startObj).getFullYear() : '');
+            const startMonth = typeof startObj === 'object' ? (startObj.month ? startObj.month + '/' : '') : '';
             
-            if (exp.ends_at) {
-              formatted += `${exp.ends_at.month ? exp.ends_at.month + '/' : ''}${exp.ends_at.year || 'Present'})`;
+            formatted += ` (${startMonth}${startYear}-`;
+            
+            if (exp.ends_at || exp.endDate || exp.end_date) {
+              const endObj = exp.ends_at || exp.endDate || exp.end_date;
+              const endYear = typeof endObj === 'object' ? endObj.year : 
+                             (typeof endObj === 'string' ? new Date(endObj).getFullYear() : 'Present');
+              const endMonth = typeof endObj === 'object' ? (endObj.month ? endObj.month + '/' : '') : '';
+              
+              formatted += `${endMonth}${endYear || 'Present'})`;
             } else {
               formatted += 'Present)';
             }
@@ -132,7 +136,7 @@ export const ContactDetailDialog = ({
       }
       
       // As fallback, convert to string
-      return JSON.stringify(exp);
+      return typeof exp === 'object' ? JSON.stringify(exp) : String(exp);
     });
   };
   
@@ -146,7 +150,7 @@ export const ContactDetailDialog = ({
         return skill;
       }
       
-      // Handle object with title and subComponents (LinkedIn skills format)
+      // Handle object with title (LinkedIn skills format)
       if (typeof skill === 'object' && skill !== null) {
         if (skill.title) {
           return skill.title;
@@ -160,6 +164,72 @@ export const ContactDetailDialog = ({
       }
       
       return String(skill);
+    });
+  };
+  
+  // Format education data
+  const formatEducation = (education: any[]): string[] => {
+    if (!Array.isArray(education)) return [];
+    
+    return education.map(edu => {
+      // Handle string format (already formatted)
+      if (typeof edu === 'string') {
+        return edu;
+      }
+      
+      // Handle object format
+      if (typeof edu === 'object' && edu !== null) {
+        let formatted = '';
+        
+        if (edu.degree && edu.field_of_study) {
+          formatted += `${edu.degree} in ${edu.field_of_study}`;
+        } else if (edu.degree) {
+          formatted += edu.degree;
+        } else if (edu.field_of_study) {
+          formatted += edu.field_of_study;
+        }
+        
+        if (edu.school_name || edu.school) {
+          formatted += formatted ? ` at ${edu.school_name || edu.school}` : `${edu.school_name || edu.school}`;
+        }
+        
+        // Add dates if available
+        const startYear = edu.starts_at?.year || (edu.start_date ? new Date(edu.start_date).getFullYear() : '');
+        const endYear = edu.ends_at?.year || (edu.end_date ? new Date(edu.end_date).getFullYear() : 'Present');
+        
+        if (startYear || endYear) {
+          formatted += ` (${startYear}-${endYear})`;
+        }
+        
+        return formatted || JSON.stringify(edu);
+      }
+      
+      // As fallback, return stringified version
+      return String(edu);
+    });
+  };
+  
+  // Format languages to handle different structures
+  const formatLanguages = (languages: any[]): string[] => {
+    if (!Array.isArray(languages)) return [];
+    
+    return languages.map(lang => {
+      if (typeof lang === 'string') {
+        return lang;
+      }
+      
+      if (typeof lang === 'object' && lang !== null) {
+        if (lang.name || lang.language) {
+          return lang.name || lang.language;
+        }
+        
+        // Handle proficiency level if available
+        if (lang.language && lang.proficiency) {
+          return `${lang.language} (${lang.proficiency})`;
+        }
+      }
+      
+      return String(lang);
     });
   };
   
@@ -184,6 +254,16 @@ export const ContactDetailDialog = ({
     }
   };
   
+  // Format post date
+  const formatPostDate = (timestamp: string) => {
+    if (!timestamp) return "";
+    try {
+      return format(new Date(timestamp), 'MMM d, yyyy');
+    } catch (error) {
+      return timestamp;
+    }
+  };
+  
   // Get initials for avatar
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -191,8 +271,10 @@ export const ContactDetailDialog = ({
   
   const jobDuration = getJobDuration();
   const formattedExperience = contact.linkedin_experience ? formatExperienceData(contact.linkedin_experience) : [];
-  const formattedPosts = safeLinkedInPosts();
   const formattedSkills = contact.linkedin_skills ? formatSkills(contact.linkedin_skills) : [];
+  const formattedEducation = contact.linkedin_education ? formatEducation(contact.linkedin_education) : [];
+  const formattedLanguages = contact.languages ? formatLanguages(contact.languages) : [];
+  const formattedPosts = safeLinkedInPosts();
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -210,7 +292,7 @@ export const ContactDetailDialog = ({
                 {contact.firstName} {contact.lastName}
               </h2>
               <p className="text-gray-600">
-                {contact.position || contact.title}
+                {contact.headline || contact.position || contact.title}
                 {jobDuration && (
                   <span className="ml-2 text-xs text-gray-500">
                     ({jobDuration})
@@ -315,12 +397,12 @@ export const ContactDetailDialog = ({
                     </>
                   )}
                   
-                  {contact.position && (
+                  {(contact.position || contact.headline) && (
                     <div className="flex items-start gap-3">
                       <Briefcase className="h-5 w-5 text-gray-500 mt-0.5" />
                       <div>
                         <div className="font-medium">Position</div>
-                        <div>{contact.position}</div>
+                        <div>{contact.position || contact.headline}</div>
                         {jobDuration && (
                           <div className="text-sm text-gray-500">
                             Duration: {jobDuration}
@@ -332,13 +414,14 @@ export const ContactDetailDialog = ({
                 </div>
                 
                 <div className="space-y-4">
-                  {(contact.address || contact.country) && (
+                  {(contact.address || contact.city || contact.country) && (
                     <div className="flex items-start gap-3">
                       <MapPin className="h-5 w-5 text-gray-500 mt-0.5" />
                       <div>
                         <div className="font-medium">Address</div>
                         <div>
                           {contact.address && <div>{contact.address}</div>}
+                          {contact.city && <div>{contact.city}</div>}
                           {contact.country && <div>{contact.country}</div>}
                         </div>
                       </div>
@@ -364,15 +447,15 @@ export const ContactDetailDialog = ({
                     </div>
                   )}
 
-                  {contact.languages && contact.languages.length > 0 && (
+                  {formattedLanguages.length > 0 && (
                     <div className="flex items-start gap-3">
                       <Globe className="h-5 w-5 text-gray-500 mt-0.5" />
                       <div>
                         <div className="font-medium">Languages</div>
                         <div className="flex flex-wrap gap-1">
-                          {contact.languages.map((language, index) => (
+                          {formattedLanguages.map((language, index) => (
                             <Badge key={index} variant="secondary" className="text-xs">
-                              {typeof language === 'string' ? language : JSON.stringify(language)}
+                              {language}
                             </Badge>
                           ))}
                         </div>
@@ -396,17 +479,18 @@ export const ContactDetailDialog = ({
             </TabsContent>
             
             <TabsContent value="profile" className="space-y-6">
-              {contact.linkedin_bio || formattedSkills.length > 0 || formattedExperience.length > 0 || 
-               contact.linkedin_education || formattedPosts.length > 0 ? (
+              {(contact.linkedin_bio || contact.about || 
+                formattedSkills.length > 0 || 
+                formattedExperience.length > 0 || 
+                formattedEducation.length > 0 || 
+                formattedPosts.length > 0) ? (
                 <div className="space-y-8">
-                  {/* LinkedIn Bio */}
-                  {contact.linkedin_bio && (
+                  {/* LinkedIn Bio/About */}
+                  {(contact.linkedin_bio || contact.about) && (
                     <div>
                       <h3 className="text-lg font-medium mb-3">About</h3>
                       <p className="text-gray-700 whitespace-pre-line">
-                        {typeof contact.linkedin_bio === 'string' 
-                          ? contact.linkedin_bio 
-                          : JSON.stringify(contact.linkedin_bio)}
+                        {contact.about || contact.linkedin_bio}
                       </p>
                     </div>
                   )}
@@ -440,20 +524,20 @@ export const ContactDetailDialog = ({
                   )}
                   
                   {/* Education Section */}
-                  {contact.linkedin_education && contact.linkedin_education.length > 0 && (
+                  {formattedEducation.length > 0 && (
                     <div>
                       <h3 className="text-lg font-medium mb-3">Education</h3>
                       <div className="space-y-2">
-                        {contact.linkedin_education.map((edu, index) => (
+                        {formattedEducation.map((edu, index) => (
                           <div key={index} className="border-l-2 border-gray-200 pl-3">
-                            {typeof edu === 'string' ? edu : JSON.stringify(edu)}
+                            {edu}
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
                   
-                  {/* LinkedIn Posts - Now integrated into the LinkedIn profile tab */}
+                  {/* LinkedIn Posts */}
                   {formattedPosts.length > 0 && (
                     <div>
                       <h3 className="text-lg font-medium mb-3">Recent Posts</h3>
@@ -467,7 +551,7 @@ export const ContactDetailDialog = ({
                               <div>
                                 <div className="font-medium">{contact.firstName} {contact.lastName}</div>
                                 <div className="text-xs text-gray-500">
-                                  {post.timestamp ? new Date(post.timestamp).toLocaleDateString() : ""}
+                                  {formatPostDate(post.timestamp)}
                                 </div>
                               </div>
                             </div>
