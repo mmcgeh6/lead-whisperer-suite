@@ -60,11 +60,16 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         }
         
         // Fetch existing research data if available
-        const { data: insights } = await supabase
+        const { data: insights, error } = await supabase
           .from('company_insights')
-          .select('profile_research, ideal_customer_analysis')
+          .select('profile_research, ideal_customer_analysis, notes, approach_notes')
           .eq('company_id', companyId)
           .maybeSingle();
+        
+        if (error) {
+          console.error("Error fetching company insights:", error);
+          return;
+        }
         
         if (insights) {
           if (insights.profile_research) {
@@ -73,6 +78,14 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
           
           if (insights.ideal_customer_analysis) {
             setIdealCustomerAnalysis(insights.ideal_customer_analysis);
+          }
+          
+          if (insights.notes) {
+            setProfileNotes(insights.notes);
+          }
+          
+          if (insights.approach_notes) {
+            setIdealCustomerNotes(insights.approach_notes);
           }
         }
       } catch (error) {
@@ -142,17 +155,39 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
       const content = data.content || data.research || data.profileResearch || data.text || "";
       setProfileResearch(content);
       
-      // Save to database
-      const { error: upsertError } = await supabase
+      // Check if a record already exists for this company
+      const { data: existingRecord } = await supabase
         .from('company_insights')
-        .upsert({
-          company_id: company.id,
-          profile_research: content,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'company_id' });
-        
-      if (upsertError) {
-        console.error("Error saving profile research to database:", upsertError);
+        .select('id')
+        .eq('company_id', company.id)
+        .maybeSingle();
+      
+      if (existingRecord) {
+        // If record exists, update it
+        const { error: updateError } = await supabase
+          .from('company_insights')
+          .update({
+            profile_research: content,
+            updated_at: new Date().toISOString()
+          })
+          .eq('company_id', company.id);
+          
+        if (updateError) {
+          console.error("Error updating profile research in database:", updateError);
+        }
+      } else {
+        // If no record exists, insert a new one
+        const { error: insertError } = await supabase
+          .from('company_insights')
+          .insert({
+            company_id: company.id,
+            profile_research: content,
+            updated_at: new Date().toISOString()
+          });
+          
+        if (insertError) {
+          console.error("Error inserting profile research to database:", insertError);
+        }
       }
       
       toast({
@@ -174,17 +209,39 @@ Key Findings:
 
       setProfileResearch(demoContent);
       
-      // Save demo content to database
-      const { error: upsertError } = await supabase
+      // Check if a record already exists for this company
+      const { data: existingRecord } = await supabase
         .from('company_insights')
-        .upsert({
-          company_id: company.id,
-          profile_research: demoContent,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'company_id' });
+        .select('id')
+        .eq('company_id', company.id)
+        .maybeSingle();
       
-      if (upsertError) {
-        console.error("Error saving demo profile research to database:", upsertError);
+      if (existingRecord) {
+        // If record exists, update it
+        const { error: updateError } = await supabase
+          .from('company_insights')
+          .update({
+            profile_research: demoContent,
+            updated_at: new Date().toISOString()
+          })
+          .eq('company_id', company.id);
+          
+        if (updateError) {
+          console.error("Error updating demo profile research in database:", updateError);
+        }
+      } else {
+        // If no record exists, insert a new one
+        const { error: insertError } = await supabase
+          .from('company_insights')
+          .insert({
+            company_id: company.id,
+            profile_research: demoContent,
+            updated_at: new Date().toISOString()
+          });
+          
+        if (insertError) {
+          console.error("Error inserting demo profile research to database:", insertError);
+        }
       }
       
       toast({
@@ -256,17 +313,39 @@ Key Findings:
       const content = data.content || data.analysis || data.idealCustomerAnalysis || data.text || "";
       setIdealCustomerAnalysis(content);
       
-      // Save to database
-      const { error: upsertError } = await supabase
+      // Check if a record already exists for this company
+      const { data: existingRecord } = await supabase
         .from('company_insights')
-        .upsert({
-          company_id: company.id,
-          ideal_customer_analysis: content,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'company_id' });
-        
-      if (upsertError) {
-        console.error("Error saving ideal customer analysis to database:", upsertError);
+        .select('id')
+        .eq('company_id', company.id)
+        .maybeSingle();
+      
+      if (existingRecord) {
+        // If record exists, update it
+        const { error: updateError } = await supabase
+          .from('company_insights')
+          .update({
+            ideal_customer_analysis: content,
+            updated_at: new Date().toISOString()
+          })
+          .eq('company_id', company.id);
+          
+        if (updateError) {
+          console.error("Error updating ideal customer analysis in database:", updateError);
+        }
+      } else {
+        // If no record exists, insert a new one
+        const { error: insertError } = await supabase
+          .from('company_insights')
+          .insert({
+            company_id: company.id,
+            ideal_customer_analysis: content,
+            updated_at: new Date().toISOString()
+          });
+          
+        if (insertError) {
+          console.error("Error inserting ideal customer analysis to database:", insertError);
+        }
       }
       
       toast({
@@ -300,17 +379,39 @@ Buying Behavior:
 
       setIdealCustomerAnalysis(demoContent);
       
-      // Save demo content to database
-      const { error: upsertError } = await supabase
+      // Check if a record already exists for this company
+      const { data: existingRecord } = await supabase
         .from('company_insights')
-        .upsert({
-          company_id: company.id,
-          ideal_customer_analysis: demoContent,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'company_id' });
+        .select('id')
+        .eq('company_id', company.id)
+        .maybeSingle();
       
-      if (upsertError) {
-        console.error("Error saving demo ideal customer analysis to database:", upsertError);
+      if (existingRecord) {
+        // If record exists, update it
+        const { error: updateError } = await supabase
+          .from('company_insights')
+          .update({
+            ideal_customer_analysis: demoContent,
+            updated_at: new Date().toISOString()
+          })
+          .eq('company_id', company.id);
+          
+        if (updateError) {
+          console.error("Error updating demo ideal customer analysis in database:", updateError);
+        }
+      } else {
+        // If no record exists, insert a new one
+        const { error: insertError } = await supabase
+          .from('company_insights')
+          .insert({
+            company_id: company.id,
+            ideal_customer_analysis: demoContent,
+            updated_at: new Date().toISOString()
+          });
+          
+        if (insertError) {
+          console.error("Error inserting demo ideal customer analysis to database:", insertError);
+        }
       }
       
       toast({
@@ -325,14 +426,42 @@ Buying Behavior:
   
   const saveProfileNotes = async () => {
     try {
-      // Save notes to Supabase
-      await supabase
+      // Check if a record already exists for this company
+      const { data: existingRecord } = await supabase
         .from('company_insights')
-        .upsert({
-          company_id: company.id,
-          notes: profileNotes,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'company_id' });
+        .select('id')
+        .eq('company_id', company.id)
+        .maybeSingle();
+      
+      if (existingRecord) {
+        // If record exists, update it
+        const { error: updateError } = await supabase
+          .from('company_insights')
+          .update({
+            notes: profileNotes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('company_id', company.id);
+          
+        if (updateError) {
+          console.error("Error updating profile notes in database:", updateError);
+          throw updateError;
+        }
+      } else {
+        // If no record exists, insert a new one
+        const { error: insertError } = await supabase
+          .from('company_insights')
+          .insert({
+            company_id: company.id,
+            notes: profileNotes,
+            updated_at: new Date().toISOString()
+          });
+          
+        if (insertError) {
+          console.error("Error inserting profile notes to database:", insertError);
+          throw insertError;
+        }
+      }
       
       toast({
         title: "Research Notes Saved",
@@ -350,14 +479,42 @@ Buying Behavior:
   
   const saveIdealCustomerNotes = async () => {
     try {
-      // Save notes to Supabase
-      await supabase
+      // Check if a record already exists for this company
+      const { data: existingRecord } = await supabase
         .from('company_insights')
-        .upsert({
-          company_id: company.id,
-          approach_notes: idealCustomerNotes,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'company_id' });
+        .select('id')
+        .eq('company_id', company.id)
+        .maybeSingle();
+      
+      if (existingRecord) {
+        // If record exists, update it
+        const { error: updateError } = await supabase
+          .from('company_insights')
+          .update({
+            approach_notes: idealCustomerNotes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('company_id', company.id);
+          
+        if (updateError) {
+          console.error("Error updating ideal customer notes in database:", updateError);
+          throw updateError;
+        }
+      } else {
+        // If no record exists, insert a new one
+        const { error: insertError } = await supabase
+          .from('company_insights')
+          .insert({
+            company_id: company.id,
+            approach_notes: idealCustomerNotes,
+            updated_at: new Date().toISOString()
+          });
+          
+        if (insertError) {
+          console.error("Error inserting ideal customer notes to database:", insertError);
+          throw insertError;
+        }
+      }
       
       toast({
         title: "Analysis Notes Saved",
@@ -512,4 +669,3 @@ Buying Behavior:
     </Card>
   );
 };
-
