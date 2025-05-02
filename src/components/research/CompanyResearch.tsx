@@ -53,11 +53,15 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         
         // Check localStorage as fallback
         if (!profileResearchWebhookConfigured) {
-          setProfileResearchWebhookConfigured(!!localStorage.getItem('profile_research_webhook'));
+          const localWebhook = localStorage.getItem('profile_research_webhook');
+          console.log("Local webhook found:", localWebhook);
+          setProfileResearchWebhookConfigured(!!localWebhook);
         }
         
         if (!idealCustomerWebhookConfigured) {
-          setIdealCustomerWebhookConfigured(!!localStorage.getItem('ideal_customer_webhook'));
+          const localWebhook = localStorage.getItem('ideal_customer_webhook');
+          console.log("Local ideal customer webhook found:", localWebhook);
+          setIdealCustomerWebhookConfigured(!!localWebhook);
         }
         
         // Fetch existing research data if available
@@ -111,10 +115,20 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         .eq('id', 'default')
         .single();
       
-      webhookUrl = settings?.profile_research_webhook || localStorage.getItem('profile_research_webhook');
+      webhookUrl = settings?.profile_research_webhook;
+      
+      if (!webhookUrl) {
+        // Try localStorage as fallback
+        webhookUrl = localStorage.getItem('profile_research_webhook');
+        console.log("Using webhook from localStorage:", webhookUrl);
+      }
     } catch (error) {
+      console.error("Error getting webhook from settings:", error);
       webhookUrl = localStorage.getItem('profile_research_webhook');
+      console.log("Using webhook from localStorage after error:", webhookUrl);
     }
+    
+    console.log("Final webhook URL:", webhookUrl);
     
     if (!webhookUrl) {
       toast({
@@ -132,6 +146,16 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         description: "Fetching company profile research data..."
       });
       
+      console.log("Sending request to webhook:", webhookUrl);
+      console.log("With payload:", {
+        companyId: company.id,
+        companyName: company.name,
+        industry: company.industry || "",
+        website: company.website || "",
+        description: company.description || "",
+        action: "generateProfileResearch"
+      });
+      
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
@@ -147,12 +171,16 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         })
       });
       
+      console.log("Webhook response status:", response.status);
+      
       if (!response.ok) {
         console.error("Failed to generate company profile research, status:", response.status);
         throw new Error("Failed to generate company profile research");
       }
       
       const data = await response.json();
+      console.log("Webhook response data:", data);
+      
       const content = data.content || data.research || data.profileResearch || data.text || "";
       setProfileResearch(content);
       
@@ -211,37 +239,41 @@ Key Findings:
       setProfileResearch(demoContent);
       
       // Check if a record already exists for this company
-      const { data: existingRecord } = await supabase
+      const { data: existingRecord, error: checkError } = await supabase
         .from('company_insights')
         .select('id')
         .eq('company_id', company.id)
         .maybeSingle();
       
-      if (existingRecord) {
-        // If record exists, update it
-        const { error: updateError } = await supabase
-          .from('company_insights')
-          .update({
-            profile_research: demoContent,
-            updated_at: new Date().toISOString()
-          })
-          .eq('company_id', company.id);
-          
-        if (updateError) {
-          console.error("Error updating demo profile research in database:", updateError);
-        }
+      if (checkError) {
+        console.error("Error checking for existing company insight:", checkError);
       } else {
-        // If no record exists, insert a new one
-        const { error: insertError } = await supabase
-          .from('company_insights')
-          .insert({
-            company_id: company.id,
-            profile_research: demoContent,
-            updated_at: new Date().toISOString()
-          });
-          
-        if (insertError) {
-          console.error("Error inserting demo profile research to database:", insertError);
+        if (existingRecord) {
+          // If record exists, update it
+          const { error: updateError } = await supabase
+            .from('company_insights')
+            .update({
+              profile_research: demoContent,
+              updated_at: new Date().toISOString()
+            })
+            .eq('company_id', company.id);
+            
+          if (updateError) {
+            console.error("Error updating demo profile research in database:", updateError);
+          }
+        } else {
+          // If no record exists, insert a new one
+          const { error: insertError } = await supabase
+            .from('company_insights')
+            .insert({
+              company_id: company.id,
+              profile_research: demoContent,
+              updated_at: new Date().toISOString()
+            });
+            
+          if (insertError) {
+            console.error("Error inserting demo profile research to database:", insertError);
+          }
         }
       }
       
