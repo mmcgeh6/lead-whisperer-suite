@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -150,7 +151,7 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         description: "Fetching company profile research data..."
       });
       
-      // Prepare payload focused on company ID
+      // Prepare payload with companyId
       const payload = {
         companyId: company.id
       };
@@ -158,25 +159,62 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
       console.log("Sending request to webhook:", webhookUrl);
       console.log("With payload:", payload);
       
-      // Make the request using POST method with company ID in body
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
+      // Try both GET and POST methods
+      let response: Response | null = null;
+      let responseData: any = null;
       
-      console.log("Webhook response status:", response.status);
+      // First try POST
+      try {
+        console.log("Attempting POST request to webhook");
+        response = await fetch(webhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        console.log("POST response status:", response.status);
+        
+        if (response.ok) {
+          responseData = await response.json();
+        }
+      } catch (postError) {
+        console.error("POST request failed:", postError);
+        console.log("Falling back to GET request");
+        
+        // If POST fails, try GET with query parameters
+        try {
+          const queryParams = new URLSearchParams({ companyId: company.id }).toString();
+          const getUrl = `${webhookUrl}?${queryParams}`;
+          
+          console.log("Attempting GET request to:", getUrl);
+          
+          response = await fetch(getUrl, {
+            method: "GET",
+            headers: {
+              "Accept": "application/json"
+            }
+          });
+          
+          console.log("GET response status:", response.status);
+          
+          if (response.ok) {
+            responseData = await response.json();
+          }
+        } catch (getError) {
+          console.error("GET request also failed:", getError);
+          throw new Error("All webhook request methods failed");
+        }
+      }
       
-      if (!response.ok) {
-        console.error("Failed to generate company profile research, status:", response.status);
+      if (!response || !response.ok || !responseData) {
+        console.error("Failed to generate company profile research, status:", response?.status);
         throw new Error("Failed to generate company profile research");
       }
       
-      const data = await response.json();
-      console.log("Webhook response data:", data);
-      handleResearchResponse(data);
+      console.log("Webhook response data:", responseData);
+      handleResearchResponse(responseData);
     } catch (error) {
       console.error("Error generating profile research:", error);
       
@@ -318,26 +356,63 @@ Key Findings:
       console.log("Sending request to webhook:", webhookUrl);
       console.log("With payload:", payload);
       
-      // Make the request using POST method with company ID in body
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
+      // Try both GET and POST methods
+      let response: Response | null = null;
+      let responseData: any = null;
       
-      console.log("Webhook response status:", response.status);
+      // First try POST
+      try {
+        console.log("Attempting POST request to webhook");
+        response = await fetch(webhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        console.log("POST response status:", response.status);
+        
+        if (response.ok) {
+          responseData = await response.json();
+        }
+      } catch (postError) {
+        console.error("POST request failed:", postError);
+        console.log("Falling back to GET request");
+        
+        // If POST fails, try GET with query parameters
+        try {
+          const queryParams = new URLSearchParams({ companyId: company.id }).toString();
+          const getUrl = `${webhookUrl}?${queryParams}`;
+          
+          console.log("Attempting GET request to:", getUrl);
+          
+          response = await fetch(getUrl, {
+            method: "GET",
+            headers: {
+              "Accept": "application/json"
+            }
+          });
+          
+          console.log("GET response status:", response.status);
+          
+          if (response.ok) {
+            responseData = await response.json();
+          }
+        } catch (getError) {
+          console.error("GET request also failed:", getError);
+          throw new Error("All webhook request methods failed");
+        }
+      }
       
-      if (!response.ok) {
-        console.error("Failed to generate ideal customer analysis, status:", response.status);
+      if (!response || !response.ok || !responseData) {
+        console.error("Failed to generate ideal customer analysis, status:", response?.status);
         throw new Error("Failed to generate ideal customer analysis");
       }
       
-      const data = await response.json();
-      console.log("Webhook response data:", data);
+      console.log("Webhook response data:", responseData);
       
-      const content = data.content || data.analysis || data.idealCustomerAnalysis || data.text || "";
+      const content = responseData.content || responseData.analysis || responseData.idealCustomerAnalysis || responseData.text || "";
       setIdealCustomerAnalysis(content);
       
       // Save to database
