@@ -28,6 +28,16 @@ const SettingsPage = () => {
         title: "API Settings Saved",
         description: "Your API connection settings have been successfully updated.",
       });
+    } else if (savedParam === 'email') {
+      toast({
+        title: "Email Settings Saved",
+        description: "Your email settings have been successfully updated.",
+      });
+    } else if (savedParam === 'general') {
+      toast({
+        title: "General Settings Saved",
+        description: "Your general settings have been successfully updated.",
+      });
     }
   }, [savedParam, toast]);
 
