@@ -395,7 +395,7 @@ Buying Behavior:
       </CardHeader>
       <CardContent className="space-y-6">
         {webhookStatusMessage && (
-          <Alert variant="info">
+          <Alert variant="default">
             <Info className="h-4 w-4" />
             <AlertDescription>
               {webhookStatusMessage}
@@ -512,3 +512,4 @@ Buying Behavior:
     </Card>
   );
 };
+
