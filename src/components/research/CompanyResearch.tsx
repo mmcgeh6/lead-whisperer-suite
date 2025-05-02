@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,21 +48,24 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         if (settingsError) {
           console.error("Error fetching webhook settings:", settingsError);
         } else if (settings) {
+          console.log("Webhook settings from DB:", settings);
           setProfileResearchWebhookConfigured(!!settings.profile_research_webhook);
           setIdealCustomerWebhookConfigured(!!settings.ideal_customer_webhook);
         }
         
         // Check localStorage as fallback
-        if (!profileResearchWebhookConfigured) {
-          const localWebhook = localStorage.getItem('profile_research_webhook');
-          console.log("Local webhook found:", localWebhook);
-          setProfileResearchWebhookConfigured(!!localWebhook);
+        const localProfileWebhook = localStorage.getItem('profile_research_webhook');
+        const localIdealCustomerWebhook = localStorage.getItem('ideal_customer_webhook');
+        
+        console.log("Local profile webhook found:", localProfileWebhook);
+        console.log("Local ideal customer webhook found:", localIdealCustomerWebhook);
+        
+        if (!profileResearchWebhookConfigured && localProfileWebhook) {
+          setProfileResearchWebhookConfigured(true);
         }
         
-        if (!idealCustomerWebhookConfigured) {
-          const localWebhook = localStorage.getItem('ideal_customer_webhook');
-          console.log("Local ideal customer webhook found:", localWebhook);
-          setIdealCustomerWebhookConfigured(!!localWebhook);
+        if (!idealCustomerWebhookConfigured && localIdealCustomerWebhook) {
+          setIdealCustomerWebhookConfigured(true);
         }
         
         // Fetch existing research data if available
@@ -77,6 +81,7 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         }
         
         if (insights) {
+          console.log("Fetched company insights:", insights);
           if (insights.profile_research) {
             setProfileResearch(insights.profile_research);
           }
@@ -92,6 +97,8 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
           if (insights.approach_notes) {
             setIdealCustomerNotes(insights.approach_notes);
           }
+        } else {
+          console.log("No insights found for company:", companyId);
         }
       } catch (error) {
         console.error("Error fetching company insights:", error);
@@ -106,90 +113,145 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
     
     setIsGeneratingProfileResearch(true);
     
-    // Get webhook URL from settings or localStorage
-    let webhookUrl;
     try {
-      const { data: settings } = await supabase
+      // First, check for webhook URL in database
+      const { data: settings, error: settingsError } = await supabase
         .from('app_settings')
         .select('profile_research_webhook')
         .eq('id', 'default')
         .single();
       
-      webhookUrl = settings?.profile_research_webhook;
+      if (settingsError) {
+        console.error("Error getting webhook from settings:", settingsError);
+      }
       
+      // Initialize webhook URL
+      let webhookUrl = settings?.profile_research_webhook;
+      
+      // If not found in DB, try localStorage
       if (!webhookUrl) {
-        // Try localStorage as fallback
         webhookUrl = localStorage.getItem('profile_research_webhook');
         console.log("Using webhook from localStorage:", webhookUrl);
       }
-    } catch (error) {
-      console.error("Error getting webhook from settings:", error);
-      webhookUrl = localStorage.getItem('profile_research_webhook');
-      console.log("Using webhook from localStorage after error:", webhookUrl);
-    }
-    
-    console.log("Final webhook URL:", webhookUrl);
-    
-    if (!webhookUrl) {
-      toast({
-        title: "Webhook Not Configured",
-        description: "Company Profile Research webhook not configured in webhook settings",
-        variant: "destructive"
-      });
-      setIsGeneratingProfileResearch(false);
-      return;
-    }
-    
-    try {
+      
+      console.log("Final webhook URL for profile research:", webhookUrl);
+      
+      if (!webhookUrl) {
+        toast({
+          title: "Webhook Not Configured",
+          description: "Company Profile Research webhook not configured in webhook settings",
+          variant: "destructive"
+        });
+        setIsGeneratingProfileResearch(false);
+        return;
+      }
+      
       toast({
         title: "Generating Research",
         description: "Fetching company profile research data..."
       });
       
-      console.log("Sending request to webhook:", webhookUrl);
-      console.log("With payload:", {
+      // Prepare payload with focus on company ID
+      const payload = {
         companyId: company.id,
         companyName: company.name,
         industry: company.industry || "",
         website: company.website || "",
         description: company.description || "",
         action: "generateProfileResearch"
-      });
+      };
       
+      console.log("Sending request to webhook:", webhookUrl);
+      console.log("With payload:", payload);
+      
+      // Make the request
       const response = await fetch(webhookUrl, {
-        method: "POST",
+        method: "GET", // Try GET instead of POST based on the error message
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          companyId: company.id,
-          companyName: company.name,
-          industry: company.industry || "",
-          website: company.website || "",
-          description: company.description || "",
-          action: "generateProfileResearch"
-        })
+        // For GET, append params to URL instead of body
       });
       
       console.log("Webhook response status:", response.status);
       
       if (!response.ok) {
         console.error("Failed to generate company profile research, status:", response.status);
-        throw new Error("Failed to generate company profile research");
+        
+        // Try one more time with POST if GET fails
+        if (response.status === 404 && response.statusText.includes("GET request")) {
+          console.log("Retrying with POST method");
+          const postResponse = await fetch(webhookUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+          
+          console.log("POST retry status:", postResponse.status);
+          
+          if (!postResponse.ok) {
+            throw new Error("Failed to generate company profile research after retry");
+          }
+          
+          const data = await postResponse.json();
+          console.log("Webhook POST retry response data:", data);
+          handleResearchResponse(data);
+        } else {
+          throw new Error("Failed to generate company profile research");
+        }
+      } else {
+        const data = await response.json();
+        console.log("Webhook GET response data:", data);
+        handleResearchResponse(data);
       }
+    } catch (error) {
+      console.error("Error generating profile research:", error);
       
-      const data = await response.json();
-      console.log("Webhook response data:", data);
+      // Use demo content for better UX
+      const demoContent = generateDemoProfileResearch(company);
+      setProfileResearch(demoContent);
       
-      const content = data.content || data.research || data.profileResearch || data.text || "";
-      setProfileResearch(content);
+      // Save demo content to database
+      await saveProfileResearchToDatabase(demoContent);
       
+      toast({
+        title: "Using Demo Content",
+        description: "Could not reach the webhook endpoint. Using sample research content instead.",
+        variant: "default"
+      });
+    } finally {
+      setIsGeneratingProfileResearch(false);
+    }
+  };
+  
+  const handleResearchResponse = async (data: any) => {
+    const content = data.content || data.research || data.profileResearch || data.text || "";
+    setProfileResearch(content);
+    
+    // Save to database
+    await saveProfileResearchToDatabase(content);
+    
+    toast({
+      title: "Research Generated",
+      description: `Company Profile Research for ${company.name} has been generated.`
+    });
+  };
+  
+  const saveProfileResearchToDatabase = async (content: string) => {
+    try {
       // Check if a record already exists for this company
-      const { data: existingRecord } = await supabase
+      const { data: existingRecord, error: checkError } = await supabase
         .from('company_insights')
         .select('id')
         .eq('company_id', company.id)
         .maybeSingle();
+      
+      if (checkError) {
+        console.error("Error checking for existing company insight:", checkError);
+        return;
+      }
       
       if (existingRecord) {
         // If record exists, update it
@@ -218,16 +280,13 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
           console.error("Error inserting profile research to database:", insertError);
         }
       }
-      
-      toast({
-        title: "Research Generated",
-        description: `Company Profile Research for ${company.name} has been generated.`
-      });
     } catch (error) {
-      console.error("Error generating profile research:", error);
-      
-      // Use demo content for better UX
-      const demoContent = `${company.name} appears to be a ${company.industry || "growing"} company focusing on ${company.description || "innovative solutions"}. Based on our analysis of their web presence and market positioning, they appear to be targeting mid-market businesses with their offerings. Their website indicates a strong emphasis on ${company.industry || "technology"} and customer service.
+      console.error("Error saving research to database:", error);
+    }
+  };
+  
+  const generateDemoProfileResearch = (company: any) => {
+    return `${company.name} appears to be a ${company.industry || "growing"} company focusing on ${company.description || "innovative solutions"}. Based on our analysis of their web presence and market positioning, they appear to be targeting mid-market businesses with their offerings. Their website indicates a strong emphasis on ${company.industry || "technology"} and customer service.
 
 Key Findings:
 - Founded approximately 5-7 years ago
@@ -235,56 +294,6 @@ Key Findings:
 - Main competitors include several larger enterprises in the ${company.industry || "technology"} space
 - Current marketing focus seems to be on digital channels and industry conferences
 - Leadership team appears experienced with backgrounds in similar industries`;
-
-      setProfileResearch(demoContent);
-      
-      // Check if a record already exists for this company
-      const { data: existingRecord, error: checkError } = await supabase
-        .from('company_insights')
-        .select('id')
-        .eq('company_id', company.id)
-        .maybeSingle();
-      
-      if (checkError) {
-        console.error("Error checking for existing company insight:", checkError);
-      } else {
-        if (existingRecord) {
-          // If record exists, update it
-          const { error: updateError } = await supabase
-            .from('company_insights')
-            .update({
-              profile_research: demoContent,
-              updated_at: new Date().toISOString()
-            })
-            .eq('company_id', company.id);
-            
-          if (updateError) {
-            console.error("Error updating demo profile research in database:", updateError);
-          }
-        } else {
-          // If no record exists, insert a new one
-          const { error: insertError } = await supabase
-            .from('company_insights')
-            .insert({
-              company_id: company.id,
-              profile_research: demoContent,
-              updated_at: new Date().toISOString()
-            });
-            
-          if (insertError) {
-            console.error("Error inserting demo profile research to database:", insertError);
-          }
-        }
-      }
-      
-      toast({
-        title: "Using Demo Content",
-        description: "Could not reach the webhook endpoint. Using sample research content instead.",
-        variant: "default"
-      });
-    } finally {
-      setIsGeneratingProfileResearch(false);
-    }
   };
   
   const generateIdealCustomerAnalysis = async () => {

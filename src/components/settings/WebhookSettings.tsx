@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ const webhookSettingsSchema = z.object({
   linkedinEnrichmentWebhook: z.string().url().optional().or(z.literal("")),
   companyEnrichmentWebhook: z.string().url().optional().or(z.literal("")),
   profileResearchWebhook: z.string().url().optional().or(z.literal("")),
-  idealCustomerWebhook: z.string().url().optional().or(z.literal(""))
+  idealCustomerWebhook: z.string().url().optional().or(z.literal("")
 });
 
 type WebhookSettingsValues = z.infer<typeof webhookSettingsSchema>;
@@ -57,30 +56,30 @@ export const WebhookSettings = () => {
           .single();
           
         if (error) {
+          console.error("Error fetching webhook settings:", error);
           throw error;
         }
+        
+        console.log("Loaded webhook settings from DB:", data);
         
         // Update form values if settings exist
         if (data) {
           // Set form values using the column names from the database
-          if (data.emailfinderwebhook) {
-            form.setValue('emailFinderWebhook', data.emailfinderwebhook);
-          }
+          form.setValue('emailFinderWebhook', data.emailfinderwebhook || '');
+          form.setValue('linkedinEnrichmentWebhook', data.linkedinenrichmentwebhook || '');
+          form.setValue('companyEnrichmentWebhook', data.companyenrichmentwebhook || '');
+          form.setValue('profileResearchWebhook', data.profile_research_webhook || '');
+          form.setValue('idealCustomerWebhook', data.ideal_customer_webhook || '');
           
-          if (data.linkedinenrichmentwebhook) {
-            form.setValue('linkedinEnrichmentWebhook', data.linkedinenrichmentwebhook);
-          }
-          
-          if (data.companyenrichmentwebhook) {
-            form.setValue('companyEnrichmentWebhook', data.companyenrichmentwebhook);
-          }
-
+          // Also update localStorage for fallback
           if (data.profile_research_webhook) {
-            form.setValue('profileResearchWebhook', data.profile_research_webhook);
+            localStorage.setItem('profile_research_webhook', data.profile_research_webhook);
+            console.log("Saved profile research webhook to localStorage:", data.profile_research_webhook);
           }
-
+          
           if (data.ideal_customer_webhook) {
-            form.setValue('idealCustomerWebhook', data.ideal_customer_webhook);
+            localStorage.setItem('ideal_customer_webhook', data.ideal_customer_webhook);
+            console.log("Saved ideal customer webhook to localStorage:", data.ideal_customer_webhook);
           }
         }
       } catch (error) {
@@ -90,6 +89,18 @@ export const WebhookSettings = () => {
           description: "Could not retrieve webhook settings. Please try again later.",
           variant: "destructive",
         });
+        
+        // Try loading from localStorage as fallback
+        const profileResearchWebhook = localStorage.getItem('profile_research_webhook');
+        const idealCustomerWebhook = localStorage.getItem('ideal_customer_webhook');
+        
+        if (profileResearchWebhook) {
+          form.setValue('profileResearchWebhook', profileResearchWebhook);
+        }
+        
+        if (idealCustomerWebhook) {
+          form.setValue('idealCustomerWebhook', idealCustomerWebhook);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -102,20 +113,23 @@ export const WebhookSettings = () => {
     setIsLoading(true);
     
     try {
+      console.log("Saving webhook settings:", data);
+      
       // Save to Supabase - match column names with the database schema
       const { error } = await supabase
         .from('app_settings')
         .upsert({
           id: 'default', // Use a constant ID to ensure we only have one row
-          emailfinderwebhook: data.emailFinderWebhook,
-          linkedinenrichmentwebhook: data.linkedinEnrichmentWebhook,
-          companyenrichmentwebhook: data.companyEnrichmentWebhook,
-          profile_research_webhook: data.profileResearchWebhook,
-          ideal_customer_webhook: data.idealCustomerWebhook,
+          emailfinderwebhook: data.emailFinderWebhook || null,
+          linkedinenrichmentwebhook: data.linkedinEnrichmentWebhook || null,
+          companyenrichmentwebhook: data.companyEnrichmentWebhook || null,
+          profile_research_webhook: data.profileResearchWebhook || null,
+          ideal_customer_webhook: data.idealCustomerWebhook || null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       
       if (error) {
+        console.error("Error saving webhook settings to Supabase:", error);
         throw error;
       }
       
@@ -125,6 +139,13 @@ export const WebhookSettings = () => {
       localStorage.setItem('companyEnrichmentWebhook', data.companyEnrichmentWebhook || '');
       localStorage.setItem('profile_research_webhook', data.profileResearchWebhook || '');
       localStorage.setItem('ideal_customer_webhook', data.idealCustomerWebhook || '');
+      
+      console.log("Saved webhooks to localStorage");
+      
+      toast({
+        title: "Settings Saved",
+        description: "Webhook settings have been saved successfully."
+      });
       
       // Redirect to settings page with saved parameter and tab
       navigate('/settings?saved=webhooks&tab=webhooks');
