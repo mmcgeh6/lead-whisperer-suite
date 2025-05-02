@@ -65,13 +65,13 @@ export function ContactDetailDialog({
             <Button 
               variant="outline" 
               onClick={() => onFindEmail(contact)}
-              disabled={isFindingEmail || !contact}
+              disabled={isFindingEmail}
             >
               {isFindingEmail ? "Finding Email..." : "Find Email"}
             </Button>
             <Button
               onClick={() => onEnrichContact(contact)}
-              disabled={isEnrichingContact || !contact}
+              disabled={isEnrichingContact}
             >
               {isEnrichingContact ? "Enriching..." : "Enrich Contact"}
             </Button>
@@ -116,10 +116,6 @@ export function ContactDetailDialog({
             <NotesTab notes={contact.notes} />
           </TabsContent>
         </Tabs>
-        
-        <div className="flex justify-end mt-4 space-x-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-        </div>
       </DialogContent>
     </Dialog>
   );

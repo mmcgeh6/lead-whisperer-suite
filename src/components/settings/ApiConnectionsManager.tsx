@@ -1,51 +1,42 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAuth } from "@/context/AuthContext";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Save } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { getAppSettings } from "@/services/apifyService";
+import { Save } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { Separator } from "@/components/ui/separator";
 
-// Schema for API Settings form
-const apiSettingsSchema = z.object({
-  leadProvider: z.string(),
-  apolloApiKey: z.string().optional(),
-  apifyApolloApiKey: z.string().optional(),
-  companyResearchWebhook: z.string().url().optional().or(z.literal("")),
-  marketResearchWebhook: z.string().url().optional().or(z.literal("")),
-  growthResearchWebhook: z.string().url().optional().or(z.literal("")),
-  techResearchWebhook: z.string().url().optional().or(z.literal("")),
+const apiConnectionsSchema = z.object({
+  apifyApiKey: z.string().optional().or(z.literal("")),
+  apolloApiKey: z.string().optional().or(z.literal("")),
+  leadProvider: z.string().optional().or(z.literal(""))
 });
 
-type ApiSettingsValues = z.infer<typeof apiSettingsSchema>;
+type ApiConnectionsValues = z.infer<typeof apiConnectionsSchema>;
 
 export const ApiConnectionsManager = () => {
-  const [activeTab, setActiveTab] = useState<string>("lead-apis");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   
-  // Initialize form
-  const form = useForm<ApiSettingsValues>({
-    resolver: zodResolver(apiSettingsSchema),
+  // Initialize form with react-hook-form
+  const form = useForm<ApiConnectionsValues>({
+    resolver: zodResolver(apiConnectionsSchema),
     defaultValues: {
-      leadProvider: 'apollo',
+      apifyApiKey: '',
       apolloApiKey: '',
-      apifyApolloApiKey: '',
-      companyResearchWebhook: '',
-      marketResearchWebhook: '',
-      growthResearchWebhook: '',
-      techResearchWebhook: '',
+      leadProvider: 'apollo'
     },
   });
   
@@ -53,39 +44,36 @@ export const ApiConnectionsManager = () => {
     const loadSettings = async () => {
       setIsLoading(true);
       try {
-        const settings = await getAppSettings();
-        
-        // Update form with values from Supabase or localStorage
-        form.setValue('leadProvider', settings.leadProvider || 'apify-apollo');
-        
-        if (settings.apolloApiKey) {
-          form.setValue('apolloApiKey', settings.apolloApiKey);
+        // Fetch API connection settings
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('apifyapolloapikey, apolloapikey, leadprovider')
+          .eq('id', 'default')
+          .single();
+          
+        if (error) {
+          throw error;
         }
         
-        if (settings.apifyApolloApiKey) {
-          form.setValue('apifyApolloApiKey', settings.apifyApolloApiKey);
-        }
-        
-        if (settings.companyResearchWebhook) {
-          form.setValue('companyResearchWebhook', settings.companyResearchWebhook);
-        }
-        
-        if (settings.marketResearchWebhook) {
-          form.setValue('marketResearchWebhook', settings.marketResearchWebhook);
-        }
-        
-        if (settings.growthResearchWebhook) {
-          form.setValue('growthResearchWebhook', settings.growthResearchWebhook);
-        }
-        
-        if (settings.techResearchWebhook) {
-          form.setValue('techResearchWebhook', settings.techResearchWebhook);
+        // Update form values if settings exist
+        if (data) {
+          if (data.apifyapolloapikey) {
+            form.setValue('apifyApiKey', data.apifyapolloapikey);
+          }
+          
+          if (data.apolloapikey) {
+            form.setValue('apolloApiKey', data.apolloapikey);
+          }
+          
+          if (data.leadprovider) {
+            form.setValue('leadProvider', data.leadprovider);
+          }
         }
       } catch (error) {
-        console.error("Failed to load settings:", error);
+        console.error("Failed to load API connection settings:", error);
         toast({
-          title: "Failed to load settings",
-          description: "Could not retrieve API settings. Please try again later.",
+          title: "Failed to load API settings",
+          description: "Could not retrieve API connection settings. Please try again later.",
           variant: "destructive",
         });
       } finally {
@@ -96,22 +84,18 @@ export const ApiConnectionsManager = () => {
     loadSettings();
   }, [form, toast]);
   
-  const onSubmit = async (data: ApiSettingsValues) => {
+  const onSubmit = async (data: ApiConnectionsValues) => {
     setIsLoading(true);
     
     try {
-      // Save to Supabase - match column names with the database schema
+      // Save to Supabase
       const { error } = await supabase
         .from('app_settings')
         .upsert({
           id: 'default', // Use a constant ID to ensure we only have one row
-          leadprovider: data.leadProvider,
+          apifyapolloapikey: data.apifyApiKey,
           apolloapikey: data.apolloApiKey,
-          apifyapolloapikey: data.apifyApolloApiKey,
-          companyresearchwebhook: data.companyResearchWebhook,
-          marketresearchwebhook: data.marketResearchWebhook,
-          growthresearchwebhook: data.growthResearchWebhook,
-          techresearchwebhook: data.techResearchWebhook,
+          leadprovider: data.leadProvider,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       
@@ -120,38 +104,20 @@ export const ApiConnectionsManager = () => {
       }
       
       // Also save to localStorage as fallback
-      localStorage.setItem('leadProvider', data.leadProvider);
+      localStorage.setItem('apifyApiKey', data.apifyApiKey || '');
+      localStorage.setItem('apolloApiKey', data.apolloApiKey || '');
+      localStorage.setItem('leadProvider', data.leadProvider || 'apollo');
       
-      if (data.apolloApiKey) {
-        localStorage.setItem('apollioApiKey', data.apolloApiKey);
-      }
-      
-      if (data.apifyApolloApiKey) {
-        localStorage.setItem('apifyApolloApiKey', data.apifyApolloApiKey);
-      }
-      
-      if (data.companyResearchWebhook) {
-        localStorage.setItem('companyResearchWebhook', data.companyResearchWebhook);
-      }
-      
-      if (data.marketResearchWebhook) {
-        localStorage.setItem('marketResearchWebhook', data.marketResearchWebhook);
-      }
-      
-      if (data.growthResearchWebhook) {
-        localStorage.setItem('growthResearchWebhook', data.growthResearchWebhook);
-      }
-      
-      if (data.techResearchWebhook) {
-        localStorage.setItem('techResearchWebhook', data.techResearchWebhook);
-      }
-      
+      // Show success toast
       toast({
         title: "API Settings Saved",
-        description: "Your API connection settings have been saved to the database.",
+        description: "Your API connection settings have been saved."
       });
+      
+      // Redirect to settings page with success parameter
+      navigate('/settings?saved=api&tab=api');
     } catch (error) {
-      console.error("Error saving settings:", error);
+      console.error("Error saving API settings:", error);
       toast({
         title: "Error Saving Settings",
         description: "Failed to save API settings to the database. Using local storage fallback.",
@@ -167,9 +133,9 @@ export const ApiConnectionsManager = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>API Management</CardTitle>
+          <CardTitle>API Connections</CardTitle>
           <CardDescription>
-            Configure API keys and credentials for external services
+            Connect to third-party services for data enrichment
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -187,109 +153,32 @@ export const ApiConnectionsManager = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>API Management</CardTitle>
+        <CardTitle>API Connections</CardTitle>
         <CardDescription>
-          Configure API keys and credentials for external services
+          Connect to third-party services for data enrichment and lead generation
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="lead-apis">Lead Scraping APIs</TabsTrigger>
-                <TabsTrigger value="research-apis">Research Webhooks</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="lead-apis" className="space-y-4">
+            <div>
+              <h3 className="text-lg font-medium mb-3">Lead Provider Settings</h3>
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="leadProvider"
+                  name="apolloApiKey"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Lead Provider</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a lead provider" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="apollo">Apollo.io (Official API)</SelectItem>
-                          <SelectItem value="apify-apollo">Apollo.io via Apify</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Select which lead provider API to use for scraping
-                      </FormDescription>
-                    </FormItem>
-                  )}
-                />
-                
-                {form.watch('leadProvider') === 'apollo' && (
-                  <FormField
-                    control={form.control}
-                    name="apolloApiKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Apollo.io API Key</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Enter your Apollo.io API key"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Enter your Apollo.io API key for the official API
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
-                )}
-                
-                {form.watch('leadProvider') === 'apify-apollo' && (
-                  <FormField
-                    control={form.control}
-                    name="apifyApolloApiKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Apify Apollo Scraper API Key</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Enter your Apify API key"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Enter your Apify API key for the Apollo.io scraper
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </TabsContent>
-              
-              <TabsContent value="research-apis" className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="companyResearchWebhook"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Competitive Research Webhook</FormLabel>
+                      <FormLabel>Apollo.io API Key</FormLabel>
                       <FormControl>
                         <Input
-                          type="url"
-                          placeholder="Enter webhook URL"
+                          type="password"
+                          placeholder="Enter your Apollo API key"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        Webhook URL for competitive analysis research
+                        Used for finding and enriching contacts from Apollo.io
                       </FormDescription>
                     </FormItem>
                   )}
@@ -297,65 +186,25 @@ export const ApiConnectionsManager = () => {
                 
                 <FormField
                   control={form.control}
-                  name="marketResearchWebhook"
+                  name="apifyApiKey"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Market Challenges Webhook</FormLabel>
+                      <FormLabel>Apify API Key</FormLabel>
                       <FormControl>
                         <Input
-                          type="url"
-                          placeholder="Enter webhook URL"
+                          type="password"
+                          placeholder="Enter your Apify API key"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        Webhook URL for market challenges research
+                        Used for automating web scraping tasks
                       </FormDescription>
                     </FormItem>
                   )}
                 />
-                
-                <FormField
-                  control={form.control}
-                  name="growthResearchWebhook"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Growth Opportunities Webhook</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="url"
-                          placeholder="Enter webhook URL"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Webhook URL for growth opportunities research
-                      </FormDescription>
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="techResearchWebhook"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Technology Stack Webhook</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="url"
-                          placeholder="Enter webhook URL"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Webhook URL for technology stack research
-                      </FormDescription>
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-            </Tabs>
+              </div>
+            </div>
             
             <div className="flex justify-end">
               <Button type="submit" disabled={isLoading}>
@@ -366,11 +215,11 @@ export const ApiConnectionsManager = () => {
           </form>
         </Form>
         
-        <div className="mt-6 p-4 bg-muted rounded-md">
-          <h4 className="font-medium mb-2">About API Keys and Storage</h4>
+        <div className="mt-6">
+          <Separator className="my-4" />
           <p className="text-sm text-muted-foreground">
-            API keys are now stored in the database and shared across all users. 
-            For redundancy, a copy is also kept in your browser's local storage as a fallback.
+            API keys are stored securely and used only for the specified services.
+            For webhook settings, please visit the <a href="/settings?tab=webhooks" className="text-blue-600 hover:underline">Webhooks tab</a>.
           </p>
         </div>
       </CardContent>

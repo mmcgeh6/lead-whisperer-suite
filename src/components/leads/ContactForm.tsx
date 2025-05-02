@@ -180,6 +180,15 @@ export const ContactForm = ({ initialData }: ContactFormProps) => {
     }
   };
   
+  // Fix: Navigate back to company detail page properly when Cancel is clicked
+  const handleCancel = () => {
+    if (companyIdFromUrl) {
+      navigate(`/leads/company/${companyIdFromUrl}`);
+    } else {
+      navigate("/leads");
+    }
+  };
+  
   return (
     <Card>
       <CardHeader>
@@ -325,7 +334,7 @@ export const ContactForm = ({ initialData }: ContactFormProps) => {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => navigate(companyIdFromUrl ? `/leads/${companyIdFromUrl}` : "/leads")}
+                onClick={handleCancel}
               >
                 Cancel
               </Button>

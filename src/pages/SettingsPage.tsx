@@ -15,12 +15,18 @@ const SettingsPage = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const savedParam = searchParams.get('saved');
+  const tabParam = searchParams.get('tab') || "email";
   
   useEffect(() => {
     if (savedParam === 'webhooks') {
       toast({
         title: "Webhook Settings Saved",
         description: "Your webhook settings have been successfully updated.",
+      });
+    } else if (savedParam === 'api') {
+      toast({
+        title: "API Settings Saved",
+        description: "Your API connection settings have been successfully updated.",
       });
     }
   }, [savedParam, toast]);
@@ -35,7 +41,7 @@ const SettingsPage = () => {
           </p>
         </div>
         
-        <Tabs defaultValue={searchParams.get('tab') || "email"}>
+        <Tabs defaultValue={tabParam}>
           <TabsList>
             <TabsTrigger value="email">Email</TabsTrigger>
             <TabsTrigger value="api">API Connections</TabsTrigger>

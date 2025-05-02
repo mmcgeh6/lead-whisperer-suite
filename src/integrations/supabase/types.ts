@@ -19,9 +19,11 @@ export type Database = {
           emailfinderwebhook: string | null
           growthresearchwebhook: string | null
           id: string
+          ideal_customer_webhook: string | null
           leadprovider: string | null
           linkedinenrichmentwebhook: string | null
           marketresearchwebhook: string | null
+          profile_research_webhook: string | null
           techresearchwebhook: string | null
           updated_at: string | null
         }
@@ -34,9 +36,11 @@ export type Database = {
           emailfinderwebhook?: string | null
           growthresearchwebhook?: string | null
           id: string
+          ideal_customer_webhook?: string | null
           leadprovider?: string | null
           linkedinenrichmentwebhook?: string | null
           marketresearchwebhook?: string | null
+          profile_research_webhook?: string | null
           techresearchwebhook?: string | null
           updated_at?: string | null
         }
@@ -49,9 +53,11 @@ export type Database = {
           emailfinderwebhook?: string | null
           growthresearchwebhook?: string | null
           id?: string
+          ideal_customer_webhook?: string | null
           leadprovider?: string | null
           linkedinenrichmentwebhook?: string | null
           marketresearchwebhook?: string | null
+          profile_research_webhook?: string | null
           techresearchwebhook?: string | null
           updated_at?: string | null
         }
@@ -150,7 +156,9 @@ export type Database = {
           created_at: string
           id: string
           ideal_client: boolean | null
+          ideal_customer_analysis: string | null
           job_postings: Json | null
+          profile_research: string | null
           running_facebook_ads: boolean | null
           suggested_approach: string | null
           updated_at: string
@@ -163,7 +171,9 @@ export type Database = {
           created_at?: string
           id?: string
           ideal_client?: boolean | null
+          ideal_customer_analysis?: string | null
           job_postings?: Json | null
+          profile_research?: string | null
           running_facebook_ads?: boolean | null
           suggested_approach?: string | null
           updated_at?: string
@@ -176,7 +186,9 @@ export type Database = {
           created_at?: string
           id?: string
           ideal_client?: boolean | null
+          ideal_customer_analysis?: string | null
           job_postings?: Json | null
+          profile_research?: string | null
           running_facebook_ads?: boolean | null
           suggested_approach?: string | null
           updated_at?: string

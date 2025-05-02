@@ -21,10 +21,8 @@ const webhookSettingsSchema = z.object({
   emailFinderWebhook: z.string().url().optional().or(z.literal("")),
   linkedinEnrichmentWebhook: z.string().url().optional().or(z.literal("")),
   companyEnrichmentWebhook: z.string().url().optional().or(z.literal("")),
-  companyResearchWebhook: z.string().url().optional().or(z.literal("")),
-  marketResearchWebhook: z.string().url().optional().or(z.literal("")),
-  growthResearchWebhook: z.string().url().optional().or(z.literal("")),
-  techResearchWebhook: z.string().url().optional().or(z.literal(""))
+  profileResearchWebhook: z.string().url().optional().or(z.literal("")),
+  idealCustomerWebhook: z.string().url().optional().or(z.literal(""))
 });
 
 type WebhookSettingsValues = z.infer<typeof webhookSettingsSchema>;
@@ -42,10 +40,8 @@ export const WebhookSettings = () => {
       emailFinderWebhook: '',
       linkedinEnrichmentWebhook: '',
       companyEnrichmentWebhook: '',
-      companyResearchWebhook: '',
-      marketResearchWebhook: '',
-      growthResearchWebhook: '',
-      techResearchWebhook: ''
+      profileResearchWebhook: '',
+      idealCustomerWebhook: ''
     },
   });
   
@@ -56,7 +52,7 @@ export const WebhookSettings = () => {
         // Fetch webhook settings from Supabase
         const { data, error } = await supabase
           .from('app_settings')
-          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, companyresearchwebhook, marketresearchwebhook, growthresearchwebhook, techresearchwebhook')
+          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook')
           .eq('id', 'default')
           .single();
           
@@ -79,20 +75,12 @@ export const WebhookSettings = () => {
             form.setValue('companyEnrichmentWebhook', data.companyenrichmentwebhook);
           }
 
-          if (data.companyresearchwebhook) {
-            form.setValue('companyResearchWebhook', data.companyresearchwebhook);
+          if (data.profile_research_webhook) {
+            form.setValue('profileResearchWebhook', data.profile_research_webhook);
           }
 
-          if (data.marketresearchwebhook) {
-            form.setValue('marketResearchWebhook', data.marketresearchwebhook);
-          }
-
-          if (data.growthresearchwebhook) {
-            form.setValue('growthResearchWebhook', data.growthresearchwebhook);
-          }
-
-          if (data.techresearchwebhook) {
-            form.setValue('techResearchWebhook', data.techresearchwebhook);
+          if (data.ideal_customer_webhook) {
+            form.setValue('idealCustomerWebhook', data.ideal_customer_webhook);
           }
         }
       } catch (error) {
@@ -122,10 +110,8 @@ export const WebhookSettings = () => {
           emailfinderwebhook: data.emailFinderWebhook,
           linkedinenrichmentwebhook: data.linkedinEnrichmentWebhook,
           companyenrichmentwebhook: data.companyEnrichmentWebhook,
-          companyresearchwebhook: data.companyResearchWebhook,
-          marketresearchwebhook: data.marketResearchWebhook,
-          growthresearchwebhook: data.growthResearchWebhook,
-          techresearchwebhook: data.techResearchWebhook,
+          profile_research_webhook: data.profileResearchWebhook,
+          ideal_customer_webhook: data.idealCustomerWebhook,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       
@@ -137,10 +123,8 @@ export const WebhookSettings = () => {
       localStorage.setItem('emailFinderWebhook', data.emailFinderWebhook || '');
       localStorage.setItem('linkedinEnrichmentWebhook', data.linkedinEnrichmentWebhook || '');
       localStorage.setItem('companyEnrichmentWebhook', data.companyEnrichmentWebhook || '');
-      localStorage.setItem('companyResearchWebhook', data.companyResearchWebhook || '');
-      localStorage.setItem('marketResearchWebhook', data.marketResearchWebhook || '');
-      localStorage.setItem('growthResearchWebhook', data.growthResearchWebhook || '');
-      localStorage.setItem('techResearchWebhook', data.techResearchWebhook || '');
+      localStorage.setItem('profile_research_webhook', data.profileResearchWebhook || '');
+      localStorage.setItem('ideal_customer_webhook', data.idealCustomerWebhook || '');
       
       // Redirect to settings page with saved parameter and tab
       navigate('/settings?saved=webhooks&tab=webhooks');
@@ -261,19 +245,19 @@ export const WebhookSettings = () => {
               <div className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="companyResearchWebhook"
+                  name="profileResearchWebhook"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Competitive Research Webhook</FormLabel>
+                      <FormLabel>Company Profile Research Webhook</FormLabel>
                       <FormControl>
                         <Input
                           type="url"
-                          placeholder="https://example.com/webhook/competitive-research"
+                          placeholder="https://example.com/webhook/profile-research"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        Webhook URL for competitive analysis research
+                        Webhook URL for company profile research
                       </FormDescription>
                     </FormItem>
                   )}
@@ -281,59 +265,19 @@ export const WebhookSettings = () => {
                 
                 <FormField
                   control={form.control}
-                  name="marketResearchWebhook"
+                  name="idealCustomerWebhook"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Market Challenges Webhook</FormLabel>
+                      <FormLabel>Ideal Customer Analysis Webhook</FormLabel>
                       <FormControl>
                         <Input
                           type="url"
-                          placeholder="https://example.com/webhook/market-challenges"
+                          placeholder="https://example.com/webhook/ideal-customer"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        Webhook URL for market challenges research
-                      </FormDescription>
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="growthResearchWebhook"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Growth Opportunities Webhook</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="url"
-                          placeholder="https://example.com/webhook/growth-opportunities"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Webhook URL for growth opportunities research
-                      </FormDescription>
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="techResearchWebhook"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Technology Stack Webhook</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="url"
-                          placeholder="https://example.com/webhook/technology-stack"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Webhook URL for technology stack research
+                        Webhook URL for ideal customer analysis
                       </FormDescription>
                     </FormItem>
                   )}

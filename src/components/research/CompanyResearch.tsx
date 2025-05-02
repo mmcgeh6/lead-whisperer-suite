@@ -17,48 +17,32 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
   const { toast } = useToast();
   const company = companies.find((c) => c.id === companyId);
   
-  const [researchType, setResearchType] = useState<string>("");
-  const [isGeneratingResearch, setIsGeneratingResearch] = useState(false);
-  const [researchResults, setResearchResults] = useState("");
-  const [researchNotes, setResearchNotes] = useState("");
+  const [isGeneratingProfileResearch, setIsGeneratingProfileResearch] = useState(false);
+  const [isGeneratingIdealCustomer, setIsGeneratingIdealCustomer] = useState(false);
+  const [profileResearch, setProfileResearch] = useState("");
+  const [idealCustomerAnalysis, setIdealCustomerAnalysis] = useState("");
+  const [profileNotes, setProfileNotes] = useState("");
+  const [idealCustomerNotes, setIdealCustomerNotes] = useState("");
   
   if (!company) {
     return <div>Company not found</div>;
   }
   
-  const generateResearch = async (type: string) => {
+  const generateProfileResearch = async () => {
     if (!company) return;
     
-    setResearchType(type);
-    setIsGeneratingResearch(true);
+    setIsGeneratingProfileResearch(true);
     
-    // Get webhook URL from localStorage based on research type
-    let webhookUrl = "";
-    
-    switch (type) {
-      case "competitive":
-        webhookUrl = localStorage.getItem('companyResearchWebhook') || "";
-        break;
-      case "market":
-        webhookUrl = localStorage.getItem('marketResearchWebhook') || "";
-        break;
-      case "growth":
-        webhookUrl = localStorage.getItem('growthResearchWebhook') || "";
-        break;
-      case "tech":
-        webhookUrl = localStorage.getItem('techResearchWebhook') || "";
-        break;
-      default:
-        webhookUrl = "";
-    }
+    // Get webhook URL from localStorage
+    const webhookUrl = localStorage.getItem('profile_research_webhook') || "";
     
     if (!webhookUrl) {
       toast({
         title: "Webhook Not Configured",
-        description: `Webhook URL for ${type} research not configured in API settings`,
+        description: "Company Profile Research webhook not configured in webhook settings",
         variant: "destructive"
       });
-      setIsGeneratingResearch(false);
+      setIsGeneratingProfileResearch(false);
       return;
     }
     
@@ -74,66 +58,107 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
           industry: company.industry,
           website: company.website,
           description: company.description,
-          researchType: type,
-          action: "generateResearch"
+          action: "generateProfileResearch"
         })
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to generate ${type} research`);
+        throw new Error("Failed to generate company profile research");
       }
       
       const data = await response.json();
-      setResearchResults(data.content || "");
+      setProfileResearch(data.content || "");
       
       toast({
         title: "Research Generated",
-        description: `${getResearchTypeName(type)} research for ${company.name} has been generated.`
+        description: `Company Profile Research for ${company.name} has been generated.`
       });
     } catch (error) {
-      console.error(`Error generating research:`, error);
+      console.error("Error generating profile research:", error);
       toast({
         title: "Generation Failed",
-        description: `Failed to generate research. Please try again.`,
+        description: "Failed to generate profile research. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setIsGeneratingResearch(false);
+      setIsGeneratingProfileResearch(false);
     }
   };
   
-  const getResearchTypeName = (type: string): string => {
-    switch (type) {
-      case "competitive": return "Competitive Analysis";
-      case "market": return "Market Challenges";
-      case "growth": return "Growth Opportunities";
-      case "tech": return "Technology Stack";
-      default: return type;
+  const generateIdealCustomerAnalysis = async () => {
+    if (!company) return;
+    
+    setIsGeneratingIdealCustomer(true);
+    
+    // Get webhook URL from localStorage
+    const webhookUrl = localStorage.getItem('ideal_customer_webhook') || "";
+    
+    if (!webhookUrl) {
+      toast({
+        title: "Webhook Not Configured",
+        description: "Ideal Customer Analysis webhook not configured in webhook settings",
+        variant: "destructive"
+      });
+      setIsGeneratingIdealCustomer(false);
+      return;
+    }
+    
+    try {
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          companyId: company.id,
+          companyName: company.name,
+          industry: company.industry,
+          website: company.website,
+          description: company.description,
+          action: "generateIdealCustomerAnalysis"
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to generate ideal customer analysis");
+      }
+      
+      const data = await response.json();
+      setIdealCustomerAnalysis(data.content || "");
+      
+      toast({
+        title: "Analysis Generated",
+        description: `Ideal Customer Analysis for ${company.name} has been generated.`
+      });
+    } catch (error) {
+      console.error("Error generating ideal customer analysis:", error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate ideal customer analysis. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingIdealCustomer(false);
     }
   };
   
-  const saveResearchNotes = async () => {
+  const saveProfileNotes = async () => {
     toast({
       title: "Research Notes Saved",
-      description: "Your research notes have been saved."
+      description: "Your profile research notes have been saved."
+    });
+  };
+  
+  const saveIdealCustomerNotes = async () => {
+    toast({
+      title: "Analysis Notes Saved",
+      description: "Your ideal customer analysis notes have been saved."
     });
   };
   
   // Check if webhooks are configured
-  const isWebhookConfigured = (type: string) => {
-    switch (type) {
-      case "competitive":
-        return !!localStorage.getItem('companyResearchWebhook');
-      case "market":
-        return !!localStorage.getItem('marketResearchWebhook');
-      case "growth":
-        return !!localStorage.getItem('growthResearchWebhook');
-      case "tech":
-        return !!localStorage.getItem('techResearchWebhook');
-      default:
-        return false;
-    }
-  };
+  const isProfileResearchWebhookConfigured = !!localStorage.getItem('profile_research_webhook');
+  const isIdealCustomerWebhookConfigured = !!localStorage.getItem('ideal_customer_webhook');
   
   return (
     <Card>
@@ -142,102 +167,109 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         <CardDescription>Generate research insights for {company.name}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-4">
-          <h3 className="font-medium">Generate Research</h3>
-          
-          {!isWebhookConfigured("competitive") && !isWebhookConfigured("market") && 
-           !isWebhookConfigured("growth") && !isWebhookConfigured("tech") && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                No research webhooks are configured. Please set up webhooks in API Settings to use this feature.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button
-              variant="outline"
-              className="justify-start"
-              disabled={isGeneratingResearch || !isWebhookConfigured("competitive")}
-              onClick={() => generateResearch("competitive")}
-            >
-              {isGeneratingResearch && researchType === "competitive" 
-                ? "Generating..." 
-                : "Generate Competitive Analysis"}
-            </Button>
+        {!isProfileResearchWebhookConfigured && !isIdealCustomerWebhookConfigured && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              No research webhooks are configured. Please set up webhooks in Settings to use this feature.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="space-y-6">
+          {/* Company Profile Research */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">Company Profile Research</h3>
+              <Button
+                variant="outline"
+                onClick={generateProfileResearch}
+                disabled={isGeneratingProfileResearch || !isProfileResearchWebhookConfigured}
+              >
+                {isGeneratingProfileResearch ? "Generating..." : "Generate Profile Research"}
+              </Button>
+            </div>
             
-            <Button
-              variant="outline"
-              className="justify-start"
-              disabled={isGeneratingResearch || !isWebhookConfigured("market")}
-              onClick={() => generateResearch("market")}
-            >
-              {isGeneratingResearch && researchType === "market" 
-                ? "Generating..." 
-                : "Generate Market Challenges"}
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="justify-start"
-              disabled={isGeneratingResearch || !isWebhookConfigured("growth")}
-              onClick={() => generateResearch("growth")}
-            >
-              {isGeneratingResearch && researchType === "growth" 
-                ? "Generating..." 
-                : "Generate Growth Opportunities"}
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="justify-start"
-              disabled={isGeneratingResearch || !isWebhookConfigured("tech")}
-              onClick={() => generateResearch("tech")}
-            >
-              {isGeneratingResearch && researchType === "tech" 
-                ? "Generating..." 
-                : "Generate Technology Stack"}
-            </Button>
-          </div>
-          
-          {researchResults && (
-            <div className="mt-6 space-y-4">
-              <h4 className="font-medium">
-                {getResearchTypeName(researchType)} Research Results
-              </h4>
-              <div className="bg-accent p-4 rounded-md whitespace-pre-wrap text-sm">
-                {researchResults}
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Research Notes</label>
-                <Textarea
-                  value={researchNotes}
-                  onChange={(e) => setResearchNotes(e.target.value)}
-                  placeholder="Add your notes about this research..."
-                  rows={4}
-                />
+            {profileResearch ? (
+              <div className="space-y-4">
+                <div className="bg-accent p-4 rounded-md whitespace-pre-wrap text-sm">
+                  {profileResearch}
+                </div>
                 
-                <div className="flex justify-end">
-                  <Button
-                    size="sm"
-                    onClick={saveResearchNotes}
-                  >
-                    Save Notes
-                  </Button>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Research Notes</label>
+                  <Textarea
+                    value={profileNotes}
+                    onChange={(e) => setProfileNotes(e.target.value)}
+                    placeholder="Add your notes about this profile research..."
+                    rows={4}
+                  />
+                  
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={saveProfileNotes}
+                    >
+                      Save Notes
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="py-4 border border-dashed border-gray-300 rounded-md bg-gray-50">
+                <p className="text-gray-500 text-center">
+                  Click the button above to generate company profile research.
+                </p>
+              </div>
+            )}
+          </div>
           
-          {!researchResults && (
-            <div className="py-4 text-center">
-              <p className="text-gray-500">
-                Select one of the research options above to generate insights.
-              </p>
+          {/* Ideal Customer Analysis */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">Ideal Customer Analysis</h3>
+              <Button
+                variant="outline"
+                onClick={generateIdealCustomerAnalysis}
+                disabled={isGeneratingIdealCustomer || !isIdealCustomerWebhookConfigured}
+              >
+                {isGeneratingIdealCustomer ? "Generating..." : "Generate Ideal Customer"}
+              </Button>
             </div>
-          )}
+            
+            {idealCustomerAnalysis ? (
+              <div className="space-y-4">
+                <div className="bg-accent p-4 rounded-md whitespace-pre-wrap text-sm">
+                  {idealCustomerAnalysis}
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Analysis Notes</label>
+                  <Textarea
+                    value={idealCustomerNotes}
+                    onChange={(e) => setIdealCustomerNotes(e.target.value)}
+                    placeholder="Add your notes about this ideal customer analysis..."
+                    rows={4}
+                  />
+                  
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={saveIdealCustomerNotes}
+                    >
+                      Save Notes
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="py-4 border border-dashed border-gray-300 rounded-md bg-gray-50">
+                <p className="text-gray-500 text-center">
+                  Click the button above to generate ideal customer analysis.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
