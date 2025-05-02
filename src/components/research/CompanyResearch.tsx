@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,13 +38,15 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
     const fetchCompanyInsights = async () => {
       try {
         // Check if webhook URLs are configured
-        const { data: settings } = await supabase
+        const { data: settings, error: settingsError } = await supabase
           .from('app_settings')
           .select('profile_research_webhook, ideal_customer_webhook')
           .eq('id', 'default')
           .single();
         
-        if (settings) {
+        if (settingsError) {
+          console.error("Error fetching webhook settings:", settingsError);
+        } else if (settings) {
           setProfileResearchWebhookConfigured(!!settings.profile_research_webhook);
           setIdealCustomerWebhookConfigured(!!settings.ideal_customer_webhook);
         }

@@ -150,6 +150,7 @@ export type Database = {
       company_insights: {
         Row: {
           ad_details: string | null
+          approach_notes: string | null
           awards: string[] | null
           company_id: string
           content_audit: Json | null
@@ -158,6 +159,7 @@ export type Database = {
           ideal_client: boolean | null
           ideal_customer_analysis: string | null
           job_postings: Json | null
+          notes: string | null
           profile_research: string | null
           running_facebook_ads: boolean | null
           suggested_approach: string | null
@@ -165,6 +167,7 @@ export type Database = {
         }
         Insert: {
           ad_details?: string | null
+          approach_notes?: string | null
           awards?: string[] | null
           company_id: string
           content_audit?: Json | null
@@ -173,6 +176,7 @@ export type Database = {
           ideal_client?: boolean | null
           ideal_customer_analysis?: string | null
           job_postings?: Json | null
+          notes?: string | null
           profile_research?: string | null
           running_facebook_ads?: boolean | null
           suggested_approach?: string | null
@@ -180,6 +184,7 @@ export type Database = {
         }
         Update: {
           ad_details?: string | null
+          approach_notes?: string | null
           awards?: string[] | null
           company_id?: string
           content_audit?: Json | null
@@ -188,6 +193,7 @@ export type Database = {
           ideal_client?: boolean | null
           ideal_customer_analysis?: string | null
           job_postings?: Json | null
+          notes?: string | null
           profile_research?: string | null
           running_facebook_ads?: boolean | null
           suggested_approach?: string | null
