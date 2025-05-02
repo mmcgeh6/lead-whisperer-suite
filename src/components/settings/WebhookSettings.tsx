@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ const webhookSettingsSchema = z.object({
   linkedinEnrichmentWebhook: z.string().url().optional().or(z.literal("")),
   companyEnrichmentWebhook: z.string().url().optional().or(z.literal("")),
   profileResearchWebhook: z.string().url().optional().or(z.literal("")),
-  idealCustomerWebhook: z.string().url().optional().or(z.literal("")
+  idealCustomerWebhook: z.string().url().optional().or(z.literal(""))
 });
 
 type WebhookSettingsValues = z.infer<typeof webhookSettingsSchema>;
