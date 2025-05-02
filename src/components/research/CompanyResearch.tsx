@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -151,61 +150,33 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         description: "Fetching company profile research data..."
       });
       
-      // Prepare payload with focus on company ID
+      // Prepare payload focused on company ID
       const payload = {
-        companyId: company.id,
-        companyName: company.name,
-        industry: company.industry || "",
-        website: company.website || "",
-        description: company.description || "",
-        action: "generateProfileResearch"
+        companyId: company.id
       };
       
       console.log("Sending request to webhook:", webhookUrl);
       console.log("With payload:", payload);
       
-      // Make the request
+      // Make the request using POST method with company ID in body
       const response = await fetch(webhookUrl, {
-        method: "GET", // Try GET instead of POST based on the error message
+        method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        // For GET, append params to URL instead of body
+        body: JSON.stringify(payload)
       });
       
       console.log("Webhook response status:", response.status);
       
       if (!response.ok) {
         console.error("Failed to generate company profile research, status:", response.status);
-        
-        // Try one more time with POST if GET fails
-        if (response.status === 404 && response.statusText.includes("GET request")) {
-          console.log("Retrying with POST method");
-          const postResponse = await fetch(webhookUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-          });
-          
-          console.log("POST retry status:", postResponse.status);
-          
-          if (!postResponse.ok) {
-            throw new Error("Failed to generate company profile research after retry");
-          }
-          
-          const data = await postResponse.json();
-          console.log("Webhook POST retry response data:", data);
-          handleResearchResponse(data);
-        } else {
-          throw new Error("Failed to generate company profile research");
-        }
-      } else {
-        const data = await response.json();
-        console.log("Webhook GET response data:", data);
-        handleResearchResponse(data);
+        throw new Error("Failed to generate company profile research");
       }
+      
+      const data = await response.json();
+      console.log("Webhook response data:", data);
+      handleResearchResponse(data);
     } catch (error) {
       console.error("Error generating profile research:", error);
       
@@ -301,50 +272,62 @@ Key Findings:
     
     setIsGeneratingIdealCustomer(true);
     
-    // Get webhook URL from settings or localStorage
-    let webhookUrl;
     try {
-      const { data: settings } = await supabase
+      // Get webhook URL from settings or localStorage
+      const { data: settings, error: settingsError } = await supabase
         .from('app_settings')
         .select('ideal_customer_webhook')
         .eq('id', 'default')
         .single();
       
-      webhookUrl = settings?.ideal_customer_webhook || localStorage.getItem('ideal_customer_webhook');
-    } catch (error) {
-      webhookUrl = localStorage.getItem('ideal_customer_webhook');
-    }
-    
-    if (!webhookUrl) {
-      toast({
-        title: "Webhook Not Configured",
-        description: "Ideal Customer Analysis webhook not configured in webhook settings",
-        variant: "destructive"
-      });
-      setIsGeneratingIdealCustomer(false);
-      return;
-    }
-    
-    try {
+      if (settingsError) {
+        console.error("Error getting webhook from settings:", settingsError);
+      }
+      
+      // Initialize webhook URL
+      let webhookUrl = settings?.ideal_customer_webhook;
+      
+      // If not found in DB, try localStorage
+      if (!webhookUrl) {
+        webhookUrl = localStorage.getItem('ideal_customer_webhook');
+        console.log("Using webhook from localStorage:", webhookUrl);
+      }
+      
+      console.log("Final webhook URL for ideal customer analysis:", webhookUrl);
+      
+      if (!webhookUrl) {
+        toast({
+          title: "Webhook Not Configured",
+          description: "Ideal Customer Analysis webhook not configured in webhook settings",
+          variant: "destructive"
+        });
+        setIsGeneratingIdealCustomer(false);
+        return;
+      }
+      
       toast({
         title: "Generating Analysis",
         description: "Fetching ideal customer analysis data..."
       });
       
+      // Prepare payload focused on company ID (matching profile research format)
+      const payload = {
+        companyId: company.id
+      };
+      
+      console.log("Sending request to webhook:", webhookUrl);
+      console.log("With payload:", payload);
+      
+      // Make the request using POST method with company ID in body
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          companyId: company.id,
-          companyName: company.name,
-          industry: company.industry || "",
-          website: company.website || "",
-          description: company.description || "",
-          action: "generateIdealCustomerAnalysis"
-        })
+        body: JSON.stringify(payload)
       });
+      
+      console.log("Webhook response status:", response.status);
       
       if (!response.ok) {
         console.error("Failed to generate ideal customer analysis, status:", response.status);
@@ -352,43 +335,13 @@ Key Findings:
       }
       
       const data = await response.json();
+      console.log("Webhook response data:", data);
+      
       const content = data.content || data.analysis || data.idealCustomerAnalysis || data.text || "";
       setIdealCustomerAnalysis(content);
       
-      // Check if a record already exists for this company
-      const { data: existingRecord } = await supabase
-        .from('company_insights')
-        .select('id')
-        .eq('company_id', company.id)
-        .maybeSingle();
-      
-      if (existingRecord) {
-        // If record exists, update it
-        const { error: updateError } = await supabase
-          .from('company_insights')
-          .update({
-            ideal_customer_analysis: content,
-            updated_at: new Date().toISOString()
-          })
-          .eq('company_id', company.id);
-          
-        if (updateError) {
-          console.error("Error updating ideal customer analysis in database:", updateError);
-        }
-      } else {
-        // If no record exists, insert a new one
-        const { error: insertError } = await supabase
-          .from('company_insights')
-          .insert({
-            company_id: company.id,
-            ideal_customer_analysis: content,
-            updated_at: new Date().toISOString()
-          });
-          
-        if (insertError) {
-          console.error("Error inserting ideal customer analysis to database:", insertError);
-        }
-      }
+      // Save to database
+      await saveIdealCustomerToDatabase(content);
       
       toast({
         title: "Analysis Generated",
@@ -421,40 +374,8 @@ Buying Behavior:
 
       setIdealCustomerAnalysis(demoContent);
       
-      // Check if a record already exists for this company
-      const { data: existingRecord } = await supabase
-        .from('company_insights')
-        .select('id')
-        .eq('company_id', company.id)
-        .maybeSingle();
-      
-      if (existingRecord) {
-        // If record exists, update it
-        const { error: updateError } = await supabase
-          .from('company_insights')
-          .update({
-            ideal_customer_analysis: demoContent,
-            updated_at: new Date().toISOString()
-          })
-          .eq('company_id', company.id);
-          
-        if (updateError) {
-          console.error("Error updating demo ideal customer analysis in database:", updateError);
-        }
-      } else {
-        // If no record exists, insert a new one
-        const { error: insertError } = await supabase
-          .from('company_insights')
-          .insert({
-            company_id: company.id,
-            ideal_customer_analysis: demoContent,
-            updated_at: new Date().toISOString()
-          });
-          
-        if (insertError) {
-          console.error("Error inserting demo ideal customer analysis to database:", insertError);
-        }
-      }
+      // Save demo content to database
+      await saveIdealCustomerToDatabase(demoContent);
       
       toast({
         title: "Using Demo Content",
@@ -463,6 +384,53 @@ Buying Behavior:
       });
     } finally {
       setIsGeneratingIdealCustomer(false);
+    }
+  };
+  
+  // Helper function to save ideal customer analysis to database
+  const saveIdealCustomerToDatabase = async (content: string) => {
+    try {
+      // Check if a record already exists for this company
+      const { data: existingRecord, error: checkError } = await supabase
+        .from('company_insights')
+        .select('id')
+        .eq('company_id', company.id)
+        .maybeSingle();
+      
+      if (checkError) {
+        console.error("Error checking for existing company insight:", checkError);
+        return;
+      }
+      
+      if (existingRecord) {
+        // If record exists, update it
+        const { error: updateError } = await supabase
+          .from('company_insights')
+          .update({
+            ideal_customer_analysis: content,
+            updated_at: new Date().toISOString()
+          })
+          .eq('company_id', company.id);
+          
+        if (updateError) {
+          console.error("Error updating ideal customer analysis in database:", updateError);
+        }
+      } else {
+        // If no record exists, insert a new one
+        const { error: insertError } = await supabase
+          .from('company_insights')
+          .insert({
+            company_id: company.id,
+            ideal_customer_analysis: content,
+            updated_at: new Date().toISOString()
+          });
+          
+        if (insertError) {
+          console.error("Error inserting ideal customer analysis to database:", insertError);
+        }
+      }
+    } catch (error) {
+      console.error("Error saving ideal customer analysis to database:", error);
     }
   };
   
