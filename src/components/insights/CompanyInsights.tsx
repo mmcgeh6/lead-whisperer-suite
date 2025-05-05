@@ -137,35 +137,43 @@ export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
       if (contentType && contentType.includes('application/json')) {
         // Handle JSON response
         data = await response.json();
-        
-        // Update company insights in the database
-        await updateInsightsInDatabase(type, data);
-        
-        toast({
-          title: "Insights Generated",
-          description: `${type.charAt(0).toUpperCase() + type.slice(1)} insights have been generated.`,
-        });
       } else {
         // Handle HTML or text response
         const textData = await response.text();
+        console.log("Received HTML/text response:", textData.substring(0, 100) + "...");
         
         // Create a structured object to store the text data
-        const formattedData = {
+        data = {
           content: textData,
           timestamp: new Date().toISOString(),
         };
-        
-        // Update company insights in the database
-        await updateInsightsInDatabase(type, formattedData);
-        
-        toast({
-          title: "Insights Generated",
-          description: `${type.charAt(0).toUpperCase() + type.slice(1)} insights have been generated.`,
-        });
       }
       
-      // Refresh the page or relevant component to show the new insights
-      window.location.reload();
+      console.log(`Processed ${type} insights data:`, data);
+      
+      // Update company insights in the database
+      await updateInsightsInDatabase(type, data);
+      
+      toast({
+        title: "Insights Generated",
+        description: `${type.charAt(0).toUpperCase() + type.slice(1)} insights have been generated.`,
+      });
+
+      // Reload the current company to show updated insights
+      if (company) {
+        const updatedCompany = {
+          ...company,
+          insights: {
+            ...(company.insights || {}),
+            [type === 'content' ? 'contentAudit' : 
+              type === 'jobs' ? 'jobPostings' : 
+              'recentAwards']: data
+          }
+        };
+        
+        console.log("Updating company with insights:", updatedCompany);
+        await updateCompany(updatedCompany);
+      }
     } catch (error) {
       console.error(`Error generating ${type} insights:`, error);
       toast({
@@ -184,7 +192,7 @@ export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
       
       switch (type) {
         case 'awards':
-          insightData.awards = data;
+          insightData.recentAwards = data;
           break;
         case 'jobs':
           insightData.jobPostings = data;
