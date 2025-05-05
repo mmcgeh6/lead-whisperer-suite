@@ -9,7 +9,7 @@ interface CompanyOutreachProps {
 export const CompanyOutreach = ({ companyName }: CompanyOutreachProps) => {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Personalized Outreach</CardTitle>
       </CardHeader>
       <CardContent>
