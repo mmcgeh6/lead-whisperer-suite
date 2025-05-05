@@ -12,6 +12,39 @@ interface IdealClientInsightProps {
   company: Company;
 }
 
+// Simple markdown to HTML converter
+const renderMarkdownToHtml = (markdown: string): string => {
+  if (!markdown) return '';
+  
+  // Handle headers
+  let html = markdown
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>');
+    
+  // Handle bold text
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Handle italic text
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+  // Handle links
+  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  
+  // Handle unordered lists
+  html = html.replace(/^\s*-\s*(.*)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n)+/g, '<ul>$&</ul>');
+  
+  // Handle horizontal rules
+  html = html.replace(/^---$/gm, '<hr>');
+  
+  // Handle paragraphs
+  html = html.replace(/^([^\n<].*?)(?:\n(?!<|$))/gm, '$1<br>');
+  html = html.replace(/^([^\n<].+?)$/gm, '<p>$1</p>');
+  
+  return html;
+};
+
 export const IdealClientInsight = ({ company }: IdealClientInsightProps) => {
   const { updateCompany } = useAppContext();
   
@@ -60,14 +93,21 @@ export const IdealClientInsight = ({ company }: IdealClientInsightProps) => {
           
           <div className="space-y-2">
             <Label htmlFor="approach">Suggested Approach</Label>
-            <Textarea
-              id="approach"
-              placeholder="Describe how your product/service can specifically help this company..."
-              value={approach}
-              onChange={(e) => isEditing && setApproach(e.target.value)}
-              disabled={!isEditing}
-              rows={4}
-            />
+            {isEditing ? (
+              <Textarea
+                id="approach"
+                placeholder="Describe how your product/service can specifically help this company..."
+                value={approach}
+                onChange={(e) => setApproach(e.target.value)}
+                rows={4}
+              />
+            ) : approach ? (
+              <div className="bg-accent p-3 rounded-md prose prose-sm max-w-none">
+                <div dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(approach) }} />
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 italic">No approach defined yet</p>
+            )}
           </div>
           
           {isEditing && (

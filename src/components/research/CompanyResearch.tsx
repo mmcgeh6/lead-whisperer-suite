@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -150,151 +151,49 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
         description: "Fetching company profile research data..."
       });
       
-      // Prepare data for request
-      const payload = {
+      // Prepare query params for GET request
+      const queryParams = new URLSearchParams({
         companyId: company.id,
         companyName: company.name || '',
         industry: company.industry || '',
         website: company.website || '',
         description: company.description || ''
-      };
+      }).toString();
       
-      console.log("Sending request to webhook:", webhookUrl);
-      console.log("With payload:", payload);
+      // The full URL for the GET request
+      const getUrl = `${webhookUrl}?${queryParams}`;
       
-      // Try GET first as it seems to be working better
-      try {
-        // Prepare query params for GET request
-        const queryParams = new URLSearchParams({
-          companyId: company.id,
-          companyName: company.name || '',
-          industry: company.industry || '',
-          website: company.website || '',
-          description: company.description || ''
-        }).toString();
+      console.log("Sending GET request to:", getUrl);
+      
+      const response = await fetch(getUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "text/plain, application/json"
+        }
+      });
+      
+      console.log("GET response status:", response.status);
+      
+      if (!response.ok) {
+        console.error("GET request failed with status:", response.status);
+        throw new Error(`Failed to get company profile research, status: ${response.status}`);
+      }
+      
+      // Log the raw response for debugging
+      const responseText = await response.text();
+      console.log("Raw webhook response:", responseText);
+      
+      // Use the text response directly for markdown content
+      if (responseText && responseText.trim().length > 0) {
+        setProfileResearch(responseText);
+        await saveProfileResearchToDatabase(responseText);
         
-        // The full URL for the GET request
-        const getUrl = `${webhookUrl}?${queryParams}`;
-        
-        console.log("Attempting GET request to:", getUrl);
-        
-        const response = await fetch(getUrl, {
-          method: "GET",
-          headers: {
-            "Accept": "text/plain, application/json"
-          }
+        toast({
+          title: "Research Generated",
+          description: `Company Profile Research for ${company.name} has been generated.`
         });
-        
-        console.log("GET response status:", response.status);
-        
-        if (response.ok) {
-          // Log the raw response for debugging
-          const responseText = await response.text();
-          console.log("Raw webhook response:", responseText);
-          
-          // First try to extract content as is (plain text)
-          let content = responseText;
-          
-          // If it looks like JSON, try to parse it
-          if (responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
-            try {
-              const responseData = JSON.parse(responseText);
-              console.log("Parsed webhook response data:", responseData);
-              
-              // Extract content from the parsed JSON
-              const extractedContent = extractContentFromResponse(responseData);
-              if (extractedContent) {
-                content = extractedContent;
-              }
-            } catch (parseError) {
-              console.warn("Response is not valid JSON, using as plain text:", parseError);
-              // Continue with the raw text as content
-            }
-          }
-          
-          if (content) {
-            console.log("Final content to use:", content);
-            setProfileResearch(content);
-            await saveProfileResearchToDatabase(content);
-            
-            toast({
-              title: "Research Generated",
-              description: `Company Profile Research for ${company.name} has been generated.`
-            });
-            return;
-          } else {
-            throw new Error("No usable content found in response");
-          }
-        } else {
-          console.error("GET request failed with status:", response.status);
-          throw new Error("GET request failed");
-        }
-      } catch (getError) {
-        console.error("GET request failed:", getError);
-        
-        // Fall back to POST if GET fails
-        console.log("Falling back to POST request");
-        
-        try {
-          console.log("Attempting POST request to webhook");
-          
-          const response = await fetch(webhookUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Accept": "text/plain, application/json"
-            },
-            body: JSON.stringify(payload)
-          });
-          
-          console.log("POST response status:", response.status);
-          
-          if (response.ok) {
-            // Log the raw response for debugging
-            const responseText = await response.text();
-            console.log("Raw webhook response:", responseText);
-            
-            // First try to extract content as is (plain text)
-            let content = responseText;
-            
-            // If it looks like JSON, try to parse it
-            if (responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
-              try {
-                const responseData = JSON.parse(responseText);
-                console.log("Parsed webhook response data:", responseData);
-                
-                // Extract content from the parsed JSON
-                const extractedContent = extractContentFromResponse(responseData);
-                if (extractedContent) {
-                  content = extractedContent;
-                }
-              } catch (parseError) {
-                console.warn("Response is not valid JSON, using as plain text:", parseError);
-                // Continue with the raw text as content
-              }
-            }
-            
-            if (content) {
-              console.log("Final content to use:", content);
-              setProfileResearch(content);
-              await saveProfileResearchToDatabase(content);
-              
-              toast({
-                title: "Research Generated",
-                description: `Company Profile Research for ${company.name} has been generated.`
-              });
-              return;
-            } else {
-              throw new Error("No usable content found in response");
-            }
-          } else {
-            console.error("Failed with POST request, status:", response.status);
-            throw new Error("All webhook request methods failed");
-          }
-        } catch (postError) {
-          console.error("POST request also failed:", postError);
-          throw new Error("All webhook request methods failed");
-        }
+      } else {
+        throw new Error("Empty response received from webhook");
       }
     } catch (error) {
       console.error("Error generating profile research:", error);
@@ -314,69 +213,6 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
     } finally {
       setIsGeneratingProfileResearch(false);
     }
-  };
-  
-  // Helper function to extract content from various response formats
-  const extractContentFromResponse = (data: any): string | null => {
-    if (!data) return null;
-    
-    // Check for common response fields
-    if (typeof data === 'string' && data.length > 10) return data;
-    
-    // Special case for our JSON format
-    if (typeof data.company_research === 'string' && data.company_research.length > 10) {
-      return data.company_research;
-    }
-    
-    // Common response field names (case insensitive search)
-    const possibleFields = [
-      'content', 'research', 'profileResearch', 'profile_research',
-      'text', 'data', 'result', 'output', 'response', 'message', 
-      'body', 'researchData', 'research_data'
-    ];
-    
-    // Try case-insensitive match for known field names
-    for (const field of possibleFields) {
-      for (const key in data) {
-        if (key.toLowerCase() === field.toLowerCase() && 
-            typeof data[key] === 'string' && 
-            data[key].length > 10) {
-          return data[key];
-        }
-      }
-    }
-    
-    // Try to find any string property that might contain the content
-    for (const key in data) {
-      if (typeof data[key] === 'string' && data[key].length > 50) {
-        return data[key];
-      }
-    }
-    
-    // If data is an array, check the first element
-    if (Array.isArray(data) && data.length > 0) {
-      const firstItem = data[0];
-      if (typeof firstItem === 'string' && firstItem.length > 10) return firstItem;
-      
-      // Check for common fields in first item if it's an object
-      if (typeof firstItem === 'object' && firstItem !== null) {
-        return extractContentFromResponse(firstItem);
-      }
-    }
-    
-    // If we get a complex object, attempt to stringify it as a last resort
-    if (typeof data === 'object') {
-      try {
-        const stringified = JSON.stringify(data, null, 2);
-        if (stringified.length > 20) {
-          return stringified;
-        }
-      } catch (e) {
-        console.error("Failed to stringify response data:", e);
-      }
-    }
-    
-    return null;
   };
   
   const saveProfileResearchToDatabase = async (content: string) => {
@@ -430,14 +266,28 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
   };
   
   const generateDemoProfileResearch = (company: any) => {
-    return `${company.name} appears to be a ${company.industry || "growing"} company focusing on ${company.description || "innovative solutions"}. Based on our analysis of their web presence and market positioning, they appear to be targeting mid-market businesses with their offerings. Their website indicates a strong emphasis on ${company.industry || "technology"} and customer service.
+    return `## ${company.name} Overview
 
-Key Findings:
+**Company Name:** ${company.name}
+
+**Industry:** ${company.industry || "Unknown"}
+
+**Key Information:**
 - Founded approximately 5-7 years ago
 - Has shown steady growth in their target market
 - Main competitors include several larger enterprises in the ${company.industry || "technology"} space
 - Current marketing focus seems to be on digital channels and industry conferences
-- Leadership team appears experienced with backgrounds in similar industries`;
+- Leadership team appears experienced with backgrounds in similar industries
+
+---
+
+## Market Position
+${company.name} appears to be positioning itself as a quality-focused provider in the ${company.industry || "technology"} sector, with particular emphasis on customer satisfaction and innovation.
+
+---
+
+## Recommendations
+Based on our analysis, ${company.name} would benefit from solutions that help scale operations while maintaining their quality standards and customer focus.`;
   };
   
   const generateIdealCustomerAnalysis = async () => {
@@ -483,177 +333,55 @@ Key Findings:
         description: "Fetching ideal customer analysis data..."
       });
       
-      // Prepare data for request
-      const payload = {
+      // Prepare query params for GET request
+      const queryParams = new URLSearchParams({
         companyId: company.id,
         companyName: company.name || '',
         industry: company.industry || '',
         website: company.website || '',
         description: company.description || ''
-      };
+      }).toString();
       
-      console.log("Sending request to webhook:", webhookUrl);
-      console.log("With payload:", payload);
+      // The full URL for the GET request
+      const getUrl = `${webhookUrl}?${queryParams}`;
       
-      // Try GET first as it seems to be working better
-      try {
-        // Prepare query params for GET request
-        const queryParams = new URLSearchParams({
-          companyId: company.id,
-          companyName: company.name || '',
-          industry: company.industry || '',
-          website: company.website || '',
-          description: company.description || ''
-        }).toString();
+      console.log("Sending GET request to:", getUrl);
+      
+      const response = await fetch(getUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "text/plain, application/json"
+        }
+      });
+      
+      console.log("GET response status:", response.status);
+      
+      if (!response.ok) {
+        console.error("GET request failed with status:", response.status);
+        throw new Error(`Failed to get ideal customer analysis, status: ${response.status}`);
+      }
+      
+      // Log the raw response for debugging
+      const responseText = await response.text();
+      console.log("Raw webhook response:", responseText);
+      
+      // Use the text response directly for markdown content
+      if (responseText && responseText.trim().length > 0) {
+        setIdealCustomerAnalysis(responseText);
+        await saveIdealCustomerToDatabase(responseText);
         
-        // The full URL for the GET request
-        const getUrl = `${webhookUrl}?${queryParams}`;
-        
-        console.log("Attempting GET request to:", getUrl);
-        
-        const response = await fetch(getUrl, {
-          method: "GET",
-          headers: {
-            "Accept": "text/plain, application/json"
-          }
+        toast({
+          title: "Analysis Generated",
+          description: `Ideal Customer Analysis for ${company.name} has been generated.`
         });
-        
-        console.log("GET response status:", response.status);
-        
-        if (response.ok) {
-          // Log the raw response for debugging
-          const responseText = await response.text();
-          console.log("Raw webhook response:", responseText);
-          
-          // First try to extract content as is (plain text)
-          let content = responseText;
-          
-          // If it looks like JSON, try to parse it
-          if (responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
-            try {
-              const responseData = JSON.parse(responseText);
-              console.log("Parsed webhook response data:", responseData);
-              
-              // Extract content from the parsed JSON
-              const extractedContent = extractContentFromResponse(responseData);
-              if (extractedContent) {
-                content = extractedContent;
-              }
-            } catch (parseError) {
-              console.warn("Response is not valid JSON, using as plain text:", parseError);
-              // Continue with the raw text as content
-            }
-          }
-          
-          if (content) {
-            console.log("Final content to use:", content);
-            setIdealCustomerAnalysis(content);
-            await saveIdealCustomerToDatabase(content);
-            
-            toast({
-              title: "Analysis Generated",
-              description: `Ideal Customer Analysis for ${company.name} has been generated.`
-            });
-            return;
-          } else {
-            throw new Error("No usable content found in response");
-          }
-        } else {
-          console.error("GET request failed with status:", response.status);
-          throw new Error("GET request failed");
-        }
-      } catch (getError) {
-        console.error("GET request failed:", getError);
-        
-        // Fall back to POST if GET fails
-        console.log("Falling back to POST request");
-        
-        try {
-          console.log("Attempting POST request to webhook");
-          
-          const response = await fetch(webhookUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Accept": "text/plain, application/json"
-            },
-            body: JSON.stringify(payload)
-          });
-          
-          console.log("POST response status:", response.status);
-          
-          if (response.ok) {
-            // Log the raw response for debugging
-            const responseText = await response.text();
-            console.log("Raw webhook response:", responseText);
-            
-            // First try to extract content as is (plain text)
-            let content = responseText;
-            
-            // If it looks like JSON, try to parse it
-            if (responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
-              try {
-                const responseData = JSON.parse(responseText);
-                console.log("Parsed webhook response data:", responseData);
-                
-                // Extract content from the parsed JSON
-                const extractedContent = extractContentFromResponse(responseData);
-                if (extractedContent) {
-                  content = extractedContent;
-                }
-              } catch (parseError) {
-                console.warn("Response is not valid JSON, using as plain text:", parseError);
-                // Continue with the raw text as content
-              }
-            }
-            
-            if (content) {
-              console.log("Final content to use:", content);
-              setIdealCustomerAnalysis(content);
-              await saveIdealCustomerToDatabase(content);
-              
-              toast({
-                title: "Analysis Generated",
-                description: `Ideal Customer Analysis for ${company.name} has been generated.`
-              });
-              return;
-            } else {
-              throw new Error("No usable content found in response");
-            }
-          } else {
-            console.error("Failed with POST request, status:", response.status);
-            throw new Error("All webhook request methods failed");
-          }
-        } catch (postError) {
-          console.error("POST request also failed:", postError);
-          throw new Error("All webhook request methods failed");
-        }
+      } else {
+        throw new Error("Empty response received from webhook");
       }
     } catch (error) {
       console.error("Error generating ideal customer analysis:", error);
       
       // Use demo content for better UX
-      const demoContent = `Based on our analysis of ${company.name}, their ideal customer profile appears to be:
-
-Demographic:
-- Mid-sized businesses with 50-200 employees
-- Annual revenue between $5M-$20M
-- Companies experiencing growth phase or digital transformation
-- ${company.industry || "Technology"}-focused organizations with modern infrastructure needs
-
-Pain Points:
-- Legacy systems integration challenges
-- Need for scalable solutions
-- Limited internal technical resources
-- Regulatory compliance requirements
-- Budget constraints for enterprise-level solutions
-
-Buying Behavior:
-- 3-6 month sales cycle
-- Purchase decisions made by committee (IT, Finance, Operations)
-- Value ROI and implementation timeline over lowest cost
-- Prefer consultative relationships over transactional vendors`;
-
+      const demoContent = generateDemoIdealCustomerAnalysis(company);
       setIdealCustomerAnalysis(demoContent);
       
       // Save demo content to database
@@ -667,6 +395,33 @@ Buying Behavior:
     } finally {
       setIsGeneratingIdealCustomer(false);
     }
+  };
+  
+  const generateDemoIdealCustomerAnalysis = (company: any) => {
+    return `## Ideal Customer Profile for ${company.name}
+
+**Demographic:**
+- Mid-sized businesses with 50-200 employees
+- Annual revenue between $5M-$20M
+- Companies experiencing growth phase or digital transformation
+- ${company.industry || "Technology"}-focused organizations with modern infrastructure needs
+
+---
+
+**Pain Points:**
+- Legacy systems integration challenges
+- Need for scalable solutions
+- Limited internal technical resources
+- Regulatory compliance requirements
+- Budget constraints for enterprise-level solutions
+
+---
+
+**Buying Behavior:**
+- 3-6 month sales cycle
+- Purchase decisions made by committee (IT, Finance, Operations)
+- Value ROI and implementation timeline over lowest cost
+- Prefer consultative relationships over transactional vendors`;
   };
   
   // Helper function to save ideal customer analysis to database
@@ -871,8 +626,8 @@ Buying Behavior:
             
             {profileResearch ? (
               <div className="space-y-4">
-                <div className="bg-accent p-4 rounded-md whitespace-pre-wrap text-sm">
-                  {profileResearch}
+                <div className="bg-accent p-4 rounded-md whitespace-pre-wrap prose prose-sm max-w-none">
+                  <div dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(profileResearch) }} />
                 </div>
                 
                 <div className="space-y-2">
@@ -923,8 +678,8 @@ Buying Behavior:
             
             {idealCustomerAnalysis ? (
               <div className="space-y-4">
-                <div className="bg-accent p-4 rounded-md whitespace-pre-wrap text-sm">
-                  {idealCustomerAnalysis}
+                <div className="bg-accent p-4 rounded-md whitespace-pre-wrap prose prose-sm max-w-none">
+                  <div dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(idealCustomerAnalysis) }} />
                 </div>
                 
                 <div className="space-y-2">
@@ -965,3 +720,43 @@ Buying Behavior:
     </Card>
   );
 };
+
+// Simple markdown to HTML converter
+const renderMarkdownToHtml = (markdown: string): string => {
+  if (!markdown) return '';
+  
+  // Handle headers
+  let html = markdown
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>');
+    
+  // Handle bold text
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Handle italic text
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+  // Handle links
+  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  
+  // Handle unordered lists
+  html = html.replace(/^\s*-\s*(.*)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n)+/g, '<ul>$&</ul>');
+  
+  // Handle horizontal rules
+  html = html.replace(/^---$/gm, '<hr>');
+  
+  // Handle paragraphs - group consecutive lines that don't contain HTML elements
+  html = html.replace(/^([^\n<].*?)(?:\n(?!<|$))/gm, '$1<br>');
+  html = html.replace(/^([^\n<].+?)$/gm, '<p>$1</p>');
+  
+  // Handle tables (basic support)
+  // Find table blocks
+  html = html.replace(/^\|(.*)\|$/gm, '<tr><td>$1</td></tr>')
+    .replace(/<td>(.*?)\|/g, '<td>$1</td><td>')
+    .replace(/(<tr>.*<\/tr>\n)+/g, '<table class="border-collapse border border-gray-300 w-full">$&</table>');
+  
+  return html;
+}
+
