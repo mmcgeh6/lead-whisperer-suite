@@ -23,6 +23,7 @@ export type Database = {
           leadprovider: string | null
           linkedinenrichmentwebhook: string | null
           marketresearchwebhook: string | null
+          outreach_webhook: string | null
           profile_research_webhook: string | null
           techresearchwebhook: string | null
           updated_at: string | null
@@ -40,6 +41,7 @@ export type Database = {
           leadprovider?: string | null
           linkedinenrichmentwebhook?: string | null
           marketresearchwebhook?: string | null
+          outreach_webhook?: string | null
           profile_research_webhook?: string | null
           techresearchwebhook?: string | null
           updated_at?: string | null
@@ -57,6 +59,7 @@ export type Database = {
           leadprovider?: string | null
           linkedinenrichmentwebhook?: string | null
           marketresearchwebhook?: string | null
+          outreach_webhook?: string | null
           profile_research_webhook?: string | null
           techresearchwebhook?: string | null
           updated_at?: string | null
