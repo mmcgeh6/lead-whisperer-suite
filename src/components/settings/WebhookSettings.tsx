@@ -24,7 +24,9 @@ const webhookSettingsSchema = z.object({
   profileResearchWebhook: z.string().url().optional().or(z.literal("")),
   idealCustomerWebhook: z.string().url().optional().or(z.literal("")),
   outreachWebhook: z.string().url().optional().or(z.literal("")),
-  companyResearchWebhook: z.string().url().optional().or(z.literal(""))
+  awardsWebhook: z.string().url().optional().or(z.literal("")),
+  jobsWebhook: z.string().url().optional().or(z.literal("")),
+  contentWebhook: z.string().url().optional().or(z.literal(""))
 });
 
 type WebhookSettingsValues = z.infer<typeof webhookSettingsSchema>;
@@ -45,7 +47,9 @@ export const WebhookSettings = () => {
       profileResearchWebhook: '',
       idealCustomerWebhook: '',
       outreachWebhook: '',
-      companyResearchWebhook: ''
+      awardsWebhook: '',
+      jobsWebhook: '',
+      contentWebhook: ''
     },
   });
   
@@ -56,7 +60,7 @@ export const WebhookSettings = () => {
         // Fetch webhook settings from Supabase
         const { data, error } = await supabase
           .from('app_settings')
-          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook, outreach_webhook, companyresearchwebhook')
+          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook, outreach_webhook, awards_webhook, jobs_webhook, content_webhook')
           .eq('id', 'default')
           .single();
           
@@ -76,7 +80,9 @@ export const WebhookSettings = () => {
           form.setValue('profileResearchWebhook', data.profile_research_webhook || '');
           form.setValue('idealCustomerWebhook', data.ideal_customer_webhook || '');
           form.setValue('outreachWebhook', data.outreach_webhook || '');
-          form.setValue('companyResearchWebhook', data.companyresearchwebhook || '');
+          form.setValue('awardsWebhook', data.awards_webhook || '');
+          form.setValue('jobsWebhook', data.jobs_webhook || '');
+          form.setValue('contentWebhook', data.content_webhook || '');
           
           // Also update localStorage for fallback
           if (data.profile_research_webhook) {
@@ -92,9 +98,16 @@ export const WebhookSettings = () => {
             console.log("Saved outreach webhook to localStorage:", data.outreach_webhook);
           }
           
-          if (data.companyresearchwebhook) {
-            localStorage.setItem('company_insights_webhook', data.companyresearchwebhook);
-            console.log("Saved company insights webhook to localStorage:", data.companyresearchwebhook);
+          if (data.awards_webhook) {
+            localStorage.setItem('awards_webhook', data.awards_webhook);
+          }
+          
+          if (data.jobs_webhook) {
+            localStorage.setItem('jobs_webhook', data.jobs_webhook);
+          }
+          
+          if (data.content_webhook) {
+            localStorage.setItem('content_webhook', data.content_webhook);
           }
         }
       } catch (error) {
@@ -109,7 +122,9 @@ export const WebhookSettings = () => {
         const profileResearchWebhook = localStorage.getItem('profile_research_webhook');
         const idealCustomerWebhook = localStorage.getItem('ideal_customer_webhook');
         const outreachWebhook = localStorage.getItem('outreach_webhook');
-        const companyInsightsWebhook = localStorage.getItem('company_insights_webhook');
+        const awardsWebhook = localStorage.getItem('awards_webhook');
+        const jobsWebhook = localStorage.getItem('jobs_webhook');
+        const contentWebhook = localStorage.getItem('content_webhook');
         
         if (profileResearchWebhook) {
           form.setValue('profileResearchWebhook', profileResearchWebhook);
@@ -123,8 +138,16 @@ export const WebhookSettings = () => {
           form.setValue('outreachWebhook', outreachWebhook);
         }
         
-        if (companyInsightsWebhook) {
-          form.setValue('companyResearchWebhook', companyInsightsWebhook);
+        if (awardsWebhook) {
+          form.setValue('awardsWebhook', awardsWebhook);
+        }
+        
+        if (jobsWebhook) {
+          form.setValue('jobsWebhook', jobsWebhook);
+        }
+        
+        if (contentWebhook) {
+          form.setValue('contentWebhook', contentWebhook);
         }
       } finally {
         setIsLoading(false);
@@ -151,7 +174,9 @@ export const WebhookSettings = () => {
           profile_research_webhook: data.profileResearchWebhook || null,
           ideal_customer_webhook: data.idealCustomerWebhook || null,
           outreach_webhook: data.outreachWebhook || null,
-          companyresearchwebhook: data.companyResearchWebhook || null,
+          awards_webhook: data.awardsWebhook || null,
+          jobs_webhook: data.jobsWebhook || null,
+          content_webhook: data.contentWebhook || null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       
@@ -167,7 +192,9 @@ export const WebhookSettings = () => {
       localStorage.setItem('profile_research_webhook', data.profileResearchWebhook || '');
       localStorage.setItem('ideal_customer_webhook', data.idealCustomerWebhook || '');
       localStorage.setItem('outreach_webhook', data.outreachWebhook || '');
-      localStorage.setItem('company_insights_webhook', data.companyResearchWebhook || '');
+      localStorage.setItem('awards_webhook', data.awardsWebhook || '');
+      localStorage.setItem('jobs_webhook', data.jobsWebhook || '');
+      localStorage.setItem('content_webhook', data.contentWebhook || '');
       
       console.log("Saved webhooks to localStorage");
       
@@ -352,22 +379,69 @@ export const WebhookSettings = () => {
                     </FormItem>
                   )}
                 />
-                
+              </div>
+            </div>
+            
+            <Separator className="my-4" />
+            
+            <div>
+              <h3 className="text-lg font-medium mb-3">Company Insights Webhooks</h3>
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="companyResearchWebhook"
+                  name="awardsWebhook"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Company Insights Webhook</FormLabel>
+                      <FormLabel>Awards Insights Webhook</FormLabel>
                       <FormControl>
                         <Input
                           type="url"
-                          placeholder="https://example.com/webhook/company-insights"
+                          placeholder="https://example.com/webhook/awards-insights"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        Webhook URL for generating company insights
+                        Webhook URL for generating company awards insights
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="jobsWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Jobs Insights Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/jobs-insights"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook URL for generating company job postings insights
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="contentWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Content Insights Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/content-insights"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook URL for generating company content audit insights
                       </FormDescription>
                     </FormItem>
                   )}

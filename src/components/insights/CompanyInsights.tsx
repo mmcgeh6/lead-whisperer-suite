@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,13 +20,14 @@ interface CompanyInsightsProps {
 }
 
 export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
-  const { companies, updateCompany, scanWebsite } = useAppContext();
+  const { companies, updateCompany } = useAppContext();
   const { toast } = useToast();
   const company = companies.find((c) => c.id === companyId);
   
   const [websiteUrl, setWebsiteUrl] = useState(company?.website || "");
-  const [isScanning, setIsScanning] = useState(false);
-  const [insightsWebhookUrl, setInsightsWebhookUrl] = useState("");
+  const [awardsWebhookUrl, setAwardsWebhookUrl] = useState("");
+  const [jobsWebhookUrl, setJobsWebhookUrl] = useState("");
+  const [contentWebhookUrl, setContentWebhookUrl] = useState("");
   const [currentTab, setCurrentTab] = useState("awards");
   const [isLoading, setIsLoading] = useState(false);
   
@@ -34,50 +35,73 @@ export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
     return <div>Company not found</div>;
   }
 
-  // Fetch the webhook URL when component mounts
-  useState(() => {
-    const fetchWebhookUrl = async () => {
+  useEffect(() => {
+    const fetchWebhookUrls = async () => {
       try {
         const { data, error } = await supabase
           .from('app_settings')
-          .select('companyresearchwebhook')
+          .select('awards_webhook, jobs_webhook, content_webhook')
           .eq('id', 'default')
           .single();
           
         if (error) {
-          console.error("Error fetching company insights webhook URL:", error);
+          console.error("Error fetching company insights webhook URLs:", error);
           return;
         }
         
-        if (data?.companyresearchwebhook) {
-          setInsightsWebhookUrl(data.companyresearchwebhook);
-          console.log("Loaded company insights webhook URL:", data.companyresearchwebhook);
+        if (data) {
+          if (data.awards_webhook) {
+            setAwardsWebhookUrl(data.awards_webhook);
+            localStorage.setItem('awards_webhook', data.awards_webhook);
+          }
+          
+          if (data.jobs_webhook) {
+            setJobsWebhookUrl(data.jobs_webhook);
+            localStorage.setItem('jobs_webhook', data.jobs_webhook);
+          }
+          
+          if (data.content_webhook) {
+            setContentWebhookUrl(data.content_webhook);
+            localStorage.setItem('content_webhook', data.content_webhook);
+          }
         }
       } catch (error) {
-        console.error("Failed to load company insights webhook URL:", error);
+        console.error("Failed to load company insights webhook URLs:", error);
         
         // Try to get from localStorage as fallback
-        const savedUrl = localStorage.getItem('company_insights_webhook');
-        if (savedUrl) {
-          setInsightsWebhookUrl(savedUrl);
-        }
+        const savedAwardsUrl = localStorage.getItem('awards_webhook');
+        const savedJobsUrl = localStorage.getItem('jobs_webhook');
+        const savedContentUrl = localStorage.getItem('content_webhook');
+        
+        if (savedAwardsUrl) setAwardsWebhookUrl(savedAwardsUrl);
+        if (savedJobsUrl) setJobsWebhookUrl(savedJobsUrl);
+        if (savedContentUrl) setContentWebhookUrl(savedContentUrl);
       }
     };
     
-    fetchWebhookUrl();
+    fetchWebhookUrls();
   }, []);
-  
-  const handleScanWebsite = async () => {
-    setIsScanning(true);
-    await scanWebsite(websiteUrl);
-    setIsScanning(false);
+
+  const getWebhookUrlForCurrentTab = () => {
+    switch (currentTab) {
+      case 'awards':
+        return awardsWebhookUrl;
+      case 'jobs':
+        return jobsWebhookUrl;
+      case 'content':
+        return contentWebhookUrl;
+      default:
+        return "";
+    }
   };
 
   const generateInsights = async (type: string) => {
-    if (!insightsWebhookUrl) {
+    const webhookUrl = getWebhookUrlForCurrentTab();
+    
+    if (!webhookUrl) {
       toast({
         title: "Webhook Not Configured",
-        description: "Please configure the Company Insights webhook in Settings → Webhooks.",
+        description: `Please configure the ${type.charAt(0).toUpperCase() + type.slice(1)} webhook in Settings → Webhooks.`,
         variant: "destructive",
       });
       return;
@@ -87,11 +111,11 @@ export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
     
     try {
       // Prepare URL with query parameters
-      const url = new URL(insightsWebhookUrl);
+      const url = new URL(webhookUrl);
       url.searchParams.append('companyName', company.name);
       url.searchParams.append('companyId', companyId);
       url.searchParams.append('insightType', type);
-      url.searchParams.append('website', company.website || "");
+      url.searchParams.append('website', websiteUrl || company.website || "");
       
       console.log(`Generating ${type} insights for ${company.name} with webhook:`, url.toString());
       
@@ -127,6 +151,12 @@ export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
     }
   };
   
+  const webhooksConfigured = {
+    awards: !!awardsWebhookUrl,
+    jobs: !!jobsWebhookUrl,
+    content: !!contentWebhookUrl
+  };
+  
   return (
     <Card>
       <CardHeader>
@@ -139,21 +169,18 @@ export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <Input
-              placeholder="Company website URL"
+              placeholder="Company website URL (optional override)"
               value={websiteUrl}
               onChange={(e) => setWebsiteUrl(e.target.value)}
               className="flex-1"
             />
-            <Button onClick={handleScanWebsite} disabled={isScanning || !websiteUrl}>
-              {isScanning ? "Scanning..." : "Scan Website"}
-            </Button>
           </div>
           
-          {!insightsWebhookUrl && (
+          {(!webhooksConfigured.awards && !webhooksConfigured.jobs && !webhooksConfigured.content) && (
             <Alert variant="warning" className="bg-yellow-50 border-yellow-200">
               <AlertCircle className="h-4 w-4 text-yellow-800" />
               <AlertDescription className="text-yellow-800 text-sm">
-                Company insights webhook is not configured. Please set it up in Settings → Webhooks.
+                Company insights webhooks are not configured. Please set them up in Settings → Webhooks.
               </AlertDescription>
             </Alert>
           )}
@@ -171,14 +198,16 @@ export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
           </TabsList>
           
           <div className="mb-4">
-            <Button
-              onClick={() => generateInsights(currentTab)}
-              disabled={isLoading || !insightsWebhookUrl}
-              size="sm"
-              className="w-full"
-            >
-              {isLoading ? "Generating..." : `Generate ${currentTab.charAt(0).toUpperCase() + currentTab.slice(1)} Insights`}
-            </Button>
+            {currentTab !== "ideal-client" && (
+              <Button
+                onClick={() => generateInsights(currentTab)}
+                disabled={isLoading || !getWebhookUrlForCurrentTab()}
+                size="sm"
+                className="w-full"
+              >
+                {isLoading ? "Generating..." : `Generate ${currentTab.charAt(0).toUpperCase() + currentTab.slice(1)} Insights`}
+              </Button>
+            )}
           </div>
           
           <TabsContent value="awards">
