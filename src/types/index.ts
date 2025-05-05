@@ -1,3 +1,4 @@
+
 export interface Company {
   id: string;
   name: string;
@@ -94,9 +95,11 @@ export interface JobPosting {
 }
 
 export interface ContentAudit {
-  keyTopics: string[];
-  recentContent: string[];
-  contentGaps: string[];
+  keyTopics?: string[];
+  recentContent?: string[];
+  contentGaps?: string[];
+  content?: string;
+  timestamp?: string;
 }
 
 export interface EmailTemplate {
