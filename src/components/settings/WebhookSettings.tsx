@@ -23,7 +23,8 @@ const webhookSettingsSchema = z.object({
   companyEnrichmentWebhook: z.string().url().optional().or(z.literal("")),
   profileResearchWebhook: z.string().url().optional().or(z.literal("")),
   idealCustomerWebhook: z.string().url().optional().or(z.literal("")),
-  outreachWebhook: z.string().url().optional().or(z.literal(""))
+  outreachWebhook: z.string().url().optional().or(z.literal("")),
+  companyResearchWebhook: z.string().url().optional().or(z.literal(""))
 });
 
 type WebhookSettingsValues = z.infer<typeof webhookSettingsSchema>;
@@ -43,7 +44,8 @@ export const WebhookSettings = () => {
       companyEnrichmentWebhook: '',
       profileResearchWebhook: '',
       idealCustomerWebhook: '',
-      outreachWebhook: ''
+      outreachWebhook: '',
+      companyResearchWebhook: ''
     },
   });
   
@@ -54,7 +56,7 @@ export const WebhookSettings = () => {
         // Fetch webhook settings from Supabase
         const { data, error } = await supabase
           .from('app_settings')
-          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook, outreach_webhook')
+          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook, outreach_webhook, companyresearchwebhook')
           .eq('id', 'default')
           .single();
           
@@ -74,6 +76,7 @@ export const WebhookSettings = () => {
           form.setValue('profileResearchWebhook', data.profile_research_webhook || '');
           form.setValue('idealCustomerWebhook', data.ideal_customer_webhook || '');
           form.setValue('outreachWebhook', data.outreach_webhook || '');
+          form.setValue('companyResearchWebhook', data.companyresearchwebhook || '');
           
           // Also update localStorage for fallback
           if (data.profile_research_webhook) {
@@ -88,6 +91,11 @@ export const WebhookSettings = () => {
             localStorage.setItem('outreach_webhook', data.outreach_webhook);
             console.log("Saved outreach webhook to localStorage:", data.outreach_webhook);
           }
+          
+          if (data.companyresearchwebhook) {
+            localStorage.setItem('company_insights_webhook', data.companyresearchwebhook);
+            console.log("Saved company insights webhook to localStorage:", data.companyresearchwebhook);
+          }
         }
       } catch (error) {
         console.error("Failed to load webhook settings:", error);
@@ -101,6 +109,7 @@ export const WebhookSettings = () => {
         const profileResearchWebhook = localStorage.getItem('profile_research_webhook');
         const idealCustomerWebhook = localStorage.getItem('ideal_customer_webhook');
         const outreachWebhook = localStorage.getItem('outreach_webhook');
+        const companyInsightsWebhook = localStorage.getItem('company_insights_webhook');
         
         if (profileResearchWebhook) {
           form.setValue('profileResearchWebhook', profileResearchWebhook);
@@ -112,6 +121,10 @@ export const WebhookSettings = () => {
         
         if (outreachWebhook) {
           form.setValue('outreachWebhook', outreachWebhook);
+        }
+        
+        if (companyInsightsWebhook) {
+          form.setValue('companyResearchWebhook', companyInsightsWebhook);
         }
       } finally {
         setIsLoading(false);
@@ -138,6 +151,7 @@ export const WebhookSettings = () => {
           profile_research_webhook: data.profileResearchWebhook || null,
           ideal_customer_webhook: data.idealCustomerWebhook || null,
           outreach_webhook: data.outreachWebhook || null,
+          companyresearchwebhook: data.companyResearchWebhook || null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       
@@ -153,6 +167,7 @@ export const WebhookSettings = () => {
       localStorage.setItem('profile_research_webhook', data.profileResearchWebhook || '');
       localStorage.setItem('ideal_customer_webhook', data.idealCustomerWebhook || '');
       localStorage.setItem('outreach_webhook', data.outreachWebhook || '');
+      localStorage.setItem('company_insights_webhook', data.companyResearchWebhook || '');
       
       console.log("Saved webhooks to localStorage");
       
@@ -333,6 +348,26 @@ export const WebhookSettings = () => {
                       </FormControl>
                       <FormDescription>
                         Webhook URL for generating personalized outreach content
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="companyResearchWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company Insights Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/company-insights"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook URL for generating company insights
                       </FormDescription>
                     </FormItem>
                   )}

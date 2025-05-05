@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Save } from "lucide-react";
+import { AlertCircle, Edit, Save } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -61,6 +61,7 @@ export const PersonalizedOutreach = ({ companyName }: PersonalizedOutreachProps)
     text: "",
     social: ""
   });
+  const [isEditing, setIsEditing] = useState(false);
   const { id: companyId } = useParams<{ id: string }>();
   const { toast } = useToast();
 
@@ -245,6 +246,9 @@ export const PersonalizedOutreach = ({ companyName }: PersonalizedOutreachProps)
         ...prev,
         [outreachType === "social" ? "social" : outreachType]: generatedContent
       }));
+
+      // Exit edit mode if we were editing
+      setIsEditing(false);
       
       toast({
         title: "Script Saved",
@@ -278,6 +282,10 @@ export const PersonalizedOutreach = ({ companyName }: PersonalizedOutreachProps)
       title: "Copied to Clipboard",
       description: "The content has been copied to your clipboard.",
     });
+  };
+
+  const toggleEditing = () => {
+    setIsEditing(!isEditing);
   };
 
   return (
@@ -343,6 +351,7 @@ export const PersonalizedOutreach = ({ companyName }: PersonalizedOutreachProps)
               onClick={() => {
                 setOutreachType("call");
                 setGeneratedContent(scripts.call);
+                setIsEditing(false);
               }} 
               variant="outline"
               disabled={!scripts.call}
@@ -354,6 +363,7 @@ export const PersonalizedOutreach = ({ companyName }: PersonalizedOutreachProps)
               onClick={() => {
                 setOutreachType("email");
                 setGeneratedContent(scripts.email);
+                setIsEditing(false);
               }} 
               variant="outline"
               disabled={!scripts.email}
@@ -365,6 +375,7 @@ export const PersonalizedOutreach = ({ companyName }: PersonalizedOutreachProps)
               onClick={() => {
                 setOutreachType("text");
                 setGeneratedContent(scripts.text);
+                setIsEditing(false);
               }} 
               variant="outline"
               disabled={!scripts.text}
@@ -376,6 +387,7 @@ export const PersonalizedOutreach = ({ companyName }: PersonalizedOutreachProps)
               onClick={() => {
                 setOutreachType("social");
                 setGeneratedContent(scripts.social);
+                setIsEditing(false);
               }} 
               variant="outline"
               disabled={!scripts.social}
@@ -403,12 +415,33 @@ export const PersonalizedOutreach = ({ companyName }: PersonalizedOutreachProps)
         </div>
       ) : generatedContent && (
         <div className="space-y-3">
-          <h3 className="text-lg font-medium">
-            {getOutreachTypeName(outreachType).charAt(0).toUpperCase() + getOutreachTypeName(outreachType).slice(1)} Script for {companyName}
-          </h3>
-          <div className="p-4 bg-accent rounded-md prose prose-sm max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(generatedContent) }} />
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium">
+              {getOutreachTypeName(outreachType).charAt(0).toUpperCase() + getOutreachTypeName(outreachType).slice(1)} Script for {companyName}
+            </h3>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={toggleEditing}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              {isEditing ? "Preview" : "Edit"}
+            </Button>
           </div>
+          
+          {isEditing ? (
+            <Textarea
+              value={generatedContent}
+              onChange={(e) => setGeneratedContent(e.target.value)}
+              className="min-h-[200px] font-mono text-sm"
+              placeholder="Edit your script here..."
+            />
+          ) : (
+            <div className="p-4 bg-accent rounded-md prose prose-sm max-w-none">
+              <div dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(generatedContent) }} />
+            </div>
+          )}
+          
           <div className="flex justify-end space-x-4">
             <Button variant="outline" onClick={copyToClipboard}>
               Copy to Clipboard
