@@ -122,7 +122,7 @@ export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
       const response = await fetch(url.toString(), {
         method: "GET",
         headers: {
-          "Accept": "application/json, text/plain",
+          "Accept": "application/json, text/plain, text/html",
         },
       });
 
@@ -130,12 +130,39 @@ export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
         throw new Error(`Failed to generate insights (HTTP ${response.status})`);
       }
 
-      const data = await response.json();
-      
-      toast({
-        title: "Insights Generated",
-        description: `${type.charAt(0).toUpperCase() + type.slice(1)} insights have been generated.`,
-      });
+      // Check if the response is JSON or HTML/text
+      const contentType = response.headers.get('content-type');
+      let data;
+
+      if (contentType && contentType.includes('application/json')) {
+        // Handle JSON response
+        data = await response.json();
+        
+        // Update company insights in the database
+        await updateInsightsInDatabase(type, data);
+        
+        toast({
+          title: "Insights Generated",
+          description: `${type.charAt(0).toUpperCase() + type.slice(1)} insights have been generated.`,
+        });
+      } else {
+        // Handle HTML or text response
+        const textData = await response.text();
+        
+        // Create a structured object to store the text data
+        const formattedData = {
+          content: textData,
+          timestamp: new Date().toISOString(),
+        };
+        
+        // Update company insights in the database
+        await updateInsightsInDatabase(type, formattedData);
+        
+        toast({
+          title: "Insights Generated",
+          description: `${type.charAt(0).toUpperCase() + type.slice(1)} insights have been generated.`,
+        });
+      }
       
       // Refresh the page or relevant component to show the new insights
       window.location.reload();
@@ -148,6 +175,39 @@ export const CompanyInsights = ({ companyId }: CompanyInsightsProps) => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const updateInsightsInDatabase = async (type: string, data: any) => {
+    try {
+      const insightData: Record<string, any> = {};
+      
+      switch (type) {
+        case 'awards':
+          insightData.awards = data;
+          break;
+        case 'jobs':
+          insightData.jobPostings = data;
+          break;
+        case 'content':
+          insightData.contentAudit = data;
+          break;
+      }
+      
+      // Update the company with new insights
+      if (company && Object.keys(insightData).length > 0) {
+        const updatedCompany = {
+          ...company,
+          insights: {
+            ...(company.insights || {}),
+            ...insightData
+          }
+        };
+        
+        await updateCompany(updatedCompany);
+      }
+    } catch (error) {
+      console.error(`Error updating ${type} insights in database:`, error);
     }
   };
   
