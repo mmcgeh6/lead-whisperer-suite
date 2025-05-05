@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -163,54 +162,58 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
       console.log("Sending request to webhook:", webhookUrl);
       console.log("With payload:", payload);
       
-      // Try POST first as it's more reliable for sending structured data
+      // Try GET first as it seems to be working better
       try {
-        console.log("Attempting POST request to webhook");
+        // Prepare query params for GET request
+        const queryParams = new URLSearchParams({
+          companyId: company.id,
+          companyName: company.name || '',
+          industry: company.industry || '',
+          website: company.website || '',
+          description: company.description || ''
+        }).toString();
         
-        const response = await fetch(webhookUrl, {
-          method: "POST",
+        // The full URL for the GET request
+        const getUrl = `${webhookUrl}?${queryParams}`;
+        
+        console.log("Attempting GET request to:", getUrl);
+        
+        const response = await fetch(getUrl, {
+          method: "GET",
           headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
+            "Accept": "text/plain, application/json"
+          }
         });
         
-        console.log("POST response status:", response.status);
+        console.log("GET response status:", response.status);
         
         if (response.ok) {
           // Log the raw response for debugging
           const responseText = await response.text();
           console.log("Raw webhook response:", responseText);
           
-          // Try to parse as JSON
-          let responseData;
-          try {
-            responseData = JSON.parse(responseText);
-            console.log("Parsed webhook response data:", responseData);
-          } catch (parseError) {
-            console.error("Error parsing response as JSON:", parseError);
-            console.log("Using raw response text as content");
-            
-            // If can't parse as JSON but has content, use the raw text
-            if (responseText && responseText.length > 0) {
-              setProfileResearch(responseText);
-              await saveProfileResearchToDatabase(responseText);
+          // First try to extract content as is (plain text)
+          let content = responseText;
+          
+          // If it looks like JSON, try to parse it
+          if (responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
+            try {
+              const responseData = JSON.parse(responseText);
+              console.log("Parsed webhook response data:", responseData);
               
-              toast({
-                title: "Research Generated",
-                description: `Company Profile Research for ${company.name} has been generated.`
-              });
-              return;
+              // Extract content from the parsed JSON
+              const extractedContent = extractContentFromResponse(responseData);
+              if (extractedContent) {
+                content = extractedContent;
+              }
+            } catch (parseError) {
+              console.warn("Response is not valid JSON, using as plain text:", parseError);
+              // Continue with the raw text as content
             }
-            
-            throw new Error("Failed to parse webhook response");
           }
           
-          // Extract content from the parsed JSON
-          const content = extractContentFromResponse(responseData);
-          
           if (content) {
-            console.log("Extracted content:", content);
+            console.log("Final content to use:", content);
             setProfileResearch(content);
             await saveProfileResearchToDatabase(content);
             
@@ -220,71 +223,59 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
             });
             return;
           } else {
-            console.error("No content found in response");
-            throw new Error("No content found in response");
+            throw new Error("No usable content found in response");
           }
         } else {
-          console.error("Failed to generate company profile research, status:", response.status);
-          throw new Error("Failed to generate company profile research");
+          console.error("GET request failed with status:", response.status);
+          throw new Error("GET request failed");
         }
-      } catch (postError) {
-        console.error("POST request failed:", postError);
+      } catch (getError) {
+        console.error("GET request failed:", getError);
         
-        // Fall back to GET if POST fails
-        console.log("Falling back to GET request");
+        // Fall back to POST if GET fails
+        console.log("Falling back to POST request");
         
         try {
-          // Prepare query params for GET request
-          const queryParams = new URLSearchParams(payload).toString();
+          console.log("Attempting POST request to webhook");
           
-          // The full URL for the GET request
-          const getUrl = `${webhookUrl}?${queryParams}`;
-          
-          console.log("Attempting GET request to:", getUrl);
-          
-          const response = await fetch(getUrl, {
-            method: "GET",
+          const response = await fetch(webhookUrl, {
+            method: "POST",
             headers: {
-              "Accept": "application/json"
-            }
+              "Content-Type": "application/json",
+              "Accept": "text/plain, application/json"
+            },
+            body: JSON.stringify(payload)
           });
           
-          console.log("GET response status:", response.status);
+          console.log("POST response status:", response.status);
           
           if (response.ok) {
             // Log the raw response for debugging
             const responseText = await response.text();
             console.log("Raw webhook response:", responseText);
             
-            // Try to parse as JSON
-            let responseData;
-            try {
-              responseData = JSON.parse(responseText);
-              console.log("Parsed webhook response data:", responseData);
-            } catch (parseError) {
-              console.error("Error parsing response as JSON:", parseError);
-              console.log("Using raw response text as content");
-              
-              // If can't parse as JSON but has content, use the raw text
-              if (responseText && responseText.length > 0) {
-                setProfileResearch(responseText);
-                await saveProfileResearchToDatabase(responseText);
+            // First try to extract content as is (plain text)
+            let content = responseText;
+            
+            // If it looks like JSON, try to parse it
+            if (responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
+              try {
+                const responseData = JSON.parse(responseText);
+                console.log("Parsed webhook response data:", responseData);
                 
-                toast({
-                  title: "Research Generated",
-                  description: `Company Profile Research for ${company.name} has been generated.`
-                });
-                return;
+                // Extract content from the parsed JSON
+                const extractedContent = extractContentFromResponse(responseData);
+                if (extractedContent) {
+                  content = extractedContent;
+                }
+              } catch (parseError) {
+                console.warn("Response is not valid JSON, using as plain text:", parseError);
+                // Continue with the raw text as content
               }
-              
-              throw new Error("Failed to parse webhook response");
             }
             
-            // Extract content from the parsed JSON
-            const content = extractContentFromResponse(responseData);
-            
             if (content) {
-              console.log("Extracted content:", content);
+              console.log("Final content to use:", content);
               setProfileResearch(content);
               await saveProfileResearchToDatabase(content);
               
@@ -294,15 +285,14 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
               });
               return;
             } else {
-              console.error("No content found in response");
-              throw new Error("No content found in response");
+              throw new Error("No usable content found in response");
             }
           } else {
-            console.error("Failed to generate company profile research with GET, status:", response.status);
+            console.error("Failed with POST request, status:", response.status);
             throw new Error("All webhook request methods failed");
           }
-        } catch (getError) {
-          console.error("GET request failed:", getError);
+        } catch (postError) {
+          console.error("POST request also failed:", postError);
           throw new Error("All webhook request methods failed");
         }
       }
@@ -331,16 +321,30 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
     if (!data) return null;
     
     // Check for common response fields
-    if (typeof data === 'string') return data;
-    if (typeof data.content === 'string') return data.content;
-    if (typeof data.research === 'string') return data.research;
-    if (typeof data.profileResearch === 'string') return data.profileResearch;
-    if (typeof data.text === 'string') return data.text;
-    if (typeof data.data === 'string') return data.data;
-    if (typeof data.result === 'string') return data.result;
-    if (typeof data.output === 'string') return data.output;
-    if (typeof data.response === 'string') return data.response;
-    if (typeof data.message === 'string') return data.message;
+    if (typeof data === 'string' && data.length > 10) return data;
+    
+    // Special case for our JSON format
+    if (typeof data.company_research === 'string' && data.company_research.length > 10) {
+      return data.company_research;
+    }
+    
+    // Common response field names (case insensitive search)
+    const possibleFields = [
+      'content', 'research', 'profileResearch', 'profile_research',
+      'text', 'data', 'result', 'output', 'response', 'message', 
+      'body', 'researchData', 'research_data'
+    ];
+    
+    // Try case-insensitive match for known field names
+    for (const field of possibleFields) {
+      for (const key in data) {
+        if (key.toLowerCase() === field.toLowerCase() && 
+            typeof data[key] === 'string' && 
+            data[key].length > 10) {
+          return data[key];
+        }
+      }
+    }
     
     // Try to find any string property that might contain the content
     for (const key in data) {
@@ -352,7 +356,7 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
     // If data is an array, check the first element
     if (Array.isArray(data) && data.length > 0) {
       const firstItem = data[0];
-      if (typeof firstItem === 'string') return firstItem;
+      if (typeof firstItem === 'string' && firstItem.length > 10) return firstItem;
       
       // Check for common fields in first item if it's an object
       if (typeof firstItem === 'object' && firstItem !== null) {
@@ -363,7 +367,10 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
     // If we get a complex object, attempt to stringify it as a last resort
     if (typeof data === 'object') {
       try {
-        return JSON.stringify(data, null, 2);
+        const stringified = JSON.stringify(data, null, 2);
+        if (stringified.length > 20) {
+          return stringified;
+        }
       } catch (e) {
         console.error("Failed to stringify response data:", e);
       }
@@ -488,54 +495,58 @@ Key Findings:
       console.log("Sending request to webhook:", webhookUrl);
       console.log("With payload:", payload);
       
-      // Try POST first as it's more reliable for sending structured data
+      // Try GET first as it seems to be working better
       try {
-        console.log("Attempting POST request to webhook");
+        // Prepare query params for GET request
+        const queryParams = new URLSearchParams({
+          companyId: company.id,
+          companyName: company.name || '',
+          industry: company.industry || '',
+          website: company.website || '',
+          description: company.description || ''
+        }).toString();
         
-        const response = await fetch(webhookUrl, {
-          method: "POST",
+        // The full URL for the GET request
+        const getUrl = `${webhookUrl}?${queryParams}`;
+        
+        console.log("Attempting GET request to:", getUrl);
+        
+        const response = await fetch(getUrl, {
+          method: "GET",
           headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
+            "Accept": "text/plain, application/json"
+          }
         });
         
-        console.log("POST response status:", response.status);
+        console.log("GET response status:", response.status);
         
         if (response.ok) {
           // Log the raw response for debugging
           const responseText = await response.text();
           console.log("Raw webhook response:", responseText);
           
-          // Try to parse as JSON
-          let responseData;
-          try {
-            responseData = JSON.parse(responseText);
-            console.log("Parsed webhook response data:", responseData);
-          } catch (parseError) {
-            console.error("Error parsing response as JSON:", parseError);
-            console.log("Using raw response text as content");
-            
-            // If can't parse as JSON but has content, use the raw text
-            if (responseText && responseText.length > 0) {
-              setIdealCustomerAnalysis(responseText);
-              await saveIdealCustomerToDatabase(responseText);
+          // First try to extract content as is (plain text)
+          let content = responseText;
+          
+          // If it looks like JSON, try to parse it
+          if (responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
+            try {
+              const responseData = JSON.parse(responseText);
+              console.log("Parsed webhook response data:", responseData);
               
-              toast({
-                title: "Analysis Generated",
-                description: `Ideal Customer Analysis for ${company.name} has been generated.`
-              });
-              return;
+              // Extract content from the parsed JSON
+              const extractedContent = extractContentFromResponse(responseData);
+              if (extractedContent) {
+                content = extractedContent;
+              }
+            } catch (parseError) {
+              console.warn("Response is not valid JSON, using as plain text:", parseError);
+              // Continue with the raw text as content
             }
-            
-            throw new Error("Failed to parse webhook response");
           }
           
-          // Extract content from the parsed JSON
-          const content = extractContentFromResponse(responseData);
-          
           if (content) {
-            console.log("Extracted content:", content);
+            console.log("Final content to use:", content);
             setIdealCustomerAnalysis(content);
             await saveIdealCustomerToDatabase(content);
             
@@ -545,71 +556,59 @@ Key Findings:
             });
             return;
           } else {
-            console.error("No content found in response");
-            throw new Error("No content found in response");
+            throw new Error("No usable content found in response");
           }
         } else {
-          console.error("Failed to generate ideal customer analysis, status:", response.status);
-          throw new Error("Failed to generate ideal customer analysis");
+          console.error("GET request failed with status:", response.status);
+          throw new Error("GET request failed");
         }
-      } catch (postError) {
-        console.error("POST request failed:", postError);
+      } catch (getError) {
+        console.error("GET request failed:", getError);
         
-        // Fall back to GET if POST fails
-        console.log("Falling back to GET request");
+        // Fall back to POST if GET fails
+        console.log("Falling back to POST request");
         
         try {
-          // Prepare query params for GET request
-          const queryParams = new URLSearchParams(payload).toString();
+          console.log("Attempting POST request to webhook");
           
-          // The full URL for the GET request
-          const getUrl = `${webhookUrl}?${queryParams}`;
-          
-          console.log("Attempting GET request to:", getUrl);
-          
-          const response = await fetch(getUrl, {
-            method: "GET",
+          const response = await fetch(webhookUrl, {
+            method: "POST",
             headers: {
-              "Accept": "application/json"
-            }
+              "Content-Type": "application/json",
+              "Accept": "text/plain, application/json"
+            },
+            body: JSON.stringify(payload)
           });
           
-          console.log("GET response status:", response.status);
+          console.log("POST response status:", response.status);
           
           if (response.ok) {
             // Log the raw response for debugging
             const responseText = await response.text();
             console.log("Raw webhook response:", responseText);
             
-            // Try to parse as JSON
-            let responseData;
-            try {
-              responseData = JSON.parse(responseText);
-              console.log("Parsed webhook response data:", responseData);
-            } catch (parseError) {
-              console.error("Error parsing response as JSON:", parseError);
-              console.log("Using raw response text as content");
-              
-              // If can't parse as JSON but has content, use the raw text
-              if (responseText && responseText.length > 0) {
-                setIdealCustomerAnalysis(responseText);
-                await saveIdealCustomerToDatabase(responseText);
+            // First try to extract content as is (plain text)
+            let content = responseText;
+            
+            // If it looks like JSON, try to parse it
+            if (responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
+              try {
+                const responseData = JSON.parse(responseText);
+                console.log("Parsed webhook response data:", responseData);
                 
-                toast({
-                  title: "Analysis Generated",
-                  description: `Ideal Customer Analysis for ${company.name} has been generated.`
-                });
-                return;
+                // Extract content from the parsed JSON
+                const extractedContent = extractContentFromResponse(responseData);
+                if (extractedContent) {
+                  content = extractedContent;
+                }
+              } catch (parseError) {
+                console.warn("Response is not valid JSON, using as plain text:", parseError);
+                // Continue with the raw text as content
               }
-              
-              throw new Error("Failed to parse webhook response");
             }
             
-            // Extract content from the parsed JSON
-            const content = extractContentFromResponse(responseData);
-            
             if (content) {
-              console.log("Extracted content:", content);
+              console.log("Final content to use:", content);
               setIdealCustomerAnalysis(content);
               await saveIdealCustomerToDatabase(content);
               
@@ -619,15 +618,14 @@ Key Findings:
               });
               return;
             } else {
-              console.error("No content found in response");
-              throw new Error("No content found in response");
+              throw new Error("No usable content found in response");
             }
           } else {
-            console.error("Failed to generate ideal customer analysis with GET, status:", response.status);
+            console.error("Failed with POST request, status:", response.status);
             throw new Error("All webhook request methods failed");
           }
-        } catch (getError) {
-          console.error("GET request failed:", getError);
+        } catch (postError) {
+          console.error("POST request also failed:", postError);
           throw new Error("All webhook request methods failed");
         }
       }
@@ -967,4 +965,3 @@ Buying Behavior:
     </Card>
   );
 };
-
