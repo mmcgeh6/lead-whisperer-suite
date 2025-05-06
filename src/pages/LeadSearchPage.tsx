@@ -59,14 +59,12 @@ interface ContactData {
   linkedin_url?: string;
 }
 
-// Search params interface for the advanced search
 interface SearchParams {
   keywords: string[];
   location: string;
   emailStatus: string[];
   departments: string[];
   seniorities: string[];
-  requiredFields: string[];
   employeeRanges: string[];
   resultCount: number;
   organizationLocations: string[];
@@ -137,16 +135,13 @@ const LeadSearchPage = () => {
         limit: searchParams.resultCount
       };
       
-      // Add additional parameters if provided
-      if (searchParams.requiredFields?.length > 0) {
-        apiParams['requiredFields'] = searchParams.requiredFields;
-      }
+      // Add organization locations if provided
       if (searchParams.organizationLocations?.length > 0) {
         apiParams['organizationLocations'] = searchParams.organizationLocations;
       }
-      if (searchParams.keywordFields?.length > 0) {
-        apiParams['keywordFields'] = searchParams.keywordFields;
-      }
+      
+      // Always include keyword fields in the search
+      apiParams['keywordFields'] = searchParams.keywordFields;
       
       console.log("Final API search parameters:", apiParams);
       

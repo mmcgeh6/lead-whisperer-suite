@@ -25,7 +25,6 @@ interface SearchParams {
   emailStatus: string[];
   departments: string[];
   seniorities: string[];
-  requiredFields: string[];
   employeeRanges: string[];
   resultCount: number;
   organizationLocations: string[];
@@ -43,10 +42,8 @@ export const AdvancedSearch = ({ onSearch, isSearching }: AdvancedSearchProps) =
   const [emailStatus, setEmailStatus] = useState<string[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [seniorities, setSeniorities] = useState<string[]>([]);
-  const [requiredFields, setRequiredFields] = useState<string[]>([]);
   const [employeeRanges, setEmployeeRanges] = useState<string[]>([]);
   const [organizationLocations, setOrganizationLocations] = useState<string[]>([]);
-  const [keywordFields, setKeywordFields] = useState<string[]>([]);
   const [resultCount, setResultCount] = useState<string>("20");
 
   // Email status options
@@ -69,11 +66,6 @@ export const AdvancedSearch = ({ onSearch, isSearching }: AdvancedSearchProps) =
     { value: "entry", label: "Entry Level" },
   ];
 
-  // Required fields options
-  const requiredFieldsOptions = [
-    { value: "organization_id", label: "Organization ID" },
-  ];
-
   // Employee ranges
   const employeeRangeOptions = [
     { value: "1,10", label: "1-10" },
@@ -87,14 +79,6 @@ export const AdvancedSearch = ({ onSearch, isSearching }: AdvancedSearchProps) =
     { value: "2001,5000", label: "2,001-5,000" },
     { value: "5001,10000", label: "5,001-10,000" },
     { value: "10001", label: "10,001+" },
-  ];
-
-  // Keyword fields options
-  const keywordFieldsOptions = [
-    { value: "tags", label: "Tags" },
-    { value: "name", label: "Name" },
-    { value: "seo_description", label: "SEO Description" },
-    { value: "social_media_description", label: "Social Media Description" },
   ];
   
   // Result count options
@@ -407,38 +391,12 @@ export const AdvancedSearch = ({ onSearch, isSearching }: AdvancedSearchProps) =
     );
   };
 
-  const handleToggleRequiredField = (value: string) => {
-    setRequiredFields(prev => 
-      prev.includes(value) 
-        ? prev.filter(item => item !== value)
-        : [...prev, value]
-    );
-  };
-
   const handleToggleEmployeeRange = (value: string) => {
     setEmployeeRanges(prev => 
       prev.includes(value) 
         ? prev.filter(item => item !== value)
         : [...prev, value]
     );
-  };
-
-  const handleToggleKeywordField = (value: string) => {
-    setKeywordFields(prev => 
-      prev.includes(value) 
-        ? prev.filter(item => item !== value)
-        : [...prev, value]
-    );
-  };
-
-  const handleToggleCompanyLocation = (value: string) => {
-    if (value) {
-      setOrganizationLocations(prev => 
-        prev.includes(value) 
-          ? prev.filter(item => item !== value)
-          : [...prev, value]
-      );
-    }
   };
 
   const handleDepartmentsChange = (newDepartments: string[]) => {
@@ -453,9 +411,6 @@ export const AdvancedSearch = ({ onSearch, isSearching }: AdvancedSearchProps) =
 
     // Process department selections - use default values for fully selected groups
     const processedDepartments: string[] = [];
-    
-    // Create a map of selected departments by group
-    const selectedByGroup: Record<string, string[]> = {};
     
     departmentGroups.forEach(group => {
       const selectedInGroup = group.options
@@ -473,10 +428,10 @@ export const AdvancedSearch = ({ onSearch, isSearching }: AdvancedSearchProps) =
       }
     });
     
-    // Prepare company locations with the location input
-    const allCompanyLocations = [...organizationLocations];
+    // Always include the location as an organization location
+    let allCompanyLocations = organizationLocations.slice();
     if (location && !allCompanyLocations.includes(location)) {
-      allCompanyLocations.push(location);
+      allCompanyLocations = [location];
     }
     
     const searchParams = {
@@ -485,11 +440,11 @@ export const AdvancedSearch = ({ onSearch, isSearching }: AdvancedSearchProps) =
       emailStatus,
       departments: processedDepartments,
       seniorities,
-      requiredFields,
       employeeRanges,
       resultCount: parseInt(resultCount, 10),
       organizationLocations: allCompanyLocations,
-      keywordFields
+      // We're including all keyword fields automatically now
+      keywordFields: ["tags", "name", "seo_description", "social_media_description"]
     };
 
     console.log("Search params:", searchParams);
@@ -502,10 +457,8 @@ export const AdvancedSearch = ({ onSearch, isSearching }: AdvancedSearchProps) =
     setEmailStatus([]);
     setDepartments([]);
     setSeniorities([]);
-    setRequiredFields([]);
     setEmployeeRanges([]);
     setOrganizationLocations([]);
-    setKeywordFields([]);
     setResultCount("20");
   };
 
@@ -615,51 +568,16 @@ export const AdvancedSearch = ({ onSearch, isSearching }: AdvancedSearchProps) =
                 </div>
               </div>
 
-              {/* Required Person / Org Fields */}
-              <div className="space-y-2">
-                <Label className="block mb-2">Required Person / Org Fields</Label>
-                <div className="flex gap-4">
-                  {requiredFieldsOptions.map((option) => (
-                    <div key={option.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`required-field-${option.value}`}
-                        checked={requiredFields.includes(option.value)}
-                        onCheckedChange={() => handleToggleRequiredField(option.value)}
-                      />
-                      <Label htmlFor={`required-field-${option.value}`}>{option.label}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Company Location */}
               <div className="space-y-2">
                 <Label className="block mb-2">Company Location</Label>
                 <Input
                   type="text"
                   placeholder="Add company location"
-                  value={organizationLocations[0] || ""}
-                  onChange={(e) => handleToggleCompanyLocation(e.target.value)}
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
                   className="mb-2"
                 />
-                {organizationLocations.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {organizationLocations.map((loc, index) => (
-                      <div 
-                        key={index} 
-                        className="bg-gray-100 px-3 py-1 rounded-full text-sm flex items-center gap-1"
-                      >
-                        {loc}
-                        <button 
-                          onClick={() => setOrganizationLocations(prev => prev.filter(item => item !== loc))}
-                          className="text-gray-500 hover:text-gray-700"
-                        >
-                          &times;
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Employee count ranges */}
@@ -674,23 +592,6 @@ export const AdvancedSearch = ({ onSearch, isSearching }: AdvancedSearchProps) =
                         onCheckedChange={() => handleToggleEmployeeRange(option.value)}
                       />
                       <Label htmlFor={`employee-range-${option.value}`}>{option.label}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Where to Look for Those Keywords */}
-              <div className="space-y-2">
-                <Label className="block mb-2">Where to Look for Those Keywords</Label>
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-2">
-                  {keywordFieldsOptions.map((option) => (
-                    <div key={option.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`keyword-field-${option.value}`}
-                        checked={keywordFields.includes(option.value)}
-                        onCheckedChange={() => handleToggleKeywordField(option.value)}
-                      />
-                      <Label htmlFor={`keyword-field-${option.value}`}>{option.label}</Label>
                     </div>
                   ))}
                 </div>

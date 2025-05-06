@@ -80,8 +80,8 @@ export const DepartmentFilterGroup = ({
             indeterminate={!allSelected && anySelected}
             onCheckedChange={handleGroupToggle}
           />
-          <CollapsibleTrigger className="flex items-center flex-1 font-medium text-sm">
-            <Label htmlFor={`group-${label}`} className="flex-1 cursor-pointer">
+          <CollapsibleTrigger className="flex items-center justify-between flex-1 font-medium text-sm">
+            <Label htmlFor={`group-${label}`} className="flex-1 cursor-pointer text-left">
               {label}
             </Label>
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
