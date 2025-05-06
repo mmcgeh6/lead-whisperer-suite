@@ -1,11 +1,17 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Filter } from "lucide-react";
-import { searchForLeads, transformApifyResults, getAppSettings, SearchType, AppSettings, PeopleSearchResult } from "@/services/apifyService";
+import { 
+  searchForLeads, 
+  transformApifyResults, 
+  getAppSettings, 
+  SearchType, 
+  AppSettings, 
+  PeopleSearchResult 
+} from "@/services/apifyService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DebugConsole from "@/components/dev/DebugConsole";
 import { Link } from "react-router-dom";
@@ -104,13 +110,12 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
               person_titles: personTitles,
               result_count: 0 // Will be updated after results are received
             })
-            .select('id')
-            .single();
+            .select('id');
 
           if (error) {
             console.error("Error saving search history:", error);
-          } else {
-            searchHistoryId = searchHistory?.id;
+          } else if (searchHistory && searchHistory.length > 0) {
+            searchHistoryId = searchHistory[0].id;
             console.log("Search history saved with ID:", searchHistoryId);
           }
         } catch (err) {
@@ -181,7 +186,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
             if (archiveData.length > 0) {
               const { error } = await supabase
                 .from('search_results_archive')
-                .upsert(archiveData, {
+                .upsert(archiveData as any, {
                   onConflict: 'unique_identifier',
                   ignoreDuplicates: true
                 });

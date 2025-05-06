@@ -1,4 +1,3 @@
-
 // Add a proper SearchType enum to address the type issues
 export enum SearchType {
   PEOPLE = 'people',
@@ -89,8 +88,8 @@ const searchWithApify = async (params: SearchParams) => {
     throw new Error("Apify API key not configured");
   }
   
-  // Determine which Apify actor to use based on search type
-  let actorName = 'lukaskrivka/apollo-scraper';
+  // Use the correct actor name for Apollo.io scraper
+  const actorName = 'jljBwyyQakqrL1wae';
   
   // Prepare the input for the Apify actor
   const input: any = {

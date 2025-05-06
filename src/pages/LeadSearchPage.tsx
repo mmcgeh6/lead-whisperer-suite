@@ -16,6 +16,7 @@ import {
   searchForLeads, 
   transformApifyResults,
   SearchType,
+  getAppSettings,
   AppSettings,
   PeopleSearchResult,
   CompanySearchResult
@@ -371,6 +372,15 @@ const LeadSearchPage = () => {
     });
   };
 
+  const handleEditCompany = async (companyData: Partial<Company>) => {
+    // Fix type safety issue by handling the return value properly
+    const result = await addCompany(companyData as Company);
+    if (result && 'id' in result) {
+      return result;
+    }
+    return null;
+  };
+
   const saveSelectedLeads = async (listId: string) => {
     const selectedLeads = searchResults.filter(result => result.selected);
     
@@ -411,13 +421,18 @@ const LeadSearchPage = () => {
             
             // Add company
             console.log("Adding company:", companyData.name);
-            const addedCompany = await addCompany(companyData as Company);
+            const addedCompany = await handleEditCompany(companyData);
             
             // Add contact if this is a person search result
             if (lead.raw_data.contact && addedCompany) {
               console.log("Adding contact:", `${lead.raw_data.contact.firstName} ${lead.raw_data.contact.lastName}`);
               const contactData: Partial<Contact> = {
-                ...lead.raw_data.contact,
+                firstName: lead.raw_data.contact.firstName || "",
+                lastName: lead.raw_data.contact.lastName || "",
+                title: lead.raw_data.contact.title || "",
+                email: lead.raw_data.contact.email || "",
+                phone: lead.raw_data.contact.phone || "",
+                linkedin_url: lead.raw_data.contact.linkedin_url || "",
                 companyId: addedCompany.id,
                 notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
               };
@@ -477,7 +492,7 @@ const LeadSearchPage = () => {
             
             // Add company
             console.log("Adding company (legacy format):", companyData.name);
-            const addedCompany = await addCompany(companyData as Company);
+            const addedCompany = await handleEditCompany(companyData);
             
             // Only create contact for person type
             if (lead.type === 'person' && addedCompany) {
