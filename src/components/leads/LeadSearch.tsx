@@ -4,11 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Search } from "lucide-react";
-import { searchForLeads, transformApifyResults, SearchType, getAppSettings } from "@/services/apifyService";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Search, Filter } from "lucide-react";
+import { searchForLeads, transformApifyResults, getAppSettings } from "@/services/apifyService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DebugConsole from "@/components/dev/DebugConsole";
+import { Link } from "react-router-dom";
 
 interface LeadSearchProps {
   onLeadsFound?: (leads: any[]) => void;
@@ -18,7 +18,6 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("United States");
   const [isSearching, setIsSearching] = useState(false);
-  const [searchType, setSearchType] = useState<SearchType>("people");
   const [resultCount, setResultCount] = useState<string>("20");
   const { toast } = useToast();
 
@@ -71,14 +70,14 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
         return;
       }
       
-      console.log(`Starting ${searchType} search with ${leadProvider} for "${searchQuery}" with limit ${resultCount}`);
+      console.log(`Starting people search with ${leadProvider} for "${searchQuery}" with limit ${resultCount}`);
       
       // Convert the search query into an array of keywords
       const keywords = searchQuery.split(',').map(k => k.trim()).filter(k => k);
       
       // Use the search service with the new parameter structure
       const results = await searchForLeads({
-        searchType,
+        searchType: 'people',
         keywords: keywords,
         location: location, 
         limit: parseInt(resultCount, 10),
@@ -90,7 +89,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       }
       
       // Transform results
-      const transformedLeads = transformApifyResults(results, searchType);
+      const transformedLeads = transformApifyResults(results, 'people');
       
       console.log("Transformed leads:", transformedLeads);
       if (transformedLeads && transformedLeads.length > 0) {
@@ -140,118 +139,66 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
           <CardTitle>Find New Leads</CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs value={searchType} onValueChange={(value) => setSearchType(value as SearchType)}>
-            <TabsList className="mb-4 w-full md:w-auto">
-              <TabsTrigger value="people">People Search</TabsTrigger>
-              <TabsTrigger value="companies">Company Search</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="people">
-              <form onSubmit={handleSearch} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="md:col-span-2">
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search for people by industry, e.g. Software, Healthcare, Finance..."
-                      className="w-full"
-                    />
-                  </div>
-                  <div>
-                    <Select
-                      value={resultCount}
-                      onValueChange={setResultCount}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="# of Results" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10 results</SelectItem>
-                        <SelectItem value="20">20 results</SelectItem>
-                        <SelectItem value="50">50 results</SelectItem>
-                        <SelectItem value="100">100 results</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="md:col-span-3">
-                    <Input
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Location, e.g. United States, Tampa FL, etc."
-                      className="w-full mb-4"
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <Button 
-                      type="submit" 
-                      disabled={isSearching}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
-                    >
-                      {isSearching ? "Searching..." : (
-                        <>
-                          <Search className="h-4 w-4 mr-2" />
-                          Find People
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="companies">
-              <form onSubmit={handleSearch} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="md:col-span-2">
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search for companies by industry, e.g. Software, Healthcare, Finance..."
-                      className="w-full"
-                    />
-                  </div>
-                  <div>
-                    <Select
-                      value={resultCount}
-                      onValueChange={setResultCount}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="# of Results" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10 results</SelectItem>
-                        <SelectItem value="20">20 results</SelectItem>
-                        <SelectItem value="50">50 results</SelectItem>
-                        <SelectItem value="100">100 results</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="md:col-span-3">
-                    <Input
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Location, e.g. United States, Tampa FL, etc."
-                      className="w-full mb-4"
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <Button 
-                      type="submit" 
-                      disabled={isSearching}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
-                    >
-                      {isSearching ? "Searching..." : (
-                        <>
-                          <Search className="h-4 w-4 mr-2" />
-                          Find Companies
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="md:col-span-2">
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for people by industry, e.g. Software, Healthcare, Finance..."
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <Select
+                  value={resultCount}
+                  onValueChange={setResultCount}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="# of Results" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 results</SelectItem>
+                    <SelectItem value="20">20 results</SelectItem>
+                    <SelectItem value="50">50 results</SelectItem>
+                    <SelectItem value="100">100 results</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="md:col-span-3">
+                <Input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Location, e.g. United States, Tampa FL, etc."
+                  className="w-full mb-4"
+                />
+              </div>
+              <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button 
+                  type="submit" 
+                  disabled={isSearching}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
+                >
+                  {isSearching ? "Searching..." : (
+                    <>
+                      <Search className="h-4 w-4 mr-2" />
+                      Quick Search
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="w-full" 
+                  asChild
+                >
+                  <Link to="/leads/search">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Advanced Search
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </form>
         </CardContent>
       </Card>
       <DebugConsole />

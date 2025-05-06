@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdvancedSearch } from "@/components/leads/search/AdvancedSearch";
 import { SearchResults } from "@/components/leads/search/SearchResults";
 import { SavedSearches } from "@/components/leads/search/SavedSearches";
@@ -12,7 +11,6 @@ import { ArrowLeft } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import { Company, Contact } from "@/types";
 import { 
-  SearchType, 
   searchForLeads, 
   transformApifyResults, 
   PeopleSearchResult, 
@@ -61,15 +59,28 @@ interface ContactData {
   linkedin_url?: string;
 }
 
+// Search params interface for the advanced search
+interface SearchParams {
+  keywords: string[];
+  location: string;
+  emailStatus: string[];
+  departments: string[];
+  seniorities: string[];
+  requiredFields: string[];
+  employeeRanges: string[];
+  resultCount: number;
+  organizationLocations: string[];
+  keywordFields: string[];
+}
+
 const LeadSearchPage = () => {
-  const [activeTab, setActiveTab] = useState<SearchType>('people');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedResults, setSelectedResults] = useState<string[]>([]);
   const { toast } = useToast();
   const { addCompany, addContact } = useAppContext();
   
-  const handleSearch = async (searchParams: any) => {
+  const handleSearch = async (searchParams: SearchParams) => {
     if (!searchParams.keywords || searchParams.keywords.length === 0) {
       toast({
         title: "Search query required",
@@ -114,20 +125,33 @@ const LeadSearchPage = () => {
         return;
       }
       
-      console.log(`Starting ${activeTab} search with ${leadProvider} for "${searchParams.keywords.join(',')}" with limit ${searchParams.resultCount || 20}`);
-      console.log("Search parameters:", searchParams);
-      
-      // Use the search service with full search parameters
-      const results = await searchForLeads({
-        searchType: activeTab,
+      // Build search parameters for the API
+      const apiParams = {
+        searchType: 'people' as const,
         keywords: searchParams.keywords,
         location: searchParams.location,
         departments: searchParams.departments,
         seniorities: searchParams.seniorities,
-        employeeRanges: searchParams.employeeRanges,
         emailStatus: searchParams.emailStatus,
-        limit: searchParams.resultCount || 20
-      });
+        employeeRanges: searchParams.employeeRanges,
+        limit: searchParams.resultCount
+      };
+      
+      // Add additional parameters if provided
+      if (searchParams.requiredFields?.length > 0) {
+        apiParams['requiredFields'] = searchParams.requiredFields;
+      }
+      if (searchParams.organizationLocations?.length > 0) {
+        apiParams['organizationLocations'] = searchParams.organizationLocations;
+      }
+      if (searchParams.keywordFields?.length > 0) {
+        apiParams['keywordFields'] = searchParams.keywordFields;
+      }
+      
+      console.log("Final API search parameters:", apiParams);
+      
+      // Call the search service with the parameters
+      const results = await searchForLeads(apiParams);
       
       console.log("Raw search results:", results);
       console.log("Results type:", Array.isArray(results) ? `Array with ${results.length} items` : typeof results);
@@ -137,7 +161,7 @@ const LeadSearchPage = () => {
       }
       
       // Transform results
-      const transformedLeads = transformApifyResults(results, activeTab);
+      const transformedLeads = transformApifyResults(results, 'people');
       
       console.log("Transformed leads:", transformedLeads);
       
@@ -190,7 +214,7 @@ const LeadSearchPage = () => {
                 raw_data: item
               };
             } else {
-              // This is a company search result
+              // This is a company search result - should not occur now but keeping for backwards compatibility
               const companyItem = item as CompanySearchResult;
               const company = (companyItem.company || {}) as CompanyData;
               
@@ -215,7 +239,7 @@ const LeadSearchPage = () => {
             // Return a placeholder result on error
             return {
               id: `result-${Date.now()}-${index}`,
-              type: activeTab === 'people' ? 'person' : 'company' as 'person' | 'company',
+              type: 'person' as const,
               name: "Error Processing Result",
               industry: "N/A",
               location: "N/A",
@@ -434,34 +458,13 @@ const LeadSearchPage = () => {
           <div className="lg:col-span-3">
             <Card>
               <CardHeader>
-                <CardTitle>Search Leads</CardTitle>
+                <CardTitle>Search People</CardTitle>
               </CardHeader>
               <CardContent>
-                <Tabs 
-                  value={activeTab} 
-                  onValueChange={(value) => setActiveTab(value as SearchType)}
-                >
-                  <TabsList className="mb-6">
-                    <TabsTrigger value="people">People Search</TabsTrigger>
-                    <TabsTrigger value="companies">Company Search</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="people">
-                    <AdvancedSearch 
-                      type="people"
-                      onSearch={handleSearch}
-                      isSearching={isSearching}
-                    />
-                  </TabsContent>
-                  
-                  <TabsContent value="companies">
-                    <AdvancedSearch 
-                      type="companies"
-                      onSearch={handleSearch}
-                      isSearching={isSearching}
-                    />
-                  </TabsContent>
-                </Tabs>
+                <AdvancedSearch 
+                  onSearch={handleSearch}
+                  isSearching={isSearching}
+                />
               </CardContent>
             </Card>
             
