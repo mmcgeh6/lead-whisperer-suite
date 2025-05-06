@@ -1,4 +1,3 @@
-
 export interface Company {
   id: string;
   name: string;
@@ -26,6 +25,7 @@ export interface Company {
   text_script?: string;
   social_dm_script?: string;
   research_notes?: string;
+  user_id?: string; // Add this field to match Supabase schema
 }
 
 export interface Contact {

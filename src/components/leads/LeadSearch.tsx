@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Filter } from "lucide-react";
-import { searchForLeads, transformApifyResults, getAppSettings } from "@/services/apifyService";
+import { searchForLeads, transformApifyResults, getAppSettings, SearchType } from "@/services/apifyService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DebugConsole from "@/components/dev/DebugConsole";
 import { Link } from "react-router-dom";
@@ -84,7 +84,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       
       // Use the search service with the new parameter structure
       const searchParams = {
-        searchType: 'people',
+        searchType: SearchType.PEOPLE, // Fixed type issue here
         keywords: keywords,
         location: location, 
         limit: parseInt(resultCount, 10),
@@ -100,7 +100,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
             .insert({
               user_id: user.id,
               search_type: 'people',
-              search_params: searchParams,
+              search_params: searchParams as any,
               person_titles: personTitles,
               result_count: 0 // Will be updated after results are received
             })
@@ -133,7 +133,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
         console.log("First transformed lead:", JSON.stringify(transformedLeads[0]));
         
         // Log detailed information about the first company
-        if (transformedLeads[0].company) {
+        if (transformedLeads[0] && transformedLeads[0].company) {
           console.log("Company data extracted:", {
             name: transformedLeads[0].company.name,
             industry: transformedLeads[0].company.industry,
@@ -159,27 +159,32 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
           try {
             const archiveData = transformedLeads.map(lead => {
               // Create a unique identifier to prevent duplicates
-              const uniqueId = lead.company?.name 
-                ? `${lead.company.name}-${lead.contact?.firstName || ''}-${lead.contact?.lastName || ''}`
-                : `unknown-${Date.now()}-${Math.random()}`;
-                
+              let uniqueId = "unknown-" + Date.now() + "-" + Math.random();
+              
+              // If it's a people search result with contact and company
+              if (lead && lead.company && lead.contact) {
+                uniqueId = `${lead.company.name || ''}-${lead.contact.firstName || ''}-${lead.contact.lastName || ''}`;
+              }
+              
               return {
                 search_id: searchHistoryId,
-                result_data: lead,
+                result_data: lead as any, // Type casting to any to avoid JSON compatibility issues
                 unique_identifier: uniqueId
               };
             });
             
             // Use upsert with onConflict to handle duplicates
-            const { error } = await supabase
-              .from('search_results_archive')
-              .upsert(archiveData, {
-                onConflict: 'unique_identifier',
-                ignoreDuplicates: true
-              });
-              
-            if (error) {
-              console.error("Error saving search results:", error);
+            if (archiveData.length > 0) {
+              const { error } = await supabase
+                .from('search_results_archive')
+                .upsert(archiveData, {
+                  onConflict: 'unique_identifier',
+                  ignoreDuplicates: true
+                });
+                
+              if (error) {
+                console.error("Error saving search results:", error);
+              }
             }
           } catch (err) {
             console.error("Error in search results archive:", err);

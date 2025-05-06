@@ -14,10 +14,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Company, Contact } from "@/types";
 import { 
   searchForLeads, 
-  transformApifyResults, 
-  PeopleSearchResult, 
-  CompanySearchResult,
-  getAppSettings
+  transformApifyResults,
+  SearchType,
+  PeopleSearchResult,
+  CompanySearchResult
 } from "@/services/apifyService";
 import DebugConsole from "@/components/dev/DebugConsole";
 
@@ -71,7 +71,7 @@ interface SearchParams {
   resultCount: number;
   organizationLocations: string[];
   keywordFields: string[];
-  personTitles: string[];  // Added this field
+  personTitles: string[];
 }
 
 const LeadSearchPage = () => {
@@ -97,6 +97,7 @@ const LeadSearchPage = () => {
     
     try {
       // Get settings from Supabase
+      const { getAppSettings } = await import('@/services/apifyService');
       const settings = await getAppSettings();
       console.log("Search page retrieved settings:", settings);
       
@@ -129,7 +130,7 @@ const LeadSearchPage = () => {
       
       // Build search parameters for the API
       const apiParams = {
-        searchType: 'people' as const,
+        searchType: SearchType.PEOPLE,
         keywords: searchParams.keywords,
         location: searchParams.location,
         departments: searchParams.departments,
@@ -142,11 +143,11 @@ const LeadSearchPage = () => {
       
       // Add organization locations if provided
       if (searchParams.organizationLocations?.length > 0) {
-        apiParams['organizationLocations'] = searchParams.organizationLocations;
+        apiParams['organizationLocations' as keyof typeof apiParams] = searchParams.organizationLocations;
       }
       
       // Always include keyword fields in the search
-      apiParams['keywordFields'] = searchParams.keywordFields;
+      apiParams['keywordFields' as keyof typeof apiParams] = searchParams.keywordFields;
       
       console.log("Final API search parameters:", apiParams);
       
@@ -159,7 +160,7 @@ const LeadSearchPage = () => {
             .insert({
               user_id: user.id,
               search_type: 'people',
-              search_params: apiParams,
+              search_params: apiParams as any,
               person_titles: searchParams.personTitles || [],
               result_count: 0 // Will be updated after results are received
             })
@@ -168,7 +169,7 @@ const LeadSearchPage = () => {
 
           if (error) {
             console.error("Error saving search history:", error);
-          } else {
+          } else if (searchHistory) {
             searchHistoryId = searchHistory.id;
             console.log("Search history saved with ID:", searchHistoryId);
           }
@@ -218,27 +219,32 @@ const LeadSearchPage = () => {
           try {
             const archiveData = transformedLeads.map(lead => {
               // Create a unique identifier to prevent duplicates
-              const uniqueId = lead.company?.name 
-                ? `${lead.company.name}-${lead.contact?.firstName || ''}-${lead.contact?.lastName || ''}-${lead.contact?.title || ''}`
-                : `unknown-${Date.now()}-${Math.random()}`;
-                
+              let uniqueId = "unknown-" + Date.now() + "-" + Math.random();
+              
+              // If it's a people search result with contact and company
+              if (lead && 'contact' in lead && lead.company && lead.contact) {
+                uniqueId = `${lead.company.name || ''}-${lead.contact.firstName || ''}-${lead.contact.lastName || ''}-${lead.contact.title || ''}`;
+              }
+              
               return {
                 search_id: searchHistoryId,
-                result_data: lead,
+                result_data: lead as any, // Cast to any for JSON compatibility
                 unique_identifier: uniqueId
               };
             });
             
             // Use upsert with onConflict to handle duplicates
-            const { error } = await supabase
-              .from('search_results_archive')
-              .upsert(archiveData, {
-                onConflict: 'unique_identifier',
-                ignoreDuplicates: true
-              });
-              
-            if (error) {
-              console.error("Error saving search results:", error);
+            if (archiveData.length > 0) {
+              const { error } = await supabase
+                .from('search_results_archive')
+                .upsert(archiveData, {
+                  onConflict: 'unique_identifier',
+                  ignoreDuplicates: true
+                });
+                
+              if (error) {
+                console.error("Error saving search results:", error);
+              }
             }
           } catch (err) {
             console.error("Error in search results archive:", err);
@@ -393,8 +399,7 @@ const LeadSearchPage = () => {
             const rawCompany = lead.raw_data.company;
             console.log("Found company data in raw_data.company:", rawCompany.name || "Unknown company");
             
-            const companyData: Company = {
-              ...rawCompany,
+            const companyData: Omit<Company, 'id'> & { user_id?: string } = {
               // Ensure all required fields are present
               name: rawCompany.name || "Unknown Company",
               website: rawCompany.website || "",
@@ -403,21 +408,36 @@ const LeadSearchPage = () => {
               location: rawCompany.location || "",
               description: rawCompany.description || "",
               user_id: user?.id, // Associate with the current user
-              createdAt: rawCompany.createdAt || new Date().toISOString(),
-              updatedAt: rawCompany.updatedAt || new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
             };
             
             // Add company
             console.log("Adding company:", companyData.name);
-            const addedCompany = await addCompany(companyData);
+            
+            // Generate a clean company object conforming to the Company interface
+            const cleanCompanyData: Omit<Company, 'id'> = {
+              name: companyData.name,
+              website: companyData.website,
+              industry: companyData.industry,
+              size: companyData.size,
+              location: companyData.location,
+              description: companyData.description,
+              createdAt: companyData.createdAt,
+              updatedAt: companyData.updatedAt
+            };
+            
+            const addedCompany = await addCompany(cleanCompanyData);
             
             // Add contact if this is a person search result
             if (lead.raw_data.contact) {
               console.log("Adding contact:", `${lead.raw_data.contact.firstName} ${lead.raw_data.contact.lastName}`);
-              await addContact({
-                ...lead.raw_data.contact,
-                companyId: addedCompany.id
-              });
+              if (addedCompany && addedCompany.id) {
+                await addContact({
+                  ...lead.raw_data.contact,
+                  companyId: addedCompany.id
+                });
+              }
             }
             
             // Add company to list
@@ -456,15 +476,13 @@ const LeadSearchPage = () => {
             // Create a company first
             const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             
-            const companyData: Company = {
-              id: companyId,
+            const companyData: Omit<Company, 'id'> = {
               name: lead.company || lead.name || "Unknown Company",
               website: lead.website || "",
               industry: lead.industry || "",
               size: "Unknown", // Default size value for legacy format
               location: lead.location || "",
               description: lead.description || "",
-              user_id: user?.id, // Associate with the current user
               linkedin_url: lead.linkedin_url?.includes("company") ? lead.linkedin_url : "",
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
@@ -475,7 +493,7 @@ const LeadSearchPage = () => {
             const addedCompany = await addCompany(companyData);
             
             // Only create contact for person type
-            if (lead.type === 'person') {
+            if (lead.type === 'person' && addedCompany) {
               const nameParts = lead.name.split(' ');
               const firstName = nameParts[0] || "";
               const lastName = nameParts.slice(1).join(' ') || "";
@@ -489,7 +507,7 @@ const LeadSearchPage = () => {
                 email: lead.email || "",
                 phone: lead.phone || "",
                 linkedin_url: lead.linkedin_url || "",
-                companyId,
+                companyId: addedCompany.id,
                 notes: `Imported from lead search on ${new Date().toLocaleDateString()}`,
               });
             }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,36 @@ export const CompanyList = ({
       }
       
       if (data) {
-        setDisplayCompanies(data as Company[]);
+        // Transform the data to match our Company type (convert snake_case to camelCase)
+        const formattedCompanies: Company[] = data.map(item => ({
+          id: item.id,
+          name: item.name,
+          website: item.website || "",
+          industry: item.industry || "",
+          industry_vertical: item.industry_vertical,
+          size: item.size || "",
+          location: item.location || "",
+          street: item.street,
+          city: item.city,
+          state: item.state,
+          zip: item.zip,
+          country: item.country,
+          phone: item.phone,
+          description: item.description || "",
+          facebook_url: item.facebook_url,
+          twitter_url: item.twitter_url,
+          linkedin_url: item.linkedin_url,
+          keywords: item.keywords,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+          call_script: item.call_script,
+          email_script: item.email_script,
+          text_script: item.text_script,
+          social_dm_script: item.social_dm_script,
+          research_notes: item.research_notes
+        }));
+        
+        setDisplayCompanies(formattedCompanies);
       }
     } catch (error) {
       console.error('Error in loadCompanies:', error);
