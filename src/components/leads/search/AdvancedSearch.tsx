@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DepartmentFilterGroup } from "./DepartmentFilterGroup";
+
 interface SearchParams {
   keywords: string[];
   location: string;
@@ -17,16 +18,20 @@ interface SearchParams {
   resultCount: number;
   organizationLocations: string[];
   keywordFields: string[];
+  personTitles: string[];  // Added this field
 }
+
 interface AdvancedSearchProps {
   onSearch: (params: SearchParams) => void;
   isSearching: boolean;
 }
+
 export const AdvancedSearch = ({
   onSearch,
   isSearching
 }: AdvancedSearchProps) => {
   const [keywords, setKeywords] = useState<string>("");
+  const [personTitle, setPersonTitle] = useState<string>(""); // Added new state for job title
   const [location, setLocation] = useState<string>("United States");
   const [emailStatus, setEmailStatus] = useState<string[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -793,6 +798,7 @@ export const AdvancedSearch = ({
   };
   const handleSearch = () => {
     const keywordArray = keywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    const personTitles = personTitle ? personTitle.split(',').map(t => t.trim()).filter(t => t.length > 0) : [];
 
     // Process department selections - use default values for fully selected groups
     const processedDepartments: string[] = [];
@@ -814,6 +820,7 @@ export const AdvancedSearch = ({
     if (location && !allCompanyLocations.includes(location)) {
       allCompanyLocations = [location];
     }
+    
     const searchParams = {
       keywords: keywordArray,
       location,
@@ -824,13 +831,17 @@ export const AdvancedSearch = ({
       resultCount: parseInt(resultCount, 10),
       organizationLocations: allCompanyLocations,
       // We're including all keyword fields automatically now
-      keywordFields: ["tags", "name", "seo_description", "social_media_description"]
+      keywordFields: ["tags", "name", "seo_description", "social_media_description"],
+      personTitles: personTitles, // Added person titles to search params
     };
+    
     console.log("Search params:", searchParams);
     onSearch(searchParams);
   };
+  
   const handleReset = () => {
     setKeywords("");
+    setPersonTitle("");  // Reset person title
     setLocation("United States");
     setEmailStatus([]);
     setDepartments([]);
@@ -839,12 +850,18 @@ export const AdvancedSearch = ({
     setOrganizationLocations([]);
     setResultCount("20");
   };
+  
   return <div className="space-y-6">
       {/* Basic search fields */}
       <div className="space-y-4">
         <div>
           <Label htmlFor="keywords">Keywords (Comma separated)</Label>
           <Input id="keywords" value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="Enter keywords e.g., roofing, contractor, residential" />
+        </div>
+        
+        <div>
+          <Label htmlFor="jobTitle">Job Title (Comma separated)</Label>
+          <Input id="jobTitle" value={personTitle} onChange={e => setPersonTitle(e.target.value)} placeholder="Enter job titles e.g., CEO, Marketing Director, Sales Manager" />
         </div>
         
         <div>

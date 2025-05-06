@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAppContext } from "@/context/AppContext";
 import { Company } from "@/types";
 import { Eye, Edit, Building2, MapPin, Users } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CompanyListProps {
   newLeads?: Partial<Company>[];
@@ -24,21 +25,47 @@ export const CompanyList = ({
   const { companies } = useAppContext();
   const [displayCompanies, setDisplayCompanies] = useState<Array<Company>>([]);
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   useEffect(() => {
-    // Combine existing companies with any new leads
-    const allCompanies = [...companies];
-    
+    // If we have newLeads (from a filter/list), use those
     if (newLeads && newLeads.length > 0) {
-      // Only add leads that have required fields for Company type
-      const validNewLeads = newLeads
-        .filter(lead => lead.id && lead.name) as Company[];
-      
-      allCompanies.unshift(...validNewLeads);
+      // Filter out any leads that don't have the required fields
+      const validNewLeads = newLeads.filter(lead => lead.id && lead.name) as Company[];
+      setDisplayCompanies(validNewLeads);
+    } else {
+      // Otherwise, load companies from database if user is authenticated
+      if (user) {
+        loadCompanies();
+      } else {
+        // Use the existing companies from context if no user
+        setDisplayCompanies(companies);
+      }
     }
+  }, [companies, newLeads, user]);
+
+  const loadCompanies = async () => {
+    if (!user) return;
     
-    setDisplayCompanies(allCompanies);
-  }, [companies, newLeads]);
+    try {
+      // Fetch companies associated with the current user
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('user_id', user.id);
+        
+      if (error) {
+        console.error('Error loading companies:', error);
+        return;
+      }
+      
+      if (data) {
+        setDisplayCompanies(data as Company[]);
+      }
+    } catch (error) {
+      console.error('Error in loadCompanies:', error);
+    }
+  };
 
   const handleViewCompany = (id: string) => {
     navigate(`/leads/company/${id}`);
@@ -80,7 +107,7 @@ export const CompanyList = ({
               )}
               <div>
                 <h3 className="text-lg font-semibold">{company.name}</h3>
-                <div className="text-gray-500 flex items-center space-x-2">
+                <div className="text-gray-500 flex flex-wrap items-center gap-x-4 gap-y-2 mt-1">
                   {company.industry && (
                     <div className="flex items-center">
                       <Building2 className="h-4 w-4 mr-1" />

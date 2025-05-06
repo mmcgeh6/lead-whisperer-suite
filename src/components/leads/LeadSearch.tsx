@@ -9,6 +9,8 @@ import { searchForLeads, transformApifyResults, getAppSettings } from "@/service
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DebugConsole from "@/components/dev/DebugConsole";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LeadSearchProps {
   onLeadsFound?: (leads: any[]) => void;
@@ -17,9 +19,11 @@ interface LeadSearchProps {
 export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("United States");
+  const [personTitle, setPersonTitle] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [resultCount, setResultCount] = useState<string>("20");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,14 +78,47 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       
       // Convert the search query into an array of keywords
       const keywords = searchQuery.split(',').map(k => k.trim()).filter(k => k);
+
+      // Process person title if provided
+      const personTitles = personTitle.trim() ? [personTitle.trim()] : [];
       
       // Use the search service with the new parameter structure
-      const results = await searchForLeads({
+      const searchParams = {
         searchType: 'people',
         keywords: keywords,
         location: location, 
         limit: parseInt(resultCount, 10),
-      });
+        personTitles: personTitles
+      };
+
+      // Save search history to Supabase if user is authenticated
+      let searchHistoryId = null;
+      if (user) {
+        try {
+          const { data: searchHistory, error } = await supabase
+            .from('search_history')
+            .insert({
+              user_id: user.id,
+              search_type: 'people',
+              search_params: searchParams,
+              person_titles: personTitles,
+              result_count: 0 // Will be updated after results are received
+            })
+            .select('id')
+            .single();
+
+          if (error) {
+            console.error("Error saving search history:", error);
+          } else {
+            searchHistoryId = searchHistory.id;
+            console.log("Search history saved with ID:", searchHistoryId);
+          }
+        } catch (err) {
+          console.error("Error in search history save:", err);
+        }
+      }
+      
+      const results = await searchForLeads(searchParams);
       
       console.log("Search results:", results);
       if (results && results.length > 0) {
@@ -103,6 +140,50 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
             location: transformedLeads[0].company.location,
             website: transformedLeads[0].company.website
           });
+        }
+      }
+
+      // Update search history with result count
+      if (user && searchHistoryId) {
+        try {
+          await supabase
+            .from('search_history')
+            .update({ result_count: transformedLeads.length })
+            .eq('id', searchHistoryId);
+        } catch (err) {
+          console.error("Error updating search history:", err);
+        }
+        
+        // Save results to archive
+        if (transformedLeads.length > 0) {
+          try {
+            const archiveData = transformedLeads.map(lead => {
+              // Create a unique identifier to prevent duplicates
+              const uniqueId = lead.company?.name 
+                ? `${lead.company.name}-${lead.contact?.firstName || ''}-${lead.contact?.lastName || ''}`
+                : `unknown-${Date.now()}-${Math.random()}`;
+                
+              return {
+                search_id: searchHistoryId,
+                result_data: lead,
+                unique_identifier: uniqueId
+              };
+            });
+            
+            // Use upsert with onConflict to handle duplicates
+            const { error } = await supabase
+              .from('search_results_archive')
+              .upsert(archiveData, {
+                onConflict: 'unique_identifier',
+                ignoreDuplicates: true
+              });
+              
+            if (error) {
+              console.error("Error saving search results:", error);
+            }
+          } catch (err) {
+            console.error("Error in search results archive:", err);
+          }
         }
       }
       
@@ -165,12 +246,20 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="md:col-span-3">
+              <div>
                 <Input
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Location, e.g. United States, Tampa FL, etc."
-                  className="w-full mb-4"
+                  className="w-full"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Input
+                  value={personTitle}
+                  onChange={(e) => setPersonTitle(e.target.value)}
+                  placeholder="Job Title, e.g. Marketing Director, CEO, etc."
+                  className="w-full"
                 />
               </div>
               <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">

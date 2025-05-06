@@ -17,6 +17,7 @@ const LeadsPage = () => {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [companiesInSelectedList, setCompaniesInSelectedList] = useState<string[]>([]);
+  const [filteredCompanies, setFilteredCompanies] = useState<Partial<Company>[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -38,19 +39,42 @@ const LeadsPage = () => {
       fetchCompaniesInList(listId);
     } else {
       setCompaniesInSelectedList([]);
+      setFilteredCompanies([]);
     }
   };
 
   const fetchCompaniesInList = async (listId: string) => {
     try {
+      // Use the new list_companies_new table with UUID types
       const { data, error } = await supabase
-        .from('list_companies')
+        .from('list_companies_new')
         .select('company_id')
         .eq('list_id', listId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching companies in list:', error);
+        throw error;
+      }
       
-      setCompaniesInSelectedList(data.map(item => item.company_id));
+      const companyIds = data.map(item => item.company_id);
+      setCompaniesInSelectedList(companyIds);
+      
+      // Now fetch the actual company data for these IDs
+      if (companyIds.length > 0) {
+        const { data: companies, error: companiesError } = await supabase
+          .from('companies')
+          .select('*')
+          .in('id', companyIds);
+          
+        if (companiesError) {
+          console.error('Error fetching companies by IDs:', companiesError);
+          throw companiesError;
+        }
+        
+        setFilteredCompanies(companies);
+      } else {
+        setFilteredCompanies([]);
+      }
     } catch (error) {
       console.error('Error fetching companies in list:', error);
       toast({
@@ -71,9 +95,9 @@ const LeadsPage = () => {
         company_id: companyId
       }));
       
-      // Insert into list_companies table
+      // Insert into list_companies_new table with UUID types
       const { error } = await supabase
-        .from('list_companies')
+        .from('list_companies_new')
         .upsert(listCompanies, { 
           onConflict: 'list_id,company_id',
           ignoreDuplicates: true 
@@ -102,6 +126,13 @@ const LeadsPage = () => {
       });
     }
   };
+
+  // Effect to load data when component mounts
+  useEffect(() => {
+    if (selectedListId) {
+      fetchCompaniesInList(selectedListId);
+    }
+  }, [selectedListId]);
 
   return (
     <Layout>
@@ -150,7 +181,7 @@ const LeadsPage = () => {
           {/* Main Content */}
           <div className="lg:col-span-3">
             <CompanyList 
-              newLeads={newLeads} 
+              newLeads={selectedListId ? filteredCompanies : newLeads}
               selectedCompanies={selectedCompanies}
               onCompanySelect={handleSelectCompany}
             />

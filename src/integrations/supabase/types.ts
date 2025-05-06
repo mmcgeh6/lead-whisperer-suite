@@ -100,6 +100,7 @@ export type Database = {
           text_script: string | null
           twitter_url: string | null
           updated_at: string
+          user_id: string | null
           website: string | null
           zip: string | null
         }
@@ -127,6 +128,7 @@ export type Database = {
           text_script?: string | null
           twitter_url?: string | null
           updated_at?: string
+          user_id?: string | null
           website?: string | null
           zip?: string | null
         }
@@ -154,6 +156,7 @@ export type Database = {
           text_script?: string | null
           twitter_url?: string | null
           updated_at?: string
+          user_id?: string | null
           website?: string | null
           zip?: string | null
         }
@@ -345,6 +348,27 @@ export type Database = {
           },
         ]
       }
+      list_companies_new: {
+        Row: {
+          added_at: string | null
+          company_id: string
+          id: string
+          list_id: string
+        }
+        Insert: {
+          added_at?: string | null
+          company_id: string
+          id?: string
+          list_id: string
+        }
+        Update: {
+          added_at?: string | null
+          company_id?: string
+          id?: string
+          list_id?: string
+        }
+        Relationships: []
+      }
       lists: {
         Row: {
           created_at: string
@@ -398,6 +422,71 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      search_history: {
+        Row: {
+          id: string
+          person_titles: string[] | null
+          result_count: number
+          search_date: string | null
+          search_params: Json
+          search_type: string
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          person_titles?: string[] | null
+          result_count?: number
+          search_date?: string | null
+          search_params: Json
+          search_type: string
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          person_titles?: string[] | null
+          result_count?: number
+          search_date?: string | null
+          search_params?: Json
+          search_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      search_results_archive: {
+        Row: {
+          added_to_list: boolean | null
+          created_at: string | null
+          id: string
+          result_data: Json
+          search_id: string | null
+          unique_identifier: string
+        }
+        Insert: {
+          added_to_list?: boolean | null
+          created_at?: string | null
+          id?: string
+          result_data: Json
+          search_id?: string | null
+          unique_identifier: string
+        }
+        Update: {
+          added_to_list?: boolean | null
+          created_at?: string | null
+          id?: string
+          result_data?: Json
+          search_id?: string | null
+          unique_identifier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_results_archive_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "search_history"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

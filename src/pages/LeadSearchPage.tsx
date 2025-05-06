@@ -9,6 +9,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Company, Contact } from "@/types";
 import { 
   searchForLeads, 
@@ -69,6 +71,7 @@ interface SearchParams {
   resultCount: number;
   organizationLocations: string[];
   keywordFields: string[];
+  personTitles: string[];  // Added this field
 }
 
 const LeadSearchPage = () => {
@@ -77,6 +80,7 @@ const LeadSearchPage = () => {
   const [selectedResults, setSelectedResults] = useState<string[]>([]);
   const { toast } = useToast();
   const { addCompany, addContact } = useAppContext();
+  const { user } = useAuth();
   
   const handleSearch = async (searchParams: SearchParams) => {
     if (!searchParams.keywords || searchParams.keywords.length === 0) {
@@ -132,7 +136,8 @@ const LeadSearchPage = () => {
         seniorities: searchParams.seniorities,
         emailStatus: searchParams.emailStatus,
         employeeRanges: searchParams.employeeRanges,
-        limit: searchParams.resultCount
+        limit: searchParams.resultCount,
+        personTitles: searchParams.personTitles || []
       };
       
       // Add organization locations if provided
@@ -144,6 +149,33 @@ const LeadSearchPage = () => {
       apiParams['keywordFields'] = searchParams.keywordFields;
       
       console.log("Final API search parameters:", apiParams);
+      
+      // Save search history to Supabase if user is authenticated
+      let searchHistoryId = null;
+      if (user) {
+        try {
+          const { data: searchHistory, error } = await supabase
+            .from('search_history')
+            .insert({
+              user_id: user.id,
+              search_type: 'people',
+              search_params: apiParams,
+              person_titles: searchParams.personTitles || [],
+              result_count: 0 // Will be updated after results are received
+            })
+            .select('id')
+            .single();
+
+          if (error) {
+            console.error("Error saving search history:", error);
+          } else {
+            searchHistoryId = searchHistory.id;
+            console.log("Search history saved with ID:", searchHistoryId);
+          }
+        } catch (err) {
+          console.error("Error in search history save:", err);
+        }
+      }
       
       // Call the search service with the parameters
       const results = await searchForLeads(apiParams);
@@ -168,6 +200,50 @@ const LeadSearchPage = () => {
         });
         setIsSearching(false);
         return;
+      }
+      
+      // Update search history with result count
+      if (user && searchHistoryId) {
+        try {
+          await supabase
+            .from('search_history')
+            .update({ result_count: transformedLeads.length })
+            .eq('id', searchHistoryId);
+        } catch (err) {
+          console.error("Error updating search history:", err);
+        }
+        
+        // Save results to archive
+        if (transformedLeads.length > 0) {
+          try {
+            const archiveData = transformedLeads.map(lead => {
+              // Create a unique identifier to prevent duplicates
+              const uniqueId = lead.company?.name 
+                ? `${lead.company.name}-${lead.contact?.firstName || ''}-${lead.contact?.lastName || ''}-${lead.contact?.title || ''}`
+                : `unknown-${Date.now()}-${Math.random()}`;
+                
+              return {
+                search_id: searchHistoryId,
+                result_data: lead,
+                unique_identifier: uniqueId
+              };
+            });
+            
+            // Use upsert with onConflict to handle duplicates
+            const { error } = await supabase
+              .from('search_results_archive')
+              .upsert(archiveData, {
+                onConflict: 'unique_identifier',
+                ignoreDuplicates: true
+              });
+              
+            if (error) {
+              console.error("Error saving search results:", error);
+            }
+          } catch (err) {
+            console.error("Error in search results archive:", err);
+          }
+        }
       }
       
       try {
@@ -326,21 +402,52 @@ const LeadSearchPage = () => {
               size: rawCompany.size || "Unknown",
               location: rawCompany.location || "",
               description: rawCompany.description || "",
+              user_id: user?.id, // Associate with the current user
               createdAt: rawCompany.createdAt || new Date().toISOString(),
               updatedAt: rawCompany.updatedAt || new Date().toISOString(),
             };
             
             // Add company
             console.log("Adding company:", companyData.name);
-            addCompany(companyData);
+            const addedCompany = await addCompany(companyData);
             
             // Add contact if this is a person search result
             if (lead.raw_data.contact) {
               console.log("Adding contact:", `${lead.raw_data.contact.firstName} ${lead.raw_data.contact.lastName}`);
-              addContact({
+              await addContact({
                 ...lead.raw_data.contact,
-                companyId: companyData.id
+                companyId: addedCompany.id
               });
+            }
+            
+            // Add company to list
+            if (addedCompany && addedCompany.id) {
+              try {
+                const { error } = await supabase
+                  .from('list_companies_new')
+                  .insert({
+                    list_id: listId,
+                    company_id: addedCompany.id
+                  });
+                
+                if (error) {
+                  console.error("Error adding company to list:", error);
+                }
+              } catch (error) {
+                console.error("Error in list_companies_new insert:", error);
+              }
+            }
+            
+            // Mark the result as added to list in the search_results_archive
+            if (lead.raw_data?.search_id) {
+              try {
+                await supabase
+                  .from('search_results_archive')
+                  .update({ added_to_list: true })
+                  .eq('unique_identifier', `${companyData.name}-${lead.raw_data.contact?.firstName || ''}-${lead.raw_data.contact?.lastName || ''}-${lead.raw_data.contact?.title || ''}`);
+              } catch (error) {
+                console.error("Error updating search results archive:", error);
+              }
             }
           } else {
             // Process legacy format
@@ -357,6 +464,7 @@ const LeadSearchPage = () => {
               size: "Unknown", // Default size value for legacy format
               location: lead.location || "",
               description: lead.description || "",
+              user_id: user?.id, // Associate with the current user
               linkedin_url: lead.linkedin_url?.includes("company") ? lead.linkedin_url : "",
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
@@ -364,7 +472,7 @@ const LeadSearchPage = () => {
             
             // Add company
             console.log("Adding company (legacy format):", companyData.name);
-            addCompany(companyData);
+            const addedCompany = await addCompany(companyData);
             
             // Only create contact for person type
             if (lead.type === 'person') {
@@ -374,7 +482,7 @@ const LeadSearchPage = () => {
               
               // Add contact
               console.log("Adding contact (legacy format):", `${firstName} ${lastName}`);
-              addContact({
+              await addContact({
                 firstName,
                 lastName,
                 title: lead.title || "",
@@ -384,6 +492,24 @@ const LeadSearchPage = () => {
                 companyId,
                 notes: `Imported from lead search on ${new Date().toLocaleDateString()}`,
               });
+            }
+            
+            // Add company to list
+            if (addedCompany && addedCompany.id) {
+              try {
+                const { error } = await supabase
+                  .from('list_companies_new')
+                  .insert({
+                    list_id: listId,
+                    company_id: addedCompany.id
+                  });
+                
+                if (error) {
+                  console.error("Error adding company to list:", error);
+                }
+              } catch (error) {
+                console.error("Error in list_companies_new insert:", error);
+              }
             }
           }
         } catch (error) {
