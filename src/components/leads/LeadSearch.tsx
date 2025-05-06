@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Filter } from "lucide-react";
-import { searchForLeads, transformApifyResults, getAppSettings, SearchType } from "@/services/apifyService";
+import { searchForLeads, transformApifyResults, getAppSettings, SearchType, AppSettings, PeopleSearchResult } from "@/services/apifyService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DebugConsole from "@/components/dev/DebugConsole";
 import { Link } from "react-router-dom";
@@ -41,14 +41,14 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
 
     try {
       // Get settings from Supabase
-      const settings = await getAppSettings();
+      const settings: AppSettings = await getAppSettings();
       console.log("Retrieved settings:", settings);
       
       // Get the lead provider from settings
       const leadProvider = settings.leadProvider || 'apify-apollo';
       
       // Check for appropriate API key based on the selected provider
-      let apiKey: string | null;
+      let apiKey: string | null = null;
       let apiKeyName: string;
       let apiKeyLabel: string;
       
@@ -84,7 +84,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       
       // Use the search service with the new parameter structure
       const searchParams = {
-        searchType: SearchType.PEOPLE, // Fixed type issue here
+        searchType: SearchType.PEOPLE,
         keywords: keywords,
         location: location, 
         limit: parseInt(resultCount, 10),
@@ -110,7 +110,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
           if (error) {
             console.error("Error saving search history:", error);
           } else {
-            searchHistoryId = searchHistory.id;
+            searchHistoryId = searchHistory?.id;
             console.log("Search history saved with ID:", searchHistoryId);
           }
         } catch (err) {
@@ -133,12 +133,13 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
         console.log("First transformed lead:", JSON.stringify(transformedLeads[0]));
         
         // Log detailed information about the first company
-        if (transformedLeads[0] && transformedLeads[0].company) {
+        const firstLead = transformedLeads[0] as PeopleSearchResult;
+        if (firstLead && firstLead.company) {
           console.log("Company data extracted:", {
-            name: transformedLeads[0].company.name,
-            industry: transformedLeads[0].company.industry,
-            location: transformedLeads[0].company.location,
-            website: transformedLeads[0].company.website
+            name: firstLead.company.name,
+            industry: firstLead.company.industry,
+            location: firstLead.company.location,
+            website: firstLead.company.website
           });
         }
       }
@@ -161,9 +162,12 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
               // Create a unique identifier to prevent duplicates
               let uniqueId = "unknown-" + Date.now() + "-" + Math.random();
               
+              // Type guard to check if this is a people search result
+              const peopleResult = lead as PeopleSearchResult;
+              
               // If it's a people search result with contact and company
-              if (lead && lead.company && lead.contact) {
-                uniqueId = `${lead.company.name || ''}-${lead.contact.firstName || ''}-${lead.contact.lastName || ''}`;
+              if (peopleResult && peopleResult.contact && peopleResult.company) {
+                uniqueId = `${peopleResult.company.name || ''}-${peopleResult.contact.firstName || ''}-${peopleResult.contact.lastName || ''}`;
               }
               
               return {

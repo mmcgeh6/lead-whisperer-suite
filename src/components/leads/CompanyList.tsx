@@ -81,13 +81,14 @@ export const CompanyList = ({
           twitter_url: item.twitter_url,
           linkedin_url: item.linkedin_url,
           keywords: item.keywords,
-          createdAt: item.created_at,
-          updatedAt: item.updated_at,
+          createdAt: item.created_at || new Date().toISOString(),
+          updatedAt: item.updated_at || new Date().toISOString(),
           call_script: item.call_script,
           email_script: item.email_script,
           text_script: item.text_script,
           social_dm_script: item.social_dm_script,
-          research_notes: item.research_notes
+          research_notes: item.research_notes,
+          user_id: item.user_id
         }));
         
         setDisplayCompanies(formattedCompanies);

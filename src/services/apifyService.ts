@@ -1,3 +1,4 @@
+
 // Add a proper SearchType enum to address the type issues
 export enum SearchType {
   PEOPLE = 'people',
@@ -18,6 +19,26 @@ export interface SearchParams {
   personTitles?: string[];
   organizationLocations?: string[];
   keywordFields?: string[];
+}
+
+// Add AppSettings interface for proper typing
+export interface AppSettings {
+  apifyApolloApiKey?: string;
+  apolloApiKey?: string;
+  leadProvider?: string;
+  companyEnrichmentWebhook?: string;
+  linkedinEnrichmentWebhook?: string;
+  emailFinderWebhook?: string;
+  companyResearchWebhook?: string;
+  marketResearchWebhook?: string;
+  techResearchWebhook?: string;
+  growthResearchWebhook?: string;
+  profileResearchWebhook?: string;
+  contentWebhook?: string;
+  jobsWebhook?: string;
+  awardsWebhook?: string;
+  idealCustomerWebhook?: string;
+  outreachWebhook?: string;
 }
 
 export const searchForLeads = async (params: SearchParams) => {
@@ -69,7 +90,7 @@ const searchWithApify = async (params: SearchParams) => {
   }
   
   // Determine which Apify actor to use based on search type
-  let actorName = 'apollo-scraper';
+  let actorName = 'lukaskrivka/apollo-scraper';
   
   // Prepare the input for the Apify actor
   const input: any = {
@@ -228,7 +249,7 @@ const waitForApifyRun = async (runId: string, apiKey: string) => {
 };
 
 // Function to get app settings from Supabase
-export const getAppSettings = async () => {
+export const getAppSettings = async (): Promise<AppSettings> => {
   try {
     // Import supabase client
     const { supabase } = await import('@/integrations/supabase/client');
@@ -237,6 +258,7 @@ export const getAppSettings = async () => {
     const { data, error } = await supabase
       .from('app_settings')
       .select('*')
+      .eq('id', 'default')
       .limit(1)
       .single();
     
@@ -245,8 +267,13 @@ export const getAppSettings = async () => {
       return {};
     }
     
+    if (!data) {
+      console.log("No app settings found, returning default empty object");
+      return {};
+    }
+    
     // Convert snake_case to camelCase for consistency
-    const settings = {
+    const settings: AppSettings = {
       apifyApolloApiKey: data.apifyapolloapikey,
       apolloApiKey: data.apolloapikey,
       leadProvider: data.leadprovider,

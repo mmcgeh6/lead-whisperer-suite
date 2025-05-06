@@ -16,6 +16,7 @@ import {
   searchForLeads, 
   transformApifyResults,
   SearchType,
+  AppSettings,
   PeopleSearchResult,
   CompanySearchResult
 } from "@/services/apifyService";
@@ -97,15 +98,14 @@ const LeadSearchPage = () => {
     
     try {
       // Get settings from Supabase
-      const { getAppSettings } = await import('@/services/apifyService');
-      const settings = await getAppSettings();
+      const settings: AppSettings = await getAppSettings();
       console.log("Search page retrieved settings:", settings);
       
       // Get the lead provider from settings
       const leadProvider = settings.leadProvider || 'apify-apollo';
       
       // Check for appropriate API key based on the selected provider
-      let apiKey: string | null;
+      let apiKey: string | null = null;
       let apiKeyLabel: string;
       
       if (leadProvider === 'apollo') {
@@ -138,16 +138,10 @@ const LeadSearchPage = () => {
         emailStatus: searchParams.emailStatus,
         employeeRanges: searchParams.employeeRanges,
         limit: searchParams.resultCount,
-        personTitles: searchParams.personTitles || []
+        personTitles: searchParams.personTitles,
+        organizationLocations: searchParams.organizationLocations,
+        keywordFields: searchParams.keywordFields
       };
-      
-      // Add organization locations if provided
-      if (searchParams.organizationLocations?.length > 0) {
-        apiParams['organizationLocations' as keyof typeof apiParams] = searchParams.organizationLocations;
-      }
-      
-      // Always include keyword fields in the search
-      apiParams['keywordFields' as keyof typeof apiParams] = searchParams.keywordFields;
       
       console.log("Final API search parameters:", apiParams);
       
@@ -221,9 +215,12 @@ const LeadSearchPage = () => {
               // Create a unique identifier to prevent duplicates
               let uniqueId = "unknown-" + Date.now() + "-" + Math.random();
               
-              // If it's a people search result with contact and company
-              if (lead && 'contact' in lead && lead.company && lead.contact) {
-                uniqueId = `${lead.company.name || ''}-${lead.contact.firstName || ''}-${lead.contact.lastName || ''}-${lead.contact.title || ''}`;
+              // Type guard to check if this is a people search result
+              const peopleResult = lead as PeopleSearchResult;
+              
+              // If it has contact and company properties, it's a PeopleSearchResult
+              if (peopleResult && peopleResult.contact && peopleResult.company) {
+                uniqueId = `${peopleResult.company.name || ''}-${peopleResult.contact.firstName || ''}-${peopleResult.contact.lastName || ''}-${peopleResult.contact.title || ''}`;
               }
               
               return {
@@ -259,13 +256,13 @@ const LeadSearchPage = () => {
           
           try {
             // Check if this is a people search result by checking if it has a contact property
-            const isPeopleResult = item && 'contact' in item;
+            const peopleResult = item as PeopleSearchResult;
+            const isPeopleResult = peopleResult && peopleResult.contact !== undefined;
             
             if (isPeopleResult) {
               // This is a people search result
-              const peopleItem = item as PeopleSearchResult;
-              const contact = (peopleItem.contact || {}) as ContactData;
-              const company = (peopleItem.company || {}) as CompanyData;
+              const contact = (peopleResult.contact || {}) as ContactData;
+              const company = (peopleResult.company || {}) as CompanyData;
               
               const firstName = contact.firstName || "";
               const lastName = contact.lastName || "";
@@ -399,7 +396,7 @@ const LeadSearchPage = () => {
             const rawCompany = lead.raw_data.company;
             console.log("Found company data in raw_data.company:", rawCompany.name || "Unknown company");
             
-            const companyData: Omit<Company, 'id'> & { user_id?: string } = {
+            const companyData: Partial<Company> = {
               // Ensure all required fields are present
               name: rawCompany.name || "Unknown Company",
               website: rawCompany.website || "",
@@ -414,30 +411,18 @@ const LeadSearchPage = () => {
             
             // Add company
             console.log("Adding company:", companyData.name);
-            
-            // Generate a clean company object conforming to the Company interface
-            const cleanCompanyData: Omit<Company, 'id'> = {
-              name: companyData.name,
-              website: companyData.website,
-              industry: companyData.industry,
-              size: companyData.size,
-              location: companyData.location,
-              description: companyData.description,
-              createdAt: companyData.createdAt,
-              updatedAt: companyData.updatedAt
-            };
-            
-            const addedCompany = await addCompany(cleanCompanyData);
+            const addedCompany = await addCompany(companyData as Company);
             
             // Add contact if this is a person search result
-            if (lead.raw_data.contact) {
+            if (lead.raw_data.contact && addedCompany) {
               console.log("Adding contact:", `${lead.raw_data.contact.firstName} ${lead.raw_data.contact.lastName}`);
-              if (addedCompany && addedCompany.id) {
-                await addContact({
-                  ...lead.raw_data.contact,
-                  companyId: addedCompany.id
-                });
-              }
+              const contactData: Partial<Contact> = {
+                ...lead.raw_data.contact,
+                companyId: addedCompany.id,
+                notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
+              };
+              
+              await addContact(contactData as Contact);
             }
             
             // Add company to list
@@ -461,10 +446,13 @@ const LeadSearchPage = () => {
             // Mark the result as added to list in the search_results_archive
             if (lead.raw_data?.search_id) {
               try {
+                const peopleResult = lead.raw_data as PeopleSearchResult;
+                const contact = peopleResult.contact || {};
+                
                 await supabase
                   .from('search_results_archive')
                   .update({ added_to_list: true })
-                  .eq('unique_identifier', `${companyData.name}-${lead.raw_data.contact?.firstName || ''}-${lead.raw_data.contact?.lastName || ''}-${lead.raw_data.contact?.title || ''}`);
+                  .eq('unique_identifier', `${companyData.name}-${contact.firstName || ''}-${contact.lastName || ''}-${contact.title || ''}`);
               } catch (error) {
                 console.error("Error updating search results archive:", error);
               }
@@ -473,10 +461,8 @@ const LeadSearchPage = () => {
             // Process legacy format
             console.log("No company data in raw_data.company, using legacy format");
             
-            // Create a company first
-            const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            
-            const companyData: Omit<Company, 'id'> = {
+            // Create a company
+            const companyData: Partial<Company> = {
               name: lead.company || lead.name || "Unknown Company",
               website: lead.website || "",
               industry: lead.industry || "",
@@ -486,11 +472,12 @@ const LeadSearchPage = () => {
               linkedin_url: lead.linkedin_url?.includes("company") ? lead.linkedin_url : "",
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
+              user_id: user?.id
             };
             
             // Add company
             console.log("Adding company (legacy format):", companyData.name);
-            const addedCompany = await addCompany(companyData);
+            const addedCompany = await addCompany(companyData as Company);
             
             // Only create contact for person type
             if (lead.type === 'person' && addedCompany) {
@@ -500,7 +487,7 @@ const LeadSearchPage = () => {
               
               // Add contact
               console.log("Adding contact (legacy format):", `${firstName} ${lastName}`);
-              await addContact({
+              const contactData: Partial<Contact> = {
                 firstName,
                 lastName,
                 title: lead.title || "",
@@ -508,8 +495,10 @@ const LeadSearchPage = () => {
                 phone: lead.phone || "",
                 linkedin_url: lead.linkedin_url || "",
                 companyId: addedCompany.id,
-                notes: `Imported from lead search on ${new Date().toLocaleDateString()}`,
-              });
+                notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
+              };
+              
+              await addContact(contactData as Contact);
             }
             
             // Add company to list
