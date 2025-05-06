@@ -372,13 +372,18 @@ const LeadSearchPage = () => {
     });
   };
 
-  const handleEditCompany = async (companyData: Partial<Company>) => {
-    // Fix type safety issue by handling the return value properly
-    const result = await addCompany(companyData as Company);
-    if (result && 'id' in result) {
-      return result;
+  // Fixed handleEditCompany function to return a properly typed result
+  const handleEditCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
+    try {
+      const result = await addCompany(companyData as Company);
+      if (result && typeof result === 'object' && 'id' in result) {
+        return result as Company;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error adding company:", error);
+      return null;
     }
-    return null;
   };
 
   const saveSelectedLeads = async (listId: string) => {

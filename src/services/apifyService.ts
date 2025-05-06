@@ -1,3 +1,4 @@
+
 // Add a proper SearchType enum to address the type issues
 export enum SearchType {
   PEOPLE = 'people',
@@ -91,8 +92,9 @@ const searchWithApify = async (params: SearchParams) => {
   // Use the correct actor name for Apollo.io scraper
   const actorName = 'jljBwyyQakqrL1wae';
   
-  // Prepare the input for the Apify actor
+  // Prepare the input for the Apify actor with required URL field
   const input: any = {
+    url: "https://www.apollo.io/", // Adding the required URL field
     queries: [],
     maxResults: params.limit || 20,
     saveHtml: false,
