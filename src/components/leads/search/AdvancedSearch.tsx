@@ -899,7 +899,7 @@ export const AdvancedSearch = ({
 
               {/* Job Title */}
               <div className="space-y-2">
-                <Label className="block mb-2">Job Title</Label>
+                <Label className="block mb-2">Management Level</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {seniorityOptions.map(option => <div key={option.value} className="flex items-center space-x-2">
                       <Checkbox id={`seniority-${option.value}`} checked={seniorities.includes(option.value)} onCheckedChange={() => handleToggleSeniority(option.value)} />
