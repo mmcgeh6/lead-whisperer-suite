@@ -474,39 +474,57 @@ export type SearchResult = PeopleSearchResult | CompanySearchResult;
 // Helper function to transform a person result
 const transformPersonResult = (result: any): PeopleSearchResult => {
   try {
-    // Extract person data based on Supremecoder's format which may differ from Codecrafter
-    // For now, we'll try to use the same structure but with fallbacks for different field names
-    const person = result.person || result.contact || {};
-    const organization = result.organization || result.company || {};
+    // Log the structure of the incoming result to understand its format
+    console.log("Raw person result structure:", JSON.stringify(result).substring(0, 300));
     
-    // Create contact object with fallbacks for different field names
-    const contact = {
-      firstName: person.firstName || person.first_name || "",
-      lastName: person.lastName || person.last_name || "",
-      title: person.title || person.job_title || "",
-      email: person.email || "",
-      phone: person.phone || "",
-      linkedin_url: person.linkedInUrl || person.linkedin_url || person.url || ""
+    // Extract data based on the Supremecoder actor format
+    // Adjust these fields based on the actual structure returned by the actor
+    const person = {
+      firstName: result.firstName || result.first_name || "",
+      lastName: result.lastName || result.last_name || "",
+      title: result.title || result.jobTitle || result.headline || "",
+      email: result.emailAddress || result.email || "",
+      phone: result.phone || "",
+      linkedin_url: result.linkedInProfileUrl || result.linkedinUrl || result.url || ""
     };
     
-    // Create company object with fallbacks for different field names
+    // Extract company information
+    const organization = result.organization || {};
     const company = {
-      name: organization.name || "",
-      industry: organization.industry || "",
-      location: organization.location || "",
-      website: organization.website || "",
-      description: organization.description || "",
-      linkedin_url: organization.linkedInUrl || organization.linkedin_url || "",
-      size: organization.size || ""
+      name: result.companyName || organization.name || "",
+      industry: result.industry || organization.industry || "",
+      location: result.location || organization.location || "",
+      website: result.website || organization.website || "",
+      description: result.description || organization.description || "",
+      linkedin_url: result.companyLinkedInUrl || organization.linkedInUrl || organization.linkedin_url || "",
+      size: result.companySize || organization.size || ""
     };
     
     return {
-      contact,
-      company
+      contact: person,
+      company: company
     };
   } catch (error) {
     console.error("Error transforming person result:", error);
-    return {};
+    return {
+      contact: {
+        firstName: "",
+        lastName: "",
+        title: "",
+        email: "",
+        phone: "",
+        linkedin_url: ""
+      },
+      company: {
+        name: "",
+        industry: "",
+        location: "",
+        website: "",
+        description: "",
+        linkedin_url: "",
+        size: ""
+      }
+    };
   }
 };
 
