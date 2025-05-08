@@ -50,37 +50,21 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       const settings: AppSettings = await getAppSettings();
       console.log("Retrieved settings:", settings);
       
-      // Get the lead provider from settings
-      const leadProvider = settings.leadProvider || 'apify-apollo';
-      
-      // Check for appropriate API key based on the selected provider
-      let apiKey: string | null = null;
-      let apiKeyName: string;
-      let apiKeyLabel: string;
-      
-      if (leadProvider === 'apollo') {
-        apiKeyName = 'apolloApiKey';
-        apiKeyLabel = 'Apollo.io';
-        apiKey = settings.apolloApiKey || null;
-      } else {
-        apiKeyName = 'apifyApolloApiKey';
-        apiKeyLabel = 'Apify';
-        apiKey = settings.apifyApolloApiKey || null;
-      }
-      
-      console.log(`Using ${apiKeyLabel} API key:`, apiKey ? `[Present, length: ${apiKey.length}]` : "Missing");
+      // Check for Apify API key
+      const apiKey = settings.apifyApolloApiKey || null;
+      console.log(`Using Apify API key:`, apiKey ? `[Present, length: ${apiKey.length}]` : "Missing");
       
       if (!apiKey) {
         toast({
           title: "API Key Not Configured",
-          description: `Please set up your ${apiKeyLabel} API key in API Settings`,
+          description: `Please set up your Apify API key in API Settings`,
           variant: "destructive",
         });
         setIsSearching(false);
         return;
       }
       
-      console.log(`Starting people search with ${leadProvider} for "${searchQuery}" with limit ${resultCount}`);
+      console.log(`Starting people search for "${searchQuery}" with limit ${resultCount}`);
       
       // Convert the search query into an array of keywords
       const keywords = searchQuery.split(',').map(k => k.trim()).filter(k => k);

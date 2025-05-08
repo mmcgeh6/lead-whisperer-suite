@@ -47,13 +47,8 @@ export const searchForLeads = async (params: SearchParams) => {
     // Get the API settings
     const settings = await getAppSettings();
     
-    // Always use Apify for now, commenting out the provider check
-    // const leadProvider = settings.leadProvider || 'apify-apollo';
-    // if (leadProvider === 'apollo') {
-    //   return await searchWithApollo(params);
-    // } else {
-    return await searchWithApify(params);
-    // }
+    // Use the new Supremecoder actor instead of Codecrafter
+    return await searchWithSupremecoder(params);
   } catch (error) {
     console.error("Error in searchForLeads:", error);
     throw new Error(`Failed to search for leads: ${error instanceof Error ? error.message : String(error)}`);
@@ -61,6 +56,7 @@ export const searchForLeads = async (params: SearchParams) => {
 };
 
 // Function to search using Apollo API directly - COMMENTED OUT FOR NOW
+/* 
 const searchWithApollo = async (params: SearchParams) => {
   console.log("Using Apollo API for search");
   
@@ -75,10 +71,12 @@ const searchWithApollo = async (params: SearchParams) => {
   // Implement Apollo API search here
   throw new Error("Apollo API search not yet implemented");
 };
+*/
 
-// Function to search using Apify
+// Keep the old Codecrafter actor function, but commented out for potential future use
+/* 
 const searchWithApify = async (params: SearchParams) => {
-  console.log("Using Apify for search");
+  console.log("Using Apify Codecrafter for search");
   
   // Get the API key from settings
   const settings = await getAppSettings();
@@ -89,7 +87,7 @@ const searchWithApify = async (params: SearchParams) => {
   }
   
   // Use the correct actor name for Apollo.io scraper
-  const actorName = 'jljBwyyQakqrL1wae';
+  const actorName = 'jljBwyyQakqrL1wae';  // Codecrafter actor ID
   
   // Build proper Apollo.io search URL with parameters
   let apolloSearchUrl = "https://app.apollo.io/#/people?sortByField=%5Bnone%5D&sortAscending=false&page=1";
@@ -213,6 +211,97 @@ const searchWithApify = async (params: SearchParams) => {
     return result;
   } catch (error) {
     console.error("Error in searchWithApify:", error);
+    throw new Error(`Apify search failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
+*/
+
+// New function to search using the Supremecoder Apify actor
+const searchWithSupremecoder = async (params: SearchParams) => {
+  console.log("Using Apify Supremecoder for search");
+  
+  // Get the API key from settings
+  const settings = await getAppSettings();
+  const apiKey = settings.apifyApolloApiKey;
+  
+  if (!apiKey) {
+    throw new Error("Apify API key not configured");
+  }
+  
+  // Use the correct actor ID for Supremecoder's Apollo.io scraper
+  const actorId = "dx0856bVYoGUkmXAo"; // Supremecoder actor ID
+  
+  // Build proper Apollo.io search URL with parameters
+  let apolloSearchUrl = "https://app.apollo.io/#/people?sortByField=%5Bnone%5D&sortAscending=false&page=1";
+  
+  // Add person titles if available
+  if (params.personTitles && params.personTitles.length > 0) {
+    params.personTitles.forEach(title => {
+      apolloSearchUrl += `&personTitles[]=${encodeURIComponent(title)}`;
+    });
+  }
+  
+  // Add keywords as organization tags for better matching
+  if (params.keywords && params.keywords.length > 0) {
+    params.keywords.forEach(keyword => {
+      apolloSearchUrl += `&qOrganizationKeywordTags[]=${encodeURIComponent(keyword)}`;
+    });
+  }
+  
+  // Add location if available - FIXED to use personLocations[] as requested
+  if (params.location) {
+    apolloSearchUrl += `&personLocations[]=${encodeURIComponent(params.location)}`;
+  }
+  
+  // Add keyword fields if available
+  if (params.keywordFields && params.keywordFields.length > 0) {
+    params.keywordFields.forEach(field => {
+      apolloSearchUrl += `&includedOrganizationKeywordFields[]=${encodeURIComponent(field)}`;
+    });
+  } else {
+    // Default keyword fields if none specified
+    apolloSearchUrl += "&includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name";
+  }
+  
+  console.log("Apollo search URL constructed:", apolloSearchUrl);
+  
+  // Prepare the input for the Supremecoder Apify actor based on Python example
+  const input = {
+    "searchUrl": apolloSearchUrl,
+    "startPage": 1,
+    "getEmails": true,
+    "excludeGuessedEmails": false,
+    "excludeNoEmails": false,
+    "count": params.limit || 20,
+  };
+  
+  console.log("Apify Supremecoder input:", JSON.stringify(input, null, 2));
+  
+  try {
+    // Make the API call to Apify
+    const response = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs?token=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Apify API error (${response.status}): ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log("Apify run started:", data);
+    
+    // Wait for the run to finish
+    const runId = data.data.id;
+    const result = await waitForApifyRun(runId, apiKey);
+    
+    return result;
+  } catch (error) {
+    console.error("Error in searchWithSupremecoder:", error);
     throw new Error(`Apify search failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
@@ -385,28 +474,29 @@ export type SearchResult = PeopleSearchResult | CompanySearchResult;
 // Helper function to transform a person result
 const transformPersonResult = (result: any): PeopleSearchResult => {
   try {
-    // Extract person data
-    const person = result.person || {};
-    const organization = result.organization || {};
+    // Extract person data based on Supremecoder's format which may differ from Codecrafter
+    // For now, we'll try to use the same structure but with fallbacks for different field names
+    const person = result.person || result.contact || {};
+    const organization = result.organization || result.company || {};
     
-    // Create contact object
+    // Create contact object with fallbacks for different field names
     const contact = {
-      firstName: person.firstName || "",
-      lastName: person.lastName || "",
-      title: person.title || "",
+      firstName: person.firstName || person.first_name || "",
+      lastName: person.lastName || person.last_name || "",
+      title: person.title || person.job_title || "",
       email: person.email || "",
       phone: person.phone || "",
-      linkedin_url: person.linkedInUrl || ""
+      linkedin_url: person.linkedInUrl || person.linkedin_url || person.url || ""
     };
     
-    // Create company object
+    // Create company object with fallbacks for different field names
     const company = {
       name: organization.name || "",
       industry: organization.industry || "",
       location: organization.location || "",
       website: organization.website || "",
       description: organization.description || "",
-      linkedin_url: organization.linkedInUrl || "",
+      linkedin_url: organization.linkedInUrl || organization.linkedin_url || "",
       size: organization.size || ""
     };
     

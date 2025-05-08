@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -375,11 +376,12 @@ const LeadSearchPage = () => {
   // Fixed handleEditCompany function to properly return Company | null and avoid void checks
   const handleEditCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
     try {
-      // Call addCompany and explicitly handle the return value
+      // Call addCompany and store the result
       const result = await addCompany(companyData as Company);
       
-      // Check if result exists and is a valid Company object with an id
-      if (result && typeof result === 'object' && 'id' in result) {
+      // TypeScript fix: Check if result exists and has an id property 
+      // without using the result as a boolean directly
+      if (result && typeof result === 'object' && 'id' in result && result.id) {
         return result as Company;
       }
       
