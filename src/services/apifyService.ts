@@ -135,6 +135,17 @@ const searchWithApify = async (params: SearchParams) => {
       query.organizationLocations = params.organizationLocations;
     }
     
+    // Add these fields specifically for organization keyword filtering
+    if (params.keywords && params.keywords.length > 0) {
+      // Map keywords to organization tags for better matching
+      query.qOrganizationKeywordTags = params.keywords;
+    }
+    
+    if (params.keywordFields && params.keywordFields.length > 0) {
+      // Include the specific organization keyword fields
+      query.includedOrganizationKeywordFields = params.keywordFields;
+    }
+    
     input.queries.push(query);
   } 
   // Handle company search
@@ -153,6 +164,11 @@ const searchWithApify = async (params: SearchParams) => {
     
     if (params.employeeRanges && params.employeeRanges.length > 0) {
       query.employeeRanges = params.employeeRanges;
+    }
+    
+    // Add keyword fields if specified
+    if (params.keywordFields && params.keywordFields.length > 0) {
+      query.includedOrganizationKeywordFields = params.keywordFields;
     }
     
     input.queries.push(query);

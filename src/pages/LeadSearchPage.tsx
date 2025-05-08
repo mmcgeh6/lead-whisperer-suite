@@ -372,18 +372,20 @@ const LeadSearchPage = () => {
     });
   };
 
-  // Fixed handleEditCompany function to ensure proper typing and avoid void truthiness check
+  // Fixed handleEditCompany function to properly return Company | null and avoid void checks
   const handleEditCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
     try {
+      // Get the result from addCompany
       const companyResult = await addCompany(companyData as Company);
       
-      // Instead of checking the truthiness of a void value, explicitly check for object type
+      // Check if the result exists and is an object (not void)
       if (companyResult && typeof companyResult === 'object') {
-        // Make sure it has an id property before returning
+        // Check if it has an id property to verify it's a Company
         if ('id' in companyResult) {
           return companyResult as Company;
         }
       }
+      // Return null if no valid company was returned
       return null;
     } catch (error) {
       console.error("Error adding company:", error);
@@ -433,25 +435,26 @@ const LeadSearchPage = () => {
             console.log("Adding company:", companyData.name);
             const addedCompany = await handleEditCompany(companyData);
             
-            // Add contact if this is a person search result
-            if (lead.raw_data.contact && addedCompany) {
-              console.log("Adding contact:", `${lead.raw_data.contact.firstName} ${lead.raw_data.contact.lastName}`);
-              const contactData: Partial<Contact> = {
-                firstName: lead.raw_data.contact.firstName || "",
-                lastName: lead.raw_data.contact.lastName || "",
-                title: lead.raw_data.contact.title || "",
-                email: lead.raw_data.contact.email || "",
-                phone: lead.raw_data.contact.phone || "",
-                linkedin_url: lead.raw_data.contact.linkedin_url || "",
-                companyId: addedCompany.id,
-                notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
-              };
-              
-              await addContact(contactData as Contact);
-            }
-            
-            // Add company to list
+            // Only proceed if we have a valid company with an ID
             if (addedCompany && addedCompany.id) {
+              // Add contact if this is a person search result
+              if (lead.raw_data.contact && addedCompany) {
+                console.log("Adding contact:", `${lead.raw_data.contact.firstName} ${lead.raw_data.contact.lastName}`);
+                const contactData: Partial<Contact> = {
+                  firstName: lead.raw_data.contact.firstName || "",
+                  lastName: lead.raw_data.contact.lastName || "",
+                  title: lead.raw_data.contact.title || "",
+                  email: lead.raw_data.contact.email || "",
+                  phone: lead.raw_data.contact.phone || "",
+                  linkedin_url: lead.raw_data.contact.linkedin_url || "",
+                  companyId: addedCompany.id,
+                  notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
+                };
+                
+                await addContact(contactData as Contact);
+              }
+              
+              // Add company to list
               try {
                 const { error } = await supabase
                   .from('list_companies_new')
@@ -504,30 +507,31 @@ const LeadSearchPage = () => {
             console.log("Adding company (legacy format):", companyData.name);
             const addedCompany = await handleEditCompany(companyData);
             
-            // Only create contact for person type
-            if (lead.type === 'person' && addedCompany) {
-              const nameParts = lead.name.split(' ');
-              const firstName = nameParts[0] || "";
-              const lastName = nameParts.slice(1).join(' ') || "";
-              
-              // Add contact
-              console.log("Adding contact (legacy format):", `${firstName} ${lastName}`);
-              const contactData: Partial<Contact> = {
-                firstName,
-                lastName,
-                title: lead.title || "",
-                email: lead.email || "",
-                phone: lead.phone || "",
-                linkedin_url: lead.linkedin_url || "",
-                companyId: addedCompany.id,
-                notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
-              };
-              
-              await addContact(contactData as Contact);
-            }
-            
-            // Add company to list
+            // Only proceed if we have a valid company with an ID
             if (addedCompany && addedCompany.id) {
+              // Only create contact for person type
+              if (lead.type === 'person' && addedCompany) {
+                const nameParts = lead.name.split(' ');
+                const firstName = nameParts[0] || "";
+                const lastName = nameParts.slice(1).join(' ') || "";
+                
+                // Add contact
+                console.log("Adding contact (legacy format):", `${firstName} ${lastName}`);
+                const contactData: Partial<Contact> = {
+                  firstName,
+                  lastName,
+                  title: lead.title || "",
+                  email: lead.email || "",
+                  phone: lead.phone || "",
+                  linkedin_url: lead.linkedin_url || "",
+                  companyId: addedCompany.id,
+                  notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
+                };
+                
+                await addContact(contactData as Contact);
+              }
+              
+              // Add company to list
               try {
                 const { error } = await supabase
                   .from('list_companies_new')
