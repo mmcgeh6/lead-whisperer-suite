@@ -372,19 +372,18 @@ const LeadSearchPage = () => {
     });
   };
 
-  // Fixed handleEditCompany function to properly return Company | null and avoid void checks
+  // Fixed handleEditCompany function to properly return Company | null
   const handleEditCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
     try {
-      // Call addCompany and store the result
+      // Call addCompany and store the result explicitly as Company | null
       const result = await addCompany(companyData as Company);
       
-      // TypeScript fix: Check if result exists and has an id property 
-      // without using the result as a boolean directly
-      if (result && typeof result === 'object' && 'id' in result && result.id) {
+      // Check if result exists and has expected properties
+      if (result && typeof result === 'object' && 'id' in result) {
         return result as Company;
       }
       
-      // If no valid company was returned, return null
+      // Return null if result doesn't meet expectations
       return null;
     } catch (error) {
       console.error("Error adding company:", error);
@@ -412,117 +411,50 @@ const LeadSearchPage = () => {
         try {
           console.log("Processing lead to save:", lead.name);
           
-          if (lead.raw_data?.company) {
-            // Process transformed format
-            const rawCompany = lead.raw_data.company;
-            console.log("Found company data in raw_data.company:", rawCompany.name || "Unknown company");
+          if (lead.raw_data) {
+            // Process the enriched data format from Supremecoder
+            const rawData = lead.raw_data;
+            console.log("Found lead data:", rawData);
             
+            // Create a comprehensive company object from all available fields
             const companyData: Partial<Company> = {
-              // Ensure all required fields are present
-              name: rawCompany.name || "Unknown Company",
-              website: rawCompany.website || "",
-              industry: rawCompany.industry || "",
-              size: rawCompany.size || "Unknown",
-              location: rawCompany.location || "",
-              description: rawCompany.description || "",
+              name: rawData.companyName || lead.company || "Unknown Company",
+              website: rawData.websiteUrl || rawData.website || lead.website || "",
+              industry: rawData.businessIndustry || lead.industry || "",
+              size: rawData.employeeEstimate ? rawData.employeeEstimate.toString() : "Unknown",
+              location: rawData.fullAddress || `${rawData.cityName || ""} ${rawData.stateName || ""} ${rawData.countryName || ""}`.trim() || lead.location || "",
+              description: rawData.description || "",
+              phone: rawData.contactPhone || rawData.cleanedPhone || (rawData.mainPhone ? rawData.mainPhone.phoneNumber : ""),
+              street: rawData.addressLine || "",
+              city: rawData.cityName || "",
+              state: rawData.stateName || "",
+              zip: rawData.zipCode || "",
+              country: rawData.countryName || "",
+              linkedin_url: rawData.linkedInProfileUrl || lead.linkedin_url || "",
+              facebook_url: rawData.facebookProfileUrl || "",
+              twitter_url: rawData.twitterProfileUrl || "",
+              keywords: rawData.searchKeywords || rawData.businessIndustries || [],
               user_id: user?.id, // Associate with the current user
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
             
             // Add company
-            console.log("Adding company:", companyData.name);
+            console.log("Adding company with enriched data:", companyData.name);
             const addedCompany = await handleEditCompany(companyData);
             
             // Only proceed if we have a valid company with an ID
             if (addedCompany && addedCompany.id) {
-              // Add contact if this is a person search result
-              if (lead.raw_data.contact && addedCompany) {
-                console.log("Adding contact:", `${lead.raw_data.contact.firstName} ${lead.raw_data.contact.lastName}`);
+              // Add contact if this is a person search result with contact info
+              if ((lead.type === 'person' || lead.raw_data.firstName) && addedCompany) {
+                console.log("Adding contact:", `${lead.raw_data.firstName || ""} ${lead.raw_data.lastName || ""}`);
                 const contactData: Partial<Contact> = {
-                  firstName: lead.raw_data.contact.firstName || "",
-                  lastName: lead.raw_data.contact.lastName || "",
-                  title: lead.raw_data.contact.title || "",
-                  email: lead.raw_data.contact.email || "",
-                  phone: lead.raw_data.contact.phone || "",
-                  linkedin_url: lead.raw_data.contact.linkedin_url || "",
-                  companyId: addedCompany.id,
-                  notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
-                };
-                
-                await addContact(contactData as Contact);
-              }
-              
-              // Add company to list
-              try {
-                const { error } = await supabase
-                  .from('list_companies_new')
-                  .insert({
-                    list_id: listId,
-                    company_id: addedCompany.id
-                  });
-                
-                if (error) {
-                  console.error("Error adding company to list:", error);
-                }
-              } catch (error) {
-                console.error("Error in list_companies_new insert:", error);
-              }
-            }
-            
-            // Mark the result as added to list in the search_results_archive
-            if (lead.raw_data?.search_id) {
-              try {
-                const peopleResult = lead.raw_data as PeopleSearchResult;
-                const contact = peopleResult.contact || {};
-                
-                await supabase
-                  .from('search_results_archive')
-                  .update({ added_to_list: true })
-                  .eq('unique_identifier', `${companyData.name}-${contact.firstName || ''}-${contact.lastName || ''}-${contact.title || ''}`);
-              } catch (error) {
-                console.error("Error updating search results archive:", error);
-              }
-            }
-          } else {
-            // Process legacy format
-            console.log("No company data in raw_data.company, using legacy format");
-            
-            // Create a company
-            const companyData: Partial<Company> = {
-              name: lead.company || lead.name || "Unknown Company",
-              website: lead.website || "",
-              industry: lead.industry || "",
-              size: "Unknown", // Default size value for legacy format
-              location: lead.location || "",
-              description: lead.description || "",
-              linkedin_url: lead.linkedin_url?.includes("company") ? lead.linkedin_url : "",
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              user_id: user?.id
-            };
-            
-            // Add company
-            console.log("Adding company (legacy format):", companyData.name);
-            const addedCompany = await handleEditCompany(companyData);
-            
-            // Only proceed if we have a valid company with an ID
-            if (addedCompany && addedCompany.id) {
-              // Only create contact for person type
-              if (lead.type === 'person' && addedCompany) {
-                const nameParts = lead.name.split(' ');
-                const firstName = nameParts[0] || "";
-                const lastName = nameParts.slice(1).join(' ') || "";
-                
-                // Add contact
-                console.log("Adding contact (legacy format):", `${firstName} ${lastName}`);
-                const contactData: Partial<Contact> = {
-                  firstName,
-                  lastName,
-                  title: lead.title || "",
-                  email: lead.email || "",
-                  phone: lead.phone || "",
-                  linkedin_url: lead.linkedin_url || "",
+                  firstName: lead.raw_data.firstName || "",
+                  lastName: lead.raw_data.lastName || "",
+                  title: lead.raw_data.title || lead.raw_data.headline || "",
+                  email: lead.raw_data.emailAddress || lead.raw_data.email || "",
+                  phone: lead.raw_data.phone || "",
+                  linkedin_url: lead.raw_data.linkedInProfileUrl || "",
                   companyId: addedCompany.id,
                   notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
                 };
@@ -554,7 +486,7 @@ const LeadSearchPage = () => {
       
       toast({
         title: "Leads Saved",
-        description: `${selectedLeads.length} leads have been saved to your database.`
+        description: `${selectedLeads.length} leads have been saved to your database and added to the selected list.`
       });
       
       // Archive selected results and clear selection

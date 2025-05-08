@@ -32,12 +32,12 @@ export interface AppSettings {
   marketResearchWebhook?: string;
   techResearchWebhook?: string;
   growthResearchWebhook?: string;
-  profileResearchWebhook?: string;
-  contentWebhook?: string;
-  jobsWebhook?: string;
-  awardsWebhook?: string;
-  idealCustomerWebhook?: string;
-  outreachWebhook?: string;
+  profileResearchWebhook: string | undefined;
+  contentWebhook: string | undefined;
+  jobsWebhook: string | undefined;
+  awardsWebhook: string | undefined;
+  idealCustomerWebhook: string | undefined;
+  outreachWebhook: string | undefined;
 }
 
 export const searchForLeads = async (params: SearchParams) => {
@@ -471,14 +471,16 @@ export interface CompanySearchResult {
 
 export type SearchResult = PeopleSearchResult | CompanySearchResult;
 
-// Helper function to transform a person result
+// Function to transform a person result from Supremecoder format
 const transformPersonResult = (result: any): PeopleSearchResult => {
   try {
     // Log the structure of the incoming result to understand its format
     console.log("Raw person result structure:", JSON.stringify(result).substring(0, 300));
     
-    // Extract data based on the Supremecoder actor format
-    // Adjust these fields based on the actual structure returned by the actor
+    // Store the full original result to ensure we don't lose any data
+    const fullResult = { ...result };
+    
+    // Extract person/contact data
     const person = {
       firstName: result.firstName || result.first_name || "",
       lastName: result.lastName || result.last_name || "",
@@ -488,21 +490,22 @@ const transformPersonResult = (result: any): PeopleSearchResult => {
       linkedin_url: result.linkedInProfileUrl || result.linkedinUrl || result.url || ""
     };
     
-    // Extract company information
-    const organization = result.organization || {};
+    // Extract all company information
     const company = {
-      name: result.companyName || organization.name || "",
-      industry: result.industry || organization.industry || "",
-      location: result.location || organization.location || "",
-      website: result.website || organization.website || "",
-      description: result.description || organization.description || "",
-      linkedin_url: result.companyLinkedInUrl || organization.linkedInUrl || organization.linkedin_url || "",
-      size: result.companySize || organization.size || ""
+      name: result.companyName || "",
+      industry: result.businessIndustry || "",
+      location: result.fullAddress || `${result.cityName || ""} ${result.stateName || ""} ${result.countryName || ""}`.trim() || "",
+      website: result.websiteUrl || "",
+      description: result.description || "",
+      linkedin_url: result.linkedInProfileUrl || "",
+      size: result.employeeEstimate ? String(result.employeeEstimate) : ""
     };
     
+    // Return both the extracted data and the full result to ensure no information is lost
     return {
       contact: person,
-      company: company
+      company: company,
+      ...fullResult  // Keep all original fields
     };
   } catch (error) {
     console.error("Error transforming person result:", error);
