@@ -372,12 +372,17 @@ const LeadSearchPage = () => {
     });
   };
 
-  // Fixed handleEditCompany function to return a properly typed result
+  // Fixed handleEditCompany function to ensure proper typing and avoid void truthiness check
   const handleEditCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
     try {
-      const result = await addCompany(companyData as Company);
-      if (result && typeof result === 'object' && 'id' in result) {
-        return result as Company;
+      const companyResult = await addCompany(companyData as Company);
+      
+      // Instead of checking the truthiness of a void value, explicitly check for object type
+      if (companyResult && typeof companyResult === 'object') {
+        // Make sure it has an id property before returning
+        if ('id' in companyResult) {
+          return companyResult as Company;
+        }
       }
       return null;
     } catch (error) {

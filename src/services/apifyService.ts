@@ -89,7 +89,7 @@ const searchWithApify = async (params: SearchParams) => {
     throw new Error("Apify API key not configured");
   }
   
-  // Use the correct actor name for Apollo.io scraper
+  // Use the correct actor name for Apollo.io scraper - should be static
   const actorName = 'jljBwyyQakqrL1wae';
   
   // Prepare the input for the Apify actor with required URL field
