@@ -1,4 +1,3 @@
-
 // Add a proper SearchType enum to address the type issues
 export enum SearchType {
   PEOPLE = 'people',
@@ -47,21 +46,21 @@ export const searchForLeads = async (params: SearchParams) => {
   try {
     // Get the API settings
     const settings = await getAppSettings();
-    const leadProvider = settings.leadProvider || 'apify-apollo';
     
-    // Determine which API to use
-    if (leadProvider === 'apollo') {
-      return await searchWithApollo(params);
-    } else {
-      return await searchWithApify(params);
-    }
+    // Always use Apify for now, commenting out the provider check
+    // const leadProvider = settings.leadProvider || 'apify-apollo';
+    // if (leadProvider === 'apollo') {
+    //   return await searchWithApollo(params);
+    // } else {
+    return await searchWithApify(params);
+    // }
   } catch (error) {
     console.error("Error in searchForLeads:", error);
     throw new Error(`Failed to search for leads: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
-// Function to search using Apollo API directly
+// Function to search using Apollo API directly - COMMENTED OUT FOR NOW
 const searchWithApollo = async (params: SearchParams) => {
   console.log("Using Apollo API for search");
   
@@ -89,12 +88,46 @@ const searchWithApify = async (params: SearchParams) => {
     throw new Error("Apify API key not configured");
   }
   
-  // Use the correct actor name for Apollo.io scraper - should be static
+  // Use the correct actor name for Apollo.io scraper
   const actorName = 'jljBwyyQakqrL1wae';
+  
+  // Build proper Apollo.io search URL with parameters
+  let apolloSearchUrl = "https://app.apollo.io/#/people?sortByField=%5Bnone%5D&sortAscending=false&page=1";
+  
+  // Add person titles if available
+  if (params.personTitles && params.personTitles.length > 0) {
+    params.personTitles.forEach(title => {
+      apolloSearchUrl += `&personTitles[]=${encodeURIComponent(title)}`;
+    });
+  }
+  
+  // Add keywords as organization tags for better matching
+  if (params.keywords && params.keywords.length > 0) {
+    params.keywords.forEach(keyword => {
+      apolloSearchUrl += `&qOrganizationKeywordTags[]=${encodeURIComponent(keyword)}`;
+    });
+  }
+  
+  // Add location if available
+  if (params.location) {
+    apolloSearchUrl += `&location=${encodeURIComponent(params.location)}`;
+  }
+  
+  // Add keyword fields if available
+  if (params.keywordFields && params.keywordFields.length > 0) {
+    params.keywordFields.forEach(field => {
+      apolloSearchUrl += `&includedOrganizationKeywordFields[]=${encodeURIComponent(field)}`;
+    });
+  } else {
+    // Default keyword fields if none specified
+    apolloSearchUrl += "&includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name";
+  }
+  
+  console.log("Apollo search URL constructed:", apolloSearchUrl);
   
   // Prepare the input for the Apify actor with required URL field
   const input: any = {
-    url: "https://www.apollo.io/", // Adding the required URL field
+    url: apolloSearchUrl, // Using the constructed Apollo search URL
     queries: [],
     maxResults: params.limit || 20,
     saveHtml: false,
@@ -105,16 +138,10 @@ const searchWithApify = async (params: SearchParams) => {
   if (params.searchType === SearchType.PEOPLE) {
     // Create a query for people search
     const query: any = {
-      type: "people",
-      keywords: params.keywords?.join(" ") || "",
-      location: params.location || "",
+      type: "people"
     };
     
     // Add optional parameters if they exist
-    if (params.personTitles && params.personTitles.length > 0) {
-      query.titles = params.personTitles;
-    }
-    
     if (params.departments && params.departments.length > 0) {
       query.departments = params.departments;
     }
@@ -135,26 +162,13 @@ const searchWithApify = async (params: SearchParams) => {
       query.organizationLocations = params.organizationLocations;
     }
     
-    // Add these fields specifically for organization keyword filtering
-    if (params.keywords && params.keywords.length > 0) {
-      // Map keywords to organization tags for better matching
-      query.qOrganizationKeywordTags = params.keywords;
-    }
-    
-    if (params.keywordFields && params.keywordFields.length > 0) {
-      // Include the specific organization keyword fields
-      query.includedOrganizationKeywordFields = params.keywordFields;
-    }
-    
     input.queries.push(query);
   } 
   // Handle company search
   else if (params.searchType === SearchType.COMPANY) {
     // Create a query for company search
     const query: any = {
-      type: "organizations",
-      keywords: params.keywords?.join(" ") || "",
-      location: params.location || "",
+      type: "organizations"
     };
     
     // Add optional parameters if they exist
@@ -164,11 +178,6 @@ const searchWithApify = async (params: SearchParams) => {
     
     if (params.employeeRanges && params.employeeRanges.length > 0) {
       query.employeeRanges = params.employeeRanges;
-    }
-    
-    // Add keyword fields if specified
-    if (params.keywordFields && params.keywordFields.length > 0) {
-      query.includedOrganizationKeywordFields = params.keywordFields;
     }
     
     input.queries.push(query);

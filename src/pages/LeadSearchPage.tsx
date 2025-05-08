@@ -102,20 +102,20 @@ const LeadSearchPage = () => {
       const settings: AppSettings = await getAppSettings();
       console.log("Search page retrieved settings:", settings);
       
-      // Get the lead provider from settings
-      const leadProvider = settings.leadProvider || 'apify-apollo';
+      // Always use Apify for now, commenting out the provider check
+      const apiKey = settings.apifyApolloApiKey || null;
+      const apiKeyLabel = 'Apify';
       
-      // Check for appropriate API key based on the selected provider
-      let apiKey: string | null = null;
-      let apiKeyLabel: string;
-      
-      if (leadProvider === 'apollo') {
-        apiKeyLabel = 'Apollo.io';
-        apiKey = settings.apolloApiKey || null;
-      } else {
-        apiKeyLabel = 'Apify';
-        apiKey = settings.apifyApolloApiKey || null;
-      }
+      // const leadProvider = settings.leadProvider || 'apify-apollo';
+      // let apiKey: string | null = null;
+      // let apiKeyLabel: string;
+      // if (leadProvider === 'apollo') {
+      //   apiKeyLabel = 'Apollo.io';
+      //   apiKey = settings.apolloApiKey || null;
+      // } else {
+      //   apiKeyLabel = 'Apify';
+      //   apiKey = settings.apifyApolloApiKey || null;
+      // }
       
       console.log(`Using ${apiKeyLabel} API key:`, apiKey ? `[Present, length: ${apiKey.length}]` : "Missing");
       
@@ -141,7 +141,7 @@ const LeadSearchPage = () => {
         limit: searchParams.resultCount,
         personTitles: searchParams.personTitles,
         organizationLocations: searchParams.organizationLocations,
-        keywordFields: searchParams.keywordFields
+        keywordFields: searchParams.keywordFields || ['tags', 'name'] // Default keyword fields
       };
       
       console.log("Final API search parameters:", apiParams);
