@@ -375,17 +375,15 @@ const LeadSearchPage = () => {
   // Fixed handleEditCompany function to properly return Company | null and avoid void checks
   const handleEditCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
     try {
-      // Get the result from addCompany
-      const companyResult = await addCompany(companyData as Company);
+      // Call addCompany and explicitly handle the return value
+      const result = await addCompany(companyData as Company);
       
-      // Check if the result exists and is an object (not void)
-      if (companyResult && typeof companyResult === 'object') {
-        // Check if it has an id property to verify it's a Company
-        if ('id' in companyResult) {
-          return companyResult as Company;
-        }
+      // Check if result exists and is a valid Company object with an id
+      if (result && typeof result === 'object' && 'id' in result) {
+        return result as Company;
       }
-      // Return null if no valid company was returned
+      
+      // If no valid company was returned, return null
       return null;
     } catch (error) {
       console.error("Error adding company:", error);
