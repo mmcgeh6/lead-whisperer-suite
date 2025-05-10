@@ -1,3 +1,4 @@
+
 // Add a proper SearchType enum to address the type issues
 export enum SearchType {
   PEOPLE = 'people',
@@ -32,12 +33,12 @@ export interface AppSettings {
   marketResearchWebhook?: string;
   techResearchWebhook?: string;
   growthResearchWebhook?: string;
-  profileResearchWebhook: string | undefined;
-  contentWebhook: string | undefined;
-  jobsWebhook: string | undefined;
-  awardsWebhook: string | undefined;
-  idealCustomerWebhook: string | undefined;
-  outreachWebhook: string | undefined;
+  profileResearchWebhook?: string;
+  contentWebhook?: string;
+  jobsWebhook?: string;
+  awardsWebhook?: string;
+  idealCustomerWebhook?: string;
+  outreachWebhook?: string;
 }
 
 export const searchForLeads = async (params: SearchParams) => {
@@ -379,12 +380,28 @@ export const getAppSettings = async (): Promise<AppSettings> => {
     
     if (error) {
       console.error("Error fetching app settings:", error);
-      return {};
+      // Return a default object with all optional fields
+      return {
+        profileResearchWebhook: undefined,
+        contentWebhook: undefined,
+        jobsWebhook: undefined,
+        awardsWebhook: undefined,
+        idealCustomerWebhook: undefined,
+        outreachWebhook: undefined
+      };
     }
     
     if (!data) {
       console.log("No app settings found, returning default empty object");
-      return {};
+      // Return a default object with all optional fields
+      return {
+        profileResearchWebhook: undefined,
+        contentWebhook: undefined,
+        jobsWebhook: undefined,
+        awardsWebhook: undefined,
+        idealCustomerWebhook: undefined,
+        outreachWebhook: undefined
+      };
     }
     
     // Convert snake_case to camelCase for consistency
@@ -410,7 +427,15 @@ export const getAppSettings = async (): Promise<AppSettings> => {
     return settings;
   } catch (error) {
     console.error("Error in getAppSettings:", error);
-    return {};
+    // Return a default object with all optional fields
+    return {
+      profileResearchWebhook: undefined,
+      contentWebhook: undefined,
+      jobsWebhook: undefined,
+      awardsWebhook: undefined,
+      idealCustomerWebhook: undefined,
+      outreachWebhook: undefined
+    };
   }
 };
 
