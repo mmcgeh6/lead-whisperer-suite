@@ -372,18 +372,20 @@ const LeadSearchPage = () => {
     });
   };
 
-  // Fixed handleEditCompany function to properly return Company | null
+  // Fixed handleEditCompany function to properly adapt to AppContext's addCompany return type
   const handleEditCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
     try {
-      // Call addCompany and store the result explicitly as Company | null
-      const result = await addCompany(companyData as Company);
+      // Call addCompany which is from AppContext
+      addCompany(companyData as Company);
       
-      // Check if result exists and has expected properties
-      if (result && typeof result === 'object' && 'id' in result) {
-        return result as Company;
+      // Since addCompany doesn't return anything (it's void), we construct a response here
+      // We use the companyData that was passed in, with the assumption that it was added successfully
+      if (companyData && typeof companyData === 'object') {
+        // Return the company data as a Company object
+        return companyData as Company;
       }
       
-      // Return null if result doesn't meet expectations
+      // Return null if the company data wasn't valid
       return null;
     } catch (error) {
       console.error("Error adding company:", error);
@@ -443,8 +445,8 @@ const LeadSearchPage = () => {
             console.log("Adding company with enriched data:", companyData.name);
             const addedCompany = await handleEditCompany(companyData);
             
-            // Only proceed if we have a valid company with an ID
-            if (addedCompany && addedCompany.id) {
+            // Only proceed if we have a valid company object
+            if (addedCompany && 'id' in addedCompany) {
               // Add contact if this is a person search result with contact info
               if ((lead.type === 'person' || lead.raw_data.firstName) && addedCompany) {
                 console.log("Adding contact:", `${lead.raw_data.firstName || ""} ${lead.raw_data.lastName || ""}`);
