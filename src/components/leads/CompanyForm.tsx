@@ -40,7 +40,7 @@ const companySchema = z.object({
   facebook_url: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   twitter_url: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   linkedin_url: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
-  keywords: z.string().array().optional(),
+  keywords: z.string().optional().or(z.literal('')),
 });
 
 type CompanyFormValues = z.infer<typeof companySchema>;
@@ -62,7 +62,7 @@ export const CompanyForm = ({ company, isEditing }: CompanyFormProps) => {
   };
   
   // Parse string of keywords back to array
-  const parseKeywords = (keywordString: string): string[] => {
+  const parseKeywords = (keywordString?: string): string[] => {
     if (!keywordString) return [];
     return keywordString.split(',').map(k => k.trim()).filter(k => k);
   };
@@ -86,8 +86,8 @@ export const CompanyForm = ({ company, isEditing }: CompanyFormProps) => {
       facebook_url: company?.facebook_url || '',
       twitter_url: company?.twitter_url || '',
       linkedin_url: company?.linkedin_url || '',
-      // Fix: Ensure keywords is an array
-      keywords: company?.keywords || [],
+      // Convert keywords array to string for the form
+      keywords: convertKeywordsToString(company?.keywords),
     },
   });
 
@@ -110,7 +110,8 @@ export const CompanyForm = ({ company, isEditing }: CompanyFormProps) => {
         facebook_url: company.facebook_url || '',
         twitter_url: company.twitter_url || '',
         linkedin_url: company.linkedin_url || '',
-        keywords: company.keywords || [],
+        // Convert keywords array to string
+        keywords: convertKeywordsToString(company.keywords),
       });
     }
   }, [company, form]);
@@ -139,7 +140,8 @@ export const CompanyForm = ({ company, isEditing }: CompanyFormProps) => {
         linkedin_url: values.linkedin_url === '' ? null : values.linkedin_url,
         // Ensure name is included and not null
         name: values.name,
-        keywords: values.keywords || [],
+        // Parse keywords string to array
+        keywords: parseKeywords(values.keywords),
       };
 
       if (isEditing && company?.id) {

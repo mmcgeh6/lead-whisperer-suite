@@ -19,7 +19,7 @@ const CompanyFormPage = () => {
           {isEditing ? "Edit Company" : "Add New Company"}
         </h1>
         
-        <CompanyForm company={company} />
+        <CompanyForm company={company} isEditing={isEditing} />
       </div>
     </Layout>
   );
