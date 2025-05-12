@@ -17,11 +17,10 @@ export const formatApolloSearchUrl = (params: {
 }): string => {
   let searchUrl = 'https://api.apollo.io/api/v1/mixed_people/search?';
   
-  // Add person titles if available (replacing spaces with underscores for Apollo API)
+  // Add person titles if available (encode properly for URL)
   if (params.personTitles && params.personTitles.length > 0) {
     params.personTitles.forEach(title => {
-      const formattedTitle = title.replace(/ /g, '_');
-      searchUrl += `person_titles[]=${encodeURIComponent(formattedTitle)}&`;
+      searchUrl += `person_titles[]=${encodeURIComponent(title)}&`;
     });
   }
   
