@@ -96,6 +96,14 @@ export const searchForLeads = async (params: any) => {
       console.error("Apollo.io API key not found");
       throw new Error("Apollo.io API key is required. Please add it in API Settings.");
     }
+  } else if (settings.leadProvider === 'apollo.io') {
+    if (settings.apolloApiKey) {
+      console.log("Searching with Apollo.io API");
+      return await searchApollo(params, settings.apolloApiKey);
+    } else {
+      console.error("Apollo.io API key not found");
+      throw new Error("Apollo.io API key is required. Please add it in API Settings.");
+    }
   } else {
     console.error("Unsupported lead provider:", settings.leadProvider);
     throw new Error(`Unsupported lead provider: ${settings.leadProvider}`);
