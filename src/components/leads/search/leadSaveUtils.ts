@@ -87,19 +87,40 @@ export const saveSelectedLeads = async (
         company_id: companyId
       }));
       
+      // First check if entries already exist to avoid duplicate errors
+      const { data: existingEntries, error: checkError } = await supabase
+        .from('list_companies_new')
+        .select('company_id')
+        .eq('list_id', listId)
+        .in('company_id', savedCompanyIds);
+        
+      if (checkError) {
+        console.error("Error checking existing list entries:", checkError);
+        throw checkError;
+      }
+      
+      // Filter out any companies that are already in the list
+      const existingCompanyIds = existingEntries?.map(entry => entry.company_id) || [];
+      const newCompanies = listCompanies.filter(
+        company => !existingCompanyIds.includes(company.company_id)
+      );
+      
+      if (newCompanies.length === 0) {
+        console.log("All companies already in the list, nothing to add");
+        return true;
+      }
+      
+      // Insert new entries without using onConflict
       const { error } = await supabase
         .from('list_companies_new')
-        .upsert(listCompanies, {
-          onConflict: 'list_id,company_id',
-          ignoreDuplicates: true
-        });
+        .insert(newCompanies);
       
       if (error) {
         console.error("Error adding companies to list:", error);
         throw error;
       }
       
-      console.log(`Successfully added ${savedCompanyIds.length} companies to list ${listId}`);
+      console.log(`Successfully added ${newCompanies.length} companies to list ${listId}`);
     } catch (error) {
       console.error("Error in list_companies_new batch insert:", error);
     }

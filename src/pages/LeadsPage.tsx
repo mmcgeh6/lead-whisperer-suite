@@ -135,13 +135,36 @@ const LeadsPage = () => {
       
       console.log(`Adding ${companyIds.length} companies to list ${listId}:`, listCompanies);
       
-      // Insert into list_companies_new table with UUID types
+      // First check if entries already exist to avoid duplicate errors
+      const { data: existingEntries, error: checkError } = await supabase
+        .from('list_companies_new')
+        .select('company_id')
+        .eq('list_id', listId)
+        .in('company_id', companyIds);
+        
+      if (checkError) {
+        console.error("Error checking existing list entries:", checkError);
+        throw checkError;
+      }
+      
+      // Filter out any companies that are already in the list
+      const existingCompanyIds = existingEntries?.map(entry => entry.company_id) || [];
+      const newCompanies = listCompanies.filter(
+        company => !existingCompanyIds.includes(company.company_id)
+      );
+      
+      if (newCompanies.length === 0) {
+        toast({
+          title: "Already in list",
+          description: "These companies are already in the selected list."
+        });
+        return;
+      }
+      
+      // Insert new entries without using onConflict
       const { error } = await supabase
         .from('list_companies_new')
-        .upsert(listCompanies, { 
-          onConflict: 'list_id,company_id',
-          ignoreDuplicates: true 
-        });
+        .insert(newCompanies);
       
       if (error) {
         console.error("Error adding companies to list:", error);
@@ -150,7 +173,7 @@ const LeadsPage = () => {
       
       toast({
         title: "Companies added to list",
-        description: `${companyIds.length} companies added successfully`
+        description: `${newCompanies.length} companies added successfully`
       });
       
       // Clear selected companies
