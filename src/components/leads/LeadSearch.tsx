@@ -8,7 +8,7 @@ import { Search, Filter } from "lucide-react";
 import { 
   searchForLeads, 
   transformApifyResults, 
-  getAppSettings, 
+  getAppSettings,
   SearchType, 
   AppSettings, 
   PeopleSearchResult 
@@ -73,7 +73,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       // Process person title if provided
       const personTitles = personTitle.trim() ? [personTitle.trim()] : [];
       
-      // Use the search service with the new parameter structure
+      // Use the search service with the parameter structure
       const searchParams = {
         searchType: SearchType.PEOPLE,
         keywords: keywords,
@@ -112,7 +112,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       
       console.log("Search results:", results);
       if (results && results.length > 0) {
-        console.log("First result sample:", JSON.stringify(results[0]));
+        console.log("First result sample:", JSON.stringify(results[0]).substring(0, 300));
       }
       
       // Transform results
@@ -120,7 +120,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       
       console.log("Transformed leads:", transformedLeads);
       if (transformedLeads && transformedLeads.length > 0) {
-        console.log("First transformed lead:", JSON.stringify(transformedLeads[0]));
+        console.log("First transformed lead:", JSON.stringify(transformedLeads[0]).substring(0, 300));
         
         // Log detailed information about the first company
         const firstLead = transformedLeads[0] as PeopleSearchResult;
@@ -162,7 +162,7 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
               
               return {
                 search_id: searchHistoryId,
-                result_data: lead as any, // Type casting to any to avoid JSON compatibility issues
+                result_data: lead as any, // Type casting to any for JSON compatibility
                 unique_identifier: uniqueId
               };
             });
