@@ -18,6 +18,7 @@ const LeadsPage = () => {
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [companiesInSelectedList, setCompaniesInSelectedList] = useState<string[]>([]);
   const [filteredCompanies, setFilteredCompanies] = useState<Partial<Company>[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -30,22 +31,54 @@ const LeadsPage = () => {
   };
 
   const handleSelectList = (listId: string | null) => {
+    console.log("Selected list:", listId);
     setSelectedListId(listId);
     // Clear selected companies when changing lists
     setSelectedCompanies([]);
     
-    // Fetch companies in the selected list
     if (listId) {
       fetchCompaniesInList(listId);
     } else {
       setCompaniesInSelectedList([]);
       setFilteredCompanies([]);
+      loadAllCompanies();
+    }
+  };
+
+  const loadAllCompanies = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('user_id', user.id);
+        
+      if (error) {
+        console.error('Error loading all companies:', error);
+        throw error;
+      }
+      
+      setFilteredCompanies(data || []);
+      console.log(`Loaded ${data?.length || 0} companies for all leads view`);
+    } catch (error) {
+      console.error('Error loading all companies:', error);
+      toast({
+        title: "Failed to load companies",
+        description: "Please try again later",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const fetchCompaniesInList = async (listId: string) => {
+    console.log("Fetching companies for list:", listId);
+    setIsLoading(true);
     try {
-      // Use the new list_companies_new table with UUID types
+      // Use the list_companies_new table with UUID types
       const { data, error } = await supabase
         .from('list_companies_new')
         .select('company_id')
@@ -57,6 +90,7 @@ const LeadsPage = () => {
       }
       
       const companyIds = data.map(item => item.company_id);
+      console.log(`Found ${companyIds.length} company IDs in list:`, companyIds);
       setCompaniesInSelectedList(companyIds);
       
       // Now fetch the actual company data for these IDs
@@ -71,8 +105,10 @@ const LeadsPage = () => {
           throw companiesError;
         }
         
-        setFilteredCompanies(companies);
+        console.log(`Loaded ${companies?.length || 0} companies for list ${listId}`);
+        setFilteredCompanies(companies || []);
       } else {
+        console.log("No companies in this list");
         setFilteredCompanies([]);
       }
     } catch (error) {
@@ -82,6 +118,8 @@ const LeadsPage = () => {
         description: "Please try again later",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -95,6 +133,8 @@ const LeadsPage = () => {
         company_id: companyId
       }));
       
+      console.log(`Adding ${companyIds.length} companies to list ${listId}:`, listCompanies);
+      
       // Insert into list_companies_new table with UUID types
       const { error } = await supabase
         .from('list_companies_new')
@@ -103,7 +143,10 @@ const LeadsPage = () => {
           ignoreDuplicates: true 
         });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error adding companies to list:", error);
+        throw error;
+      }
       
       toast({
         title: "Companies added to list",
@@ -127,12 +170,14 @@ const LeadsPage = () => {
     }
   };
 
-  // Effect to load data when component mounts
+  // Effect to load initial data when component mounts
   useEffect(() => {
-    if (selectedListId) {
+    if (!selectedListId) {
+      loadAllCompanies();
+    } else if (user) {
       fetchCompaniesInList(selectedListId);
     }
-  }, [selectedListId]);
+  }, [user]);
 
   return (
     <Layout>
@@ -180,11 +225,17 @@ const LeadsPage = () => {
           
           {/* Main Content */}
           <div className="lg:col-span-3">
-            <CompanyList 
-              newLeads={selectedListId ? filteredCompanies : newLeads}
-              selectedCompanies={selectedCompanies}
-              onCompanySelect={handleSelectCompany}
-            />
+            {isLoading ? (
+              <Card className="p-6">
+                <div className="text-center">Loading leads...</div>
+              </Card>
+            ) : (
+              <CompanyList 
+                newLeads={filteredCompanies}
+                selectedCompanies={selectedCompanies}
+                onCompanySelect={handleSelectCompany}
+              />
+            )}
           </div>
         </div>
       </div>

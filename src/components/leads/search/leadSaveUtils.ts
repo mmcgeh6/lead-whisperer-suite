@@ -12,7 +12,9 @@ export const saveSelectedLeads = async (
   toast: any,
   listId: string
 ) => {
-  console.log(`Saving ${selectedLeads.length} leads`);
+  console.log(`Saving ${selectedLeads.length} leads to list ${listId}`);
+  
+  const savedCompanyIds: string[] = [];
   
   // Process each selected lead
   for (const lead of selectedLeads) {
@@ -50,6 +52,8 @@ export const saveSelectedLeads = async (
         
         // Only proceed if we have a valid company object
         if (addedCompany && addedCompany.id) {
+          savedCompanyIds.push(addedCompany.id);
+          
           // Add contact if this is a person search result with contact info
           if ((lead.type === 'person' || lead.raw_data.first_name) && addedCompany) {
             console.log("Adding contact:", `${lead.raw_data.first_name || ""} ${lead.raw_data.last_name || ""}`);
@@ -66,26 +70,38 @@ export const saveSelectedLeads = async (
             
             await addContact(contactData as Contact);
           }
-          
-          // Add company to list
-          try {
-            const { error } = await supabase
-              .from('list_companies_new')
-              .insert({
-                list_id: listId,
-                company_id: addedCompany.id
-              });
-            
-            if (error) {
-              console.error("Error adding company to list:", error);
-            }
-          } catch (error) {
-            console.error("Error in list_companies_new insert:", error);
-          }
         }
       }
     } catch (error) {
       console.error("Error saving individual lead:", error);
+    }
+  }
+  
+  // Add all companies to the selected list in one batch operation
+  if (savedCompanyIds.length > 0 && listId) {
+    try {
+      console.log(`Adding ${savedCompanyIds.length} companies to list ${listId}`);
+      
+      const listCompanies = savedCompanyIds.map(companyId => ({
+        list_id: listId,
+        company_id: companyId
+      }));
+      
+      const { error } = await supabase
+        .from('list_companies_new')
+        .upsert(listCompanies, {
+          onConflict: 'list_id,company_id',
+          ignoreDuplicates: true
+        });
+      
+      if (error) {
+        console.error("Error adding companies to list:", error);
+        throw error;
+      }
+      
+      console.log(`Successfully added ${savedCompanyIds.length} companies to list ${listId}`);
+    } catch (error) {
+      console.error("Error in list_companies_new batch insert:", error);
     }
   }
   
@@ -151,6 +167,7 @@ export const handleEditCompany = async (
       }
       
       if (data) {
+        console.log("Found company in database with ID:", data.id);
         // Map the database fields to the Company type
         return {
           id: data.id,
