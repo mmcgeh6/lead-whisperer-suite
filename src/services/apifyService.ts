@@ -1,5 +1,8 @@
 
 // Search types for Apollo.io API integration
+import { apolloApiRequest, formatApolloSearchUrl, parseApolloResponse } from "./apolloService";
+import { archiveSearchResults, saveSearchHistory, updateSearchResultCount } from "./leadStorageService";
+
 export enum SearchType {
   PEOPLE = 'people',
   COMPANY = 'company'
@@ -93,100 +96,33 @@ export const searchForLeads = async (params: SearchParams) => {
     
     // Use Apollo.io API to search for leads
     console.log("Using Apollo.io API for search");
-    return await apolloDirectSearch(params, apiKey);
+    
+    // Format the search URL using the helper function
+    const searchUrl = formatApolloSearchUrl({
+      personTitles: params.personTitles,
+      location: params.location,
+      organizationLocations: params.organizationLocations,
+      seniorities: params.seniorities,
+      emailStatus: params.emailStatus,
+      employeeRanges: params.employeeRanges,
+      keywords: params.keywords,
+      limit: params.limit
+    });
+    
+    console.log("Apollo API search URL:", searchUrl);
+    
+    // Make the API request
+    const response = await apolloApiRequest(searchUrl, apiKey);
+    console.log("Apollo API response received:", response);
+    
+    // Parse the response
+    const parsedResponse = parseApolloResponse(response);
+    
+    // Return the results array
+    return parsedResponse.results || [];
   } catch (error) {
     console.error("Error in searchForLeads:", error);
     throw new Error(`Failed to search for leads: ${error instanceof Error ? error.message : String(error)}`);
-  }
-};
-
-// Function to directly call Apollo.io API
-const apolloDirectSearch = async (params: SearchParams, apiKey: string) => {
-  // Build Apollo.io API search URL with query parameters
-  let searchUrl = 'https://api.apollo.io/api/v1/mixed_people/search?';
-  
-  // Add person titles if available (replacing spaces with underscores)
-  if (params.personTitles && params.personTitles.length > 0) {
-    params.personTitles.forEach(title => {
-      const formattedTitle = title.replace(/ /g, '_');
-      searchUrl += `person_titles[]=${encodeURIComponent(formattedTitle)}&`;
-    });
-  }
-  
-  // Add location if available - using personLocations[] parameter
-  if (params.location) {
-    searchUrl += `person_locations[]=${encodeURIComponent(params.location)}&`;
-  }
-  
-  // Add organization locations if available
-  if (params.organizationLocations && params.organizationLocations.length > 0) {
-    params.organizationLocations.forEach(location => {
-      searchUrl += `organization_locations[]=${encodeURIComponent(location)}&`;
-    });
-  }
-  
-  // Add seniorities if available
-  if (params.seniorities && params.seniorities.length > 0) {
-    params.seniorities.forEach(seniority => {
-      searchUrl += `person_seniorities[]=${encodeURIComponent(seniority)}&`;
-    });
-  }
-  
-  // Add email status if available
-  if (params.emailStatus && params.emailStatus.length > 0) {
-    params.emailStatus.forEach(status => {
-      searchUrl += `contact_email_status[]=${encodeURIComponent(status)}&`;
-    });
-  }
-  
-  // Add employee ranges if available
-  if (params.employeeRanges && params.employeeRanges.length > 0) {
-    params.employeeRanges.forEach(range => {
-      searchUrl += `organization_num_employees_ranges[]=${encodeURIComponent(range)}&`;
-    });
-  }
-
-  // Add keywords (using q_keywords for Apollo's API)
-  if (params.keywords && params.keywords.length > 0) {
-    const keywordsString = params.keywords.join(" ");
-    searchUrl += `q_keywords=${encodeURIComponent(keywordsString)}&`;
-  }
-  
-  // Add page and per_page parameters
-  searchUrl += `page=1&per_page=${params.limit || 20}`;
-  
-  console.log("Apollo API search URL:", searchUrl);
-  
-  try {
-    // Use fetch API with proper headers for Apollo.io
-    const response = await fetch(searchUrl, {
-      method: 'POST',  // Apollo.io API requires POST for search endpoint
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'Accept': 'application/json',
-        'x-api-key': apiKey
-      },
-      // Add credentials (ensure fetch sends credentials if needed)
-      credentials: 'omit',
-      // WARNING: If you continue to have CORS issues, you may need to use a server-side proxy
-      // or setup a Supabase Edge Function to make this request
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Apollo API error (${response.status}): ${errorText}`);
-    }
-    
-    const data = await response.json();
-    console.log("Apollo API search results:", data);
-    
-    // Return the contacts array from the Apollo response
-    return data.contacts || [];
-    
-  } catch (error) {
-    console.error("Error in apolloDirectSearch:", error);
-    throw new Error(`Apollo search failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 

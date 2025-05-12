@@ -13,6 +13,7 @@ import {
   AppSettings, 
   PeopleSearchResult 
 } from "@/services/apifyService";
+import { archiveSearchResults, saveSearchHistory, updateSearchResultCount } from "@/services/leadStorageService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DebugConsole from "@/components/dev/DebugConsole";
 import { Link } from "react-router-dom";
@@ -85,26 +86,15 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       // Save search history to Supabase if user is authenticated
       let searchHistoryId = null;
       if (user) {
-        try {
-          const { data: searchHistory, error } = await supabase
-            .from('search_history')
-            .insert({
-              user_id: user.id,
-              search_type: 'people',
-              search_params: searchParams as any,
-              person_titles: personTitles,
-              result_count: 0 // Will be updated after results are received
-            })
-            .select('id');
-
-          if (error) {
-            console.error("Error saving search history:", error);
-          } else if (searchHistory && searchHistory.length > 0) {
-            searchHistoryId = searchHistory[0].id;
-            console.log("Search history saved with ID:", searchHistoryId);
-          }
-        } catch (err) {
-          console.error("Error in search history save:", err);
+        searchHistoryId = await saveSearchHistory(
+          user.id,
+          'people',
+          searchParams,
+          personTitles
+        );
+        
+        if (searchHistoryId) {
+          console.log("Search history saved with ID:", searchHistoryId);
         }
       }
       
@@ -136,53 +126,11 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
 
       // Update search history with result count
       if (user && searchHistoryId) {
-        try {
-          await supabase
-            .from('search_history')
-            .update({ result_count: transformedLeads.length })
-            .eq('id', searchHistoryId);
-        } catch (err) {
-          console.error("Error updating search history:", err);
-        }
+        await updateSearchResultCount(searchHistoryId, transformedLeads.length);
         
         // Save results to archive
         if (transformedLeads.length > 0) {
-          try {
-            const archiveData = transformedLeads.map(lead => {
-              // Create a unique identifier to prevent duplicates
-              let uniqueId = "unknown-" + Date.now() + "-" + Math.random();
-              
-              // Type guard to check if this is a people search result
-              const peopleResult = lead as PeopleSearchResult;
-              
-              // If it's a people search result with contact and company
-              if (peopleResult && peopleResult.contact && peopleResult.company) {
-                uniqueId = `${peopleResult.company.name || ''}-${peopleResult.contact.firstName || ''}-${peopleResult.contact.lastName || ''}`;
-              }
-              
-              return {
-                search_id: searchHistoryId,
-                result_data: lead as any, // Type casting to any for JSON compatibility
-                unique_identifier: uniqueId
-              };
-            });
-            
-            // Use upsert with onConflict to handle duplicates
-            if (archiveData.length > 0) {
-              const { error } = await supabase
-                .from('search_results_archive')
-                .upsert(archiveData as any, {
-                  onConflict: 'unique_identifier',
-                  ignoreDuplicates: true
-                });
-                
-              if (error) {
-                console.error("Error saving search results:", error);
-              }
-            }
-          } catch (err) {
-            console.error("Error in search results archive:", err);
-          }
+          await archiveSearchResults(searchHistoryId, transformedLeads);
         }
       }
       

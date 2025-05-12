@@ -396,7 +396,6 @@ const LeadSearchPage = () => {
       // Call addCompany from AppContext
       addCompany(formattedCompanyData);
       
-      // Since addCompany doesn't return the created company, we need to fetch it from the database
       if (companyData && companyData.name) {
         // Find company by name in database
         const { data, error } = await supabase
@@ -412,39 +411,38 @@ const LeadSearchPage = () => {
           return formattedCompanyData;
         }
         
-        // Convert the database record to a Company type
-        const dbCompany = data as any;
-        const company: Company = {
-          id: dbCompany.id,
-          name: dbCompany.name || "",
-          website: dbCompany.website || "",
-          industry: dbCompany.industry || "",
-          industry_vertical: dbCompany.industry_vertical || "",
-          size: dbCompany.size || "",
-          location: dbCompany.location || "",
-          street: dbCompany.street || "",
-          city: dbCompany.city || "",
-          state: dbCompany.state || "",
-          zip: dbCompany.zip || "",
-          country: dbCompany.country || "",
-          phone: dbCompany.phone || "",
-          description: dbCompany.description || "",
-          facebook_url: dbCompany.facebook_url || "",
-          twitter_url: dbCompany.twitter_url || "",
-          linkedin_url: dbCompany.linkedin_url || "",
-          keywords: dbCompany.keywords || [],
-          createdAt: dbCompany.created_at || new Date().toISOString(),
-          updatedAt: dbCompany.updated_at || new Date().toISOString(),
-          insights: dbCompany.insights,
-          call_script: dbCompany.call_script,
-          email_script: dbCompany.email_script,
-          text_script: dbCompany.text_script,
-          social_dm_script: dbCompany.social_dm_script,
-          research_notes: dbCompany.research_notes,
-          user_id: dbCompany.user_id,
-        };
-        
-        return company;
+        if (data) {
+          // Map the database fields to the Company type
+          return {
+            id: data.id,
+            name: data.name || "",
+            website: data.website || "",
+            industry: data.industry || "",
+            industry_vertical: data.industry_vertical || "",
+            size: data.size || "",
+            location: data.location || "",
+            street: data.street || "",
+            city: data.city || "",
+            state: data.state || "",
+            zip: data.zip || "",
+            country: data.country || "",
+            phone: data.phone || "",
+            description: data.description || "",
+            facebook_url: data.facebook_url || "",
+            twitter_url: data.twitter_url || "",
+            linkedin_url: data.linkedin_url || "",
+            keywords: data.keywords || [],
+            createdAt: data.created_at || data.createdAt || new Date().toISOString(),
+            updatedAt: data.updated_at || data.updatedAt || new Date().toISOString(),
+            insights: data.insights || null,
+            call_script: data.call_script || null,
+            email_script: data.email_script || null,
+            text_script: data.text_script || null,
+            social_dm_script: data.social_dm_script || null,
+            research_notes: data.research_notes || null,
+            user_id: data.user_id || null,
+          };
+        }
       }
       
       // Return the company data we have
@@ -454,7 +452,7 @@ const LeadSearchPage = () => {
       return null;
     }
   };
-
+  
   const saveSelectedLeads = async (listId: string) => {
     const selectedLeads = searchResults.filter(result => result.selected);
     
