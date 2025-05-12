@@ -1,3 +1,4 @@
+
 /**
  * Apollo.io API Service
  * Handles integration with the Apollo.io API for lead generation via n8n webhook
@@ -77,17 +78,21 @@ export const apolloApiRequest = async (url: string, apiKey: string): Promise<any
     // The n8n webhook URL
     const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/c12e03c0-2618-4506-ab7d-2ced298ad959";
     
-    // Send the Apollo URL to the n8n webhook
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
+    // Encode parameters for GET request
+    const encodedURL = encodeURIComponent(url);
+    const encodedApiKey = encodeURIComponent(apiKey);
+    
+    // Use GET request with query parameters instead of POST with body
+    const requestUrl = `${webhookUrl}?URL=${encodedURL}&apiKey=${encodedApiKey}`;
+    
+    console.log("Sending GET request to webhook");
+    
+    // Send the GET request
+    const response = await fetch(requestUrl, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        URL: url,
-        apiKey: apiKey
-      })
+      }
     });
     
     if (!response.ok) {
