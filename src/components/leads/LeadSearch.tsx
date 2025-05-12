@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,14 +51,14 @@ export const LeadSearch = ({ onLeadsFound }: LeadSearchProps) => {
       const settings: AppSettings = await getAppSettings();
       console.log("Retrieved settings:", settings);
       
-      // Check for Apify API key
-      const apiKey = settings.apifyApolloApiKey || null;
-      console.log(`Using Apify API key:`, apiKey ? `[Present, length: ${apiKey.length}]` : "Missing");
+      // Check for Apollo API key
+      const apiKey = settings.apolloApiKey || null;
+      console.log(`Using Apollo API key:`, apiKey ? `[Present, length: ${apiKey.length}]` : "Missing");
       
       if (!apiKey) {
         toast({
           title: "API Key Not Configured",
-          description: `Please set up your Apify API key in API Settings`,
+          description: `Please set up your Apollo API key in API Settings`,
           variant: "destructive",
         });
         setIsSearching(false);

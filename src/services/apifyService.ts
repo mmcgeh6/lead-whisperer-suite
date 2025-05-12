@@ -1,4 +1,3 @@
-
 // Add a proper SearchType enum to address the type issues
 export enum SearchType {
   PEOPLE = 'people',
@@ -48,16 +47,15 @@ export const searchForLeads = async (params: SearchParams) => {
     // Get the API settings
     const settings = await getAppSettings();
     
-    // Use the new Supremecoder actor instead of Codecrafter
-    return await searchWithSupremecoder(params);
+    // Use Apollo.io API directly
+    return await searchWithApollo(params);
   } catch (error) {
     console.error("Error in searchForLeads:", error);
     throw new Error(`Failed to search for leads: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
-// Function to search using Apollo API directly - COMMENTED OUT FOR NOW
-/* 
+// Function to search using Apollo API directly
 const searchWithApollo = async (params: SearchParams) => {
   console.log("Using Apollo API for search");
   
@@ -69,299 +67,91 @@ const searchWithApollo = async (params: SearchParams) => {
     throw new Error("Apollo API key not configured");
   }
   
-  // Implement Apollo API search here
-  throw new Error("Apollo API search not yet implemented");
-};
-*/
-
-// Keep the old Codecrafter actor function, but commented out for potential future use
-/* 
-const searchWithApify = async (params: SearchParams) => {
-  console.log("Using Apify Codecrafter for search");
+  // Prepare the search URL
+  let searchUrl = 'https://api.apollo.io/api/v1/mixed_people/search?';
   
-  // Get the API key from settings
-  const settings = await getAppSettings();
-  const apiKey = settings.apifyApolloApiKey;
-  
-  if (!apiKey) {
-    throw new Error("Apify API key not configured");
-  }
-  
-  // Use the correct actor name for Apollo.io scraper
-  const actorName = 'jljBwyyQakqrL1wae';  // Codecrafter actor ID
-  
-  // Build proper Apollo.io search URL with parameters
-  let apolloSearchUrl = "https://app.apollo.io/#/people?sortByField=%5Bnone%5D&sortAscending=false&page=1";
+  // Add parameters to the URL
   
   // Add person titles if available
   if (params.personTitles && params.personTitles.length > 0) {
     params.personTitles.forEach(title => {
-      apolloSearchUrl += `&personTitles[]=${encodeURIComponent(title)}`;
+      // Replace spaces with underscores for Apollo API
+      const formattedTitle = title.replace(/ /g, '_');
+      searchUrl += `person_titles[]=${encodeURIComponent(formattedTitle)}&`;
     });
   }
   
-  // Add keywords as organization tags for better matching
-  if (params.keywords && params.keywords.length > 0) {
-    params.keywords.forEach(keyword => {
-      apolloSearchUrl += `&qOrganizationKeywordTags[]=${encodeURIComponent(keyword)}`;
-    });
-  }
-  
-  // Add location if available
+  // Add location if available - using personLocations[] parameter
   if (params.location) {
-    apolloSearchUrl += `&location=${encodeURIComponent(params.location)}`;
+    searchUrl += `person_locations[]=${encodeURIComponent(params.location)}&`;
   }
   
-  // Add keyword fields if available
-  if (params.keywordFields && params.keywordFields.length > 0) {
-    params.keywordFields.forEach(field => {
-      apolloSearchUrl += `&includedOrganizationKeywordFields[]=${encodeURIComponent(field)}`;
+  // Add organization locations if available
+  if (params.organizationLocations && params.organizationLocations.length > 0) {
+    params.organizationLocations.forEach(location => {
+      searchUrl += `organization_locations[]=${encodeURIComponent(location)}&`;
     });
-  } else {
-    // Default keyword fields if none specified
-    apolloSearchUrl += "&includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name";
   }
   
-  console.log("Apollo search URL constructed:", apolloSearchUrl);
-  
-  // Prepare the input for the Apify actor with required URL field
-  const input: any = {
-    url: apolloSearchUrl, // Using the constructed Apollo search URL
-    queries: [],
-    maxResults: params.limit || 20,
-    saveHtml: false,
-    includeWebData: true
-  };
-  
-  // Handle people search
-  if (params.searchType === SearchType.PEOPLE) {
-    // Create a query for people search
-    const query: any = {
-      type: "people"
-    };
-    
-    // Add optional parameters if they exist
-    if (params.departments && params.departments.length > 0) {
-      query.departments = params.departments;
-    }
-    
-    if (params.seniorities && params.seniorities.length > 0) {
-      query.seniorities = params.seniorities;
-    }
-    
-    if (params.emailStatus && params.emailStatus.length > 0) {
-      query.emailStatus = params.emailStatus;
-    }
-    
-    if (params.employeeRanges && params.employeeRanges.length > 0) {
-      query.employeeRanges = params.employeeRanges;
-    }
-    
-    if (params.organizationLocations && params.organizationLocations.length > 0) {
-      query.organizationLocations = params.organizationLocations;
-    }
-    
-    input.queries.push(query);
-  } 
-  // Handle company search
-  else if (params.searchType === SearchType.COMPANY) {
-    // Create a query for company search
-    const query: any = {
-      type: "organizations"
-    };
-    
-    // Add optional parameters if they exist
-    if (params.industry) {
-      query.industry = params.industry;
-    }
-    
-    if (params.employeeRanges && params.employeeRanges.length > 0) {
-      query.employeeRanges = params.employeeRanges;
-    }
-    
-    input.queries.push(query);
+  // Add email status if available
+  if (params.emailStatus && params.emailStatus.length > 0) {
+    params.emailStatus.forEach(status => {
+      searchUrl += `contact_email_status[]=${encodeURIComponent(status)}&`;
+    });
   }
   
-  console.log("Apify input:", JSON.stringify(input, null, 2));
+  // Add seniorities if available
+  if (params.seniorities && params.seniorities.length > 0) {
+    params.seniorities.forEach(seniority => {
+      searchUrl += `person_seniorities[]=${encodeURIComponent(seniority)}&`;
+    });
+  }
+  
+  // Add employee ranges if available
+  if (params.employeeRanges && params.employeeRanges.length > 0) {
+    params.employeeRanges.forEach(range => {
+      searchUrl += `organization_num_employees_ranges[]=${encodeURIComponent(range)}&`;
+    });
+  }
+
+  // Add keywords (using q_keywords for Apollo's API)
+  if (params.keywords && params.keywords.length > 0) {
+    const keywordsString = params.keywords.join(" ");
+    searchUrl += `q_keywords=${encodeURIComponent(keywordsString)}&`;
+  }
+  
+  // Add page and per_page parameters
+  searchUrl += `page=1&per_page=${params.limit || 20}`;
+  
+  console.log("Apollo API search URL:", searchUrl);
   
   try {
-    // Make the API call to Apify
-    const response = await fetch(`https://api.apify.com/v2/acts/${actorName}/runs?token=${apiKey}`, {
+    // Make the API call to Apollo
+    const response = await fetch(searchUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        "startUrls": [],
-        ...input
-      }),
+        'Cache-Control': 'no-cache',
+        'Accept': 'application/json',
+        'x-api-key': apiKey
+      }
     });
     
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Apify API error (${response.status}): ${errorText}`);
+      throw new Error(`Apollo API error (${response.status}): ${errorText}`);
     }
     
     const data = await response.json();
-    console.log("Apify run started:", data);
+    console.log("Apollo API search results:", data);
     
-    // Wait for the run to finish
-    const runId = data.data.id;
-    const result = await waitForApifyRun(runId, apiKey);
+    // Return the contacts array from the Apollo response
+    return data.contacts || [];
     
-    return result;
   } catch (error) {
-    console.error("Error in searchWithApify:", error);
-    throw new Error(`Apify search failed: ${error instanceof Error ? error.message : String(error)}`);
+    console.error("Error in searchWithApollo:", error);
+    throw new Error(`Apollo search failed: ${error instanceof Error ? error.message : String(error)}`);
   }
-};
-*/
-
-// New function to search using the Supremecoder Apify actor
-const searchWithSupremecoder = async (params: SearchParams) => {
-  console.log("Using Apify Supremecoder for search");
-  
-  // Get the API key from settings
-  const settings = await getAppSettings();
-  const apiKey = settings.apifyApolloApiKey;
-  
-  if (!apiKey) {
-    throw new Error("Apify API key not configured");
-  }
-  
-  // Use the correct actor ID for Supremecoder's Apollo.io scraper
-  const actorId = "dx0856bVYoGUkmXAo"; // Supremecoder actor ID
-  
-  // Build proper Apollo.io search URL with parameters
-  let apolloSearchUrl = "https://app.apollo.io/#/people?sortByField=%5Bnone%5D&sortAscending=false&page=1";
-  
-  // Add person titles if available
-  if (params.personTitles && params.personTitles.length > 0) {
-    params.personTitles.forEach(title => {
-      apolloSearchUrl += `&personTitles[]=${encodeURIComponent(title)}`;
-    });
-  }
-  
-  // Add keywords as organization tags for better matching
-  if (params.keywords && params.keywords.length > 0) {
-    params.keywords.forEach(keyword => {
-      apolloSearchUrl += `&qOrganizationKeywordTags[]=${encodeURIComponent(keyword)}`;
-    });
-  }
-  
-  // Add location if available - FIXED to use personLocations[] as requested
-  if (params.location) {
-    apolloSearchUrl += `&personLocations[]=${encodeURIComponent(params.location)}`;
-  }
-  
-  // Add keyword fields if available
-  if (params.keywordFields && params.keywordFields.length > 0) {
-    params.keywordFields.forEach(field => {
-      apolloSearchUrl += `&includedOrganizationKeywordFields[]=${encodeURIComponent(field)}`;
-    });
-  } else {
-    // Default keyword fields if none specified
-    apolloSearchUrl += "&includedOrganizationKeywordFields[]=tags&includedOrganizationKeywordFields[]=name";
-  }
-  
-  console.log("Apollo search URL constructed:", apolloSearchUrl);
-  
-  // Prepare the input for the Supremecoder Apify actor based on Python example
-  const input = {
-    "searchUrl": apolloSearchUrl,
-    "startPage": 1,
-    "getEmails": true,
-    "excludeGuessedEmails": false,
-    "excludeNoEmails": false,
-    "count": params.limit || 20,
-  };
-  
-  console.log("Apify Supremecoder input:", JSON.stringify(input, null, 2));
-  
-  try {
-    // Make the API call to Apify
-    const response = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs?token=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(input),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Apify API error (${response.status}): ${errorText}`);
-    }
-    
-    const data = await response.json();
-    console.log("Apify run started:", data);
-    
-    // Wait for the run to finish
-    const runId = data.data.id;
-    const result = await waitForApifyRun(runId, apiKey);
-    
-    return result;
-  } catch (error) {
-    console.error("Error in searchWithSupremecoder:", error);
-    throw new Error(`Apify search failed: ${error instanceof Error ? error.message : String(error)}`);
-  }
-};
-
-// Function to wait for an Apify run to finish and get the results
-const waitForApifyRun = async (runId: string, apiKey: string) => {
-  console.log(`Waiting for Apify run ${runId} to finish...`);
-  
-  // Poll the run status every few seconds
-  let isFinished = false;
-  let retries = 0;
-  const maxRetries = 30; // Maximum number of retries (5 minutes with 10-second intervals)
-  
-  while (!isFinished && retries < maxRetries) {
-    await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds between checks
-    
-    try {
-      // Check the run status
-      const statusResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${apiKey}`);
-      
-      if (!statusResponse.ok) {
-        const errorText = await statusResponse.text();
-        throw new Error(`Apify API error (${statusResponse.status}): ${errorText}`);
-      }
-      
-      const statusData = await statusResponse.json();
-      console.log(`Run status: ${statusData.data.status}`);
-      
-      if (statusData.data.status === 'SUCCEEDED') {
-        isFinished = true;
-        
-        // Get the dataset items
-        const datasetId = statusData.data.defaultDatasetId;
-        const itemsResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${apiKey}`);
-        
-        if (!itemsResponse.ok) {
-          const errorText = await itemsResponse.text();
-          throw new Error(`Apify API error (${itemsResponse.status}): ${errorText}`);
-        }
-        
-        const items = await itemsResponse.json();
-        console.log(`Retrieved ${items.length} items from dataset`);
-        
-        return items;
-      } else if (statusData.data.status === 'FAILED' || statusData.data.status === 'ABORTED' || statusData.data.status === 'TIMED-OUT') {
-        throw new Error(`Apify run failed with status: ${statusData.data.status}`);
-      }
-    } catch (error) {
-      console.error("Error checking Apify run status:", error);
-    }
-    
-    retries++;
-  }
-  
-  if (retries >= maxRetries) {
-    throw new Error("Timed out waiting for Apify run to finish");
-  }
-  
-  return [];
 };
 
 // Function to get app settings from Supabase
@@ -439,7 +229,7 @@ export const getAppSettings = async (): Promise<AppSettings> => {
   }
 };
 
-// Function to transform Apify results into a consistent format
+// Function to transform Apollo API results into a consistent format
 export const transformApifyResults = (results: any[], searchType: string) => {
   if (!results || !Array.isArray(results) || results.length === 0) {
     return [];
@@ -496,41 +286,38 @@ export interface CompanySearchResult {
 
 export type SearchResult = PeopleSearchResult | CompanySearchResult;
 
-// Function to transform a person result from Supremecoder format
+// Function to transform a person result from Apollo.io API format
 const transformPersonResult = (result: any): PeopleSearchResult => {
   try {
     // Log the structure of the incoming result to understand its format
     console.log("Raw person result structure:", JSON.stringify(result).substring(0, 300));
     
-    // Store the full original result to ensure we don't lose any data
-    const fullResult = { ...result };
-    
     // Extract person/contact data
     const person = {
-      firstName: result.firstName || result.first_name || "",
-      lastName: result.lastName || result.last_name || "",
-      title: result.title || result.jobTitle || result.headline || "",
-      email: result.emailAddress || result.email || "",
-      phone: result.phone || "",
-      linkedin_url: result.linkedInProfileUrl || result.linkedinUrl || result.url || ""
+      firstName: result.first_name || "",
+      lastName: result.last_name || "",
+      title: result.title || "",
+      email: result.email || "",
+      phone: result.sanitized_phone || "",
+      linkedin_url: result.linkedin_url || ""
     };
     
-    // Extract all company information
+    // Extract company information
     const company = {
-      name: result.companyName || "",
-      industry: result.businessIndustry || "",
-      location: result.fullAddress || `${result.cityName || ""} ${result.stateName || ""} ${result.countryName || ""}`.trim() || "",
-      website: result.websiteUrl || "",
-      description: result.description || "",
-      linkedin_url: result.linkedInProfileUrl || "",
-      size: result.employeeEstimate ? String(result.employeeEstimate) : ""
+      name: result.organization_name || "",
+      industry: result.organization?.industry || "",
+      location: result.present_raw_address || `${result.city || ""} ${result.state || ""} ${result.country || ""}`.trim() || "",
+      website: result.organization?.website_url || "",
+      description: "",
+      linkedin_url: result.organization?.linkedin_url || "",
+      size: ""
     };
     
     // Return both the extracted data and the full result to ensure no information is lost
     return {
       contact: person,
       company: company,
-      ...fullResult  // Keep all original fields
+      ...result  // Keep all original fields
     };
   } catch (error) {
     console.error("Error transforming person result:", error);
@@ -569,7 +356,7 @@ const transformCompanyResult = (result: any): CompanySearchResult => {
       location: organization.location || "",
       website: organization.website || "",
       description: organization.description || "",
-      linkedin_url: organization.linkedInUrl || "",
+      linkedin_url: organization.linkedin_url || "",
       size: organization.size || ""
     };
     

@@ -18,7 +18,7 @@ interface SearchParams {
   resultCount: number;
   organizationLocations: string[];
   keywordFields: string[];
-  personTitles: string[];  // Added this field
+  personTitles: string[];
 }
 
 interface AdvancedSearchProps {
@@ -31,7 +31,7 @@ export const AdvancedSearch = ({
   isSearching
 }: AdvancedSearchProps) => {
   const [keywords, setKeywords] = useState<string>("");
-  const [personTitle, setPersonTitle] = useState<string>(""); // Added new state for job title
+  const [personTitle, setPersonTitle] = useState<string>("");
   const [location, setLocation] = useState<string>("United States");
   const [emailStatus, setEmailStatus] = useState<string[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -798,7 +798,13 @@ export const AdvancedSearch = ({
   };
   const handleSearch = () => {
     const keywordArray = keywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
-    const personTitles = personTitle ? personTitle.split(',').map(t => t.trim()).filter(t => t.length > 0) : [];
+    
+    // For Apollo.io direct API, replace spaces with underscores in job titles
+    const personTitles = personTitle 
+      ? personTitle.split(',')
+          .map(t => t.trim())
+          .filter(t => t.length > 0)
+      : [];
 
     // Process department selections - use default values for fully selected groups
     const processedDepartments: string[] = [];
@@ -832,7 +838,7 @@ export const AdvancedSearch = ({
       organizationLocations: allCompanyLocations,
       // We're including all keyword fields automatically now
       keywordFields: ["tags", "name", "seo_description", "social_media_description"],
-      personTitles: personTitles, // Added person titles to search params
+      personTitles,
     };
     
     console.log("Search params:", searchParams);
@@ -841,7 +847,7 @@ export const AdvancedSearch = ({
   
   const handleReset = () => {
     setKeywords("");
-    setPersonTitle("");  // Reset person title
+    setPersonTitle("");
     setLocation("United States");
     setEmailStatus([]);
     setDepartments([]);
@@ -924,9 +930,6 @@ export const AdvancedSearch = ({
                     </div>)}
                 </div>
               </div>
-
-              {/* Company Location */}
-              
 
               {/* Employee count ranges */}
               <div className="space-y-2">

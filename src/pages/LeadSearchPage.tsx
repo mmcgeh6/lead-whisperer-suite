@@ -102,27 +102,14 @@ const LeadSearchPage = () => {
       const settings: AppSettings = await getAppSettings();
       console.log("Search page retrieved settings:", settings);
       
-      // Always use Apify for now, commenting out the provider check
-      const apiKey = settings.apifyApolloApiKey || null;
-      const apiKeyLabel = 'Apify';
-      
-      // const leadProvider = settings.leadProvider || 'apify-apollo';
-      // let apiKey: string | null = null;
-      // let apiKeyLabel: string;
-      // if (leadProvider === 'apollo') {
-      //   apiKeyLabel = 'Apollo.io';
-      //   apiKey = settings.apolloApiKey || null;
-      // } else {
-      //   apiKeyLabel = 'Apify';
-      //   apiKey = settings.apifyApolloApiKey || null;
-      // }
-      
-      console.log(`Using ${apiKeyLabel} API key:`, apiKey ? `[Present, length: ${apiKey.length}]` : "Missing");
+      // Check for Apollo API key
+      const apiKey = settings.apolloApiKey || null;
+      console.log(`Using Apollo API key:`, apiKey ? `[Present, length: ${apiKey.length}]` : "Missing");
       
       if (!apiKey) {
         toast({
           title: "API Key Not Configured",
-          description: `Please set up your ${apiKeyLabel} API key in API Settings`,
+          description: `Please set up your Apollo API key in API Settings`,
           variant: "destructive",
         });
         setIsSearching(false);
@@ -372,21 +359,35 @@ const LeadSearchPage = () => {
     });
   };
 
-  // Fixed handleEditCompany function to properly adapt to AppContext's addCompany return type
+  // Fixed handleEditCompany function to properly handle company data
   const handleEditCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
     try {
-      // Call addCompany which is from AppContext
+      // Call addCompany from AppContext
       addCompany(companyData as Company);
       
-      // Since addCompany doesn't return anything (it's void), we construct a response here
-      // We use the companyData that was passed in, with the assumption that it was added successfully
-      if (companyData && typeof companyData === 'object') {
-        // Return the company data as a Company object
-        return companyData as Company;
+      // Since addCompany doesn't return the created company, we need to fetch it from the database
+      if (companyData && companyData.name) {
+        // Find company by name in database - this is a simplification, in a real app
+        // you might want to use a more robust way to find the company
+        const { data, error } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('name', companyData.name)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (error) {
+          console.error("Error finding newly added company:", error);
+          // Return the company data we have, but without an ID
+          return companyData as Company;
+        }
+        
+        return data as Company;
       }
       
-      // Return null if the company data wasn't valid
-      return null;
+      // Return the company data we have, but without an ID
+      return companyData as Company;
     } catch (error) {
       console.error("Error adding company:", error);
       return null;
@@ -414,28 +415,25 @@ const LeadSearchPage = () => {
           console.log("Processing lead to save:", lead.name);
           
           if (lead.raw_data) {
-            // Process the enriched data format from Supremecoder
+            // Process the direct Apollo.io data format
             const rawData = lead.raw_data;
             console.log("Found lead data:", rawData);
             
             // Create a comprehensive company object from all available fields
             const companyData: Partial<Company> = {
-              name: rawData.companyName || lead.company || "Unknown Company",
-              website: rawData.websiteUrl || rawData.website || lead.website || "",
-              industry: rawData.businessIndustry || lead.industry || "",
-              size: rawData.employeeEstimate ? rawData.employeeEstimate.toString() : "Unknown",
-              location: rawData.fullAddress || `${rawData.cityName || ""} ${rawData.stateName || ""} ${rawData.countryName || ""}`.trim() || lead.location || "",
-              description: rawData.description || "",
-              phone: rawData.contactPhone || rawData.cleanedPhone || (rawData.mainPhone ? rawData.mainPhone.phoneNumber : ""),
-              street: rawData.addressLine || "",
-              city: rawData.cityName || "",
-              state: rawData.stateName || "",
-              zip: rawData.zipCode || "",
-              country: rawData.countryName || "",
-              linkedin_url: rawData.linkedInProfileUrl || lead.linkedin_url || "",
-              facebook_url: rawData.facebookProfileUrl || "",
-              twitter_url: rawData.twitterProfileUrl || "",
-              keywords: rawData.searchKeywords || rawData.businessIndustries || [],
+              name: rawData.organization_name || lead.company || "Unknown Company",
+              website: rawData.organization?.website_url || lead.website || "",
+              industry: rawData.organization?.industry || lead.industry || "",
+              size: rawData.organization?.size || "",
+              location: rawData.present_raw_address || lead.location || "",
+              description: rawData.organization?.description || "",
+              phone: rawData.phone || "",
+              city: rawData.city || "",
+              state: rawData.state || "",
+              country: rawData.country || "",
+              linkedin_url: rawData.organization?.linkedin_url || lead.linkedin_url || "",
+              facebook_url: rawData.organization?.facebook_url || "",
+              twitter_url: rawData.organization?.twitter_url || "",
               user_id: user?.id, // Associate with the current user
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
@@ -446,17 +444,17 @@ const LeadSearchPage = () => {
             const addedCompany = await handleEditCompany(companyData);
             
             // Only proceed if we have a valid company object
-            if (addedCompany && 'id' in addedCompany) {
+            if (addedCompany && addedCompany.id) {
               // Add contact if this is a person search result with contact info
-              if ((lead.type === 'person' || lead.raw_data.firstName) && addedCompany) {
-                console.log("Adding contact:", `${lead.raw_data.firstName || ""} ${lead.raw_data.lastName || ""}`);
+              if ((lead.type === 'person' || lead.raw_data.first_name) && addedCompany) {
+                console.log("Adding contact:", `${lead.raw_data.first_name || ""} ${lead.raw_data.last_name || ""}`);
                 const contactData: Partial<Contact> = {
-                  firstName: lead.raw_data.firstName || "",
-                  lastName: lead.raw_data.lastName || "",
-                  title: lead.raw_data.title || lead.raw_data.headline || "",
-                  email: lead.raw_data.emailAddress || lead.raw_data.email || "",
-                  phone: lead.raw_data.phone || "",
-                  linkedin_url: lead.raw_data.linkedInProfileUrl || "",
+                  firstName: lead.raw_data.first_name || "",
+                  lastName: lead.raw_data.last_name || "",
+                  title: lead.raw_data.title || "",
+                  email: lead.raw_data.email || "",
+                  phone: lead.raw_data.sanitized_phone || lead.raw_data.phone || "",
+                  linkedin_url: lead.raw_data.linkedin_url || "",
                   companyId: addedCompany.id,
                   notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
                 };
@@ -513,6 +511,7 @@ const LeadSearchPage = () => {
     }
   };
 
+  
   return (
     <Layout>
       <div className="space-y-8">
