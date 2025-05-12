@@ -362,13 +362,43 @@ const LeadSearchPage = () => {
   // Fixed handleEditCompany function to properly handle company data
   const handleEditCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
     try {
+      // Convert companyData to match the Company type structure
+      const formattedCompanyData: Company = {
+        id: companyData.id || "",
+        name: companyData.name || "",
+        website: companyData.website || "",
+        industry: companyData.industry || "",
+        industry_vertical: companyData.industry_vertical || "",
+        size: companyData.size || "",
+        location: companyData.location || "",
+        street: companyData.street || "",
+        city: companyData.city || "",
+        state: companyData.state || "",
+        zip: companyData.zip || "",
+        country: companyData.country || "",
+        phone: companyData.phone || "",
+        description: companyData.description || "",
+        facebook_url: companyData.facebook_url || "",
+        twitter_url: companyData.twitter_url || "",
+        linkedin_url: companyData.linkedin_url || "",
+        keywords: companyData.keywords || [],
+        createdAt: companyData.createdAt || new Date().toISOString(),
+        updatedAt: companyData.updatedAt || new Date().toISOString(),
+        insights: companyData.insights,
+        call_script: companyData.call_script,
+        email_script: companyData.email_script,
+        text_script: companyData.text_script,
+        social_dm_script: companyData.social_dm_script,
+        research_notes: companyData.research_notes,
+        user_id: companyData.user_id,
+      };
+      
       // Call addCompany from AppContext
-      addCompany(companyData as Company);
+      addCompany(formattedCompanyData);
       
       // Since addCompany doesn't return the created company, we need to fetch it from the database
       if (companyData && companyData.name) {
-        // Find company by name in database - this is a simplification, in a real app
-        // you might want to use a more robust way to find the company
+        // Find company by name in database
         const { data, error } = await supabase
           .from('companies')
           .select('*')
@@ -379,15 +409,46 @@ const LeadSearchPage = () => {
           
         if (error) {
           console.error("Error finding newly added company:", error);
-          // Return the company data we have, but without an ID
-          return companyData as Company;
+          return formattedCompanyData;
         }
         
-        return data as Company;
+        // Convert the database record to a Company type
+        const dbCompany = data as any;
+        const company: Company = {
+          id: dbCompany.id,
+          name: dbCompany.name || "",
+          website: dbCompany.website || "",
+          industry: dbCompany.industry || "",
+          industry_vertical: dbCompany.industry_vertical || "",
+          size: dbCompany.size || "",
+          location: dbCompany.location || "",
+          street: dbCompany.street || "",
+          city: dbCompany.city || "",
+          state: dbCompany.state || "",
+          zip: dbCompany.zip || "",
+          country: dbCompany.country || "",
+          phone: dbCompany.phone || "",
+          description: dbCompany.description || "",
+          facebook_url: dbCompany.facebook_url || "",
+          twitter_url: dbCompany.twitter_url || "",
+          linkedin_url: dbCompany.linkedin_url || "",
+          keywords: dbCompany.keywords || [],
+          createdAt: dbCompany.created_at || new Date().toISOString(),
+          updatedAt: dbCompany.updated_at || new Date().toISOString(),
+          insights: dbCompany.insights,
+          call_script: dbCompany.call_script,
+          email_script: dbCompany.email_script,
+          text_script: dbCompany.text_script,
+          social_dm_script: dbCompany.social_dm_script,
+          research_notes: dbCompany.research_notes,
+          user_id: dbCompany.user_id,
+        };
+        
+        return company;
       }
       
-      // Return the company data we have, but without an ID
-      return companyData as Company;
+      // Return the company data we have
+      return formattedCompanyData;
     } catch (error) {
       console.error("Error adding company:", error);
       return null;

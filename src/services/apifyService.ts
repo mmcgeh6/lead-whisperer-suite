@@ -70,8 +70,6 @@ const searchWithApollo = async (params: SearchParams) => {
   // Prepare the search URL
   let searchUrl = 'https://api.apollo.io/api/v1/mixed_people/search?';
   
-  // Add parameters to the URL
-  
   // Add person titles if available
   if (params.personTitles && params.personTitles.length > 0) {
     params.personTitles.forEach(title => {
@@ -126,7 +124,7 @@ const searchWithApollo = async (params: SearchParams) => {
   console.log("Apollo API search URL:", searchUrl);
   
   try {
-    // Make the API call to Apollo
+    // Make the API call to Apollo with the proper headers
     const response = await fetch(searchUrl, {
       method: 'POST',
       headers: {
@@ -171,27 +169,13 @@ export const getAppSettings = async (): Promise<AppSettings> => {
     if (error) {
       console.error("Error fetching app settings:", error);
       // Return a default object with all optional fields
-      return {
-        profileResearchWebhook: undefined,
-        contentWebhook: undefined,
-        jobsWebhook: undefined,
-        awardsWebhook: undefined,
-        idealCustomerWebhook: undefined,
-        outreachWebhook: undefined
-      };
+      return {};
     }
     
     if (!data) {
       console.log("No app settings found, returning default empty object");
       // Return a default object with all optional fields
-      return {
-        profileResearchWebhook: undefined,
-        contentWebhook: undefined,
-        jobsWebhook: undefined,
-        awardsWebhook: undefined,
-        idealCustomerWebhook: undefined,
-        outreachWebhook: undefined
-      };
+      return {};
     }
     
     // Convert snake_case to camelCase for consistency
@@ -218,14 +202,7 @@ export const getAppSettings = async (): Promise<AppSettings> => {
   } catch (error) {
     console.error("Error in getAppSettings:", error);
     // Return a default object with all optional fields
-    return {
-      profileResearchWebhook: undefined,
-      contentWebhook: undefined,
-      jobsWebhook: undefined,
-      awardsWebhook: undefined,
-      idealCustomerWebhook: undefined,
-      outreachWebhook: undefined
-    };
+    return {};
   }
 };
 
