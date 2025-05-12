@@ -119,8 +119,8 @@ export interface ApolloResponse {
 
 // Parse Apollo API response into a standardized format
 export const parseApolloResponse = (response: any): ApolloResponse => {
-  // Check if we have a valid response with contacts
-  if (!response || !response.contacts || !Array.isArray(response.contacts)) {
+  // Check if we have a valid response structure
+  if (!response || !Array.isArray(response) || response.length === 0) {
     console.warn("Invalid Apollo.io API response format", response);
     return {
       results: [],
@@ -133,12 +133,44 @@ export const parseApolloResponse = (response: any): ApolloResponse => {
     };
   }
   
+  // The API response is an array where the first element contains the data
+  const firstItem = response[0];
+  
+  // Check for people property which contains the search results
+  if (firstItem && Array.isArray(firstItem.people)) {
+    console.log(`Found ${firstItem.people.length} people results from Apollo`);
+    return {
+      results: firstItem.people,
+      pagination: firstItem.pagination || { 
+        page: 1,
+        per_page: firstItem.people.length,
+        total_entries: firstItem.people.length,
+        total_pages: 1
+      }
+    };
+  }
+  
+  // Check for contacts property as a fallback
+  if (firstItem && Array.isArray(firstItem.contacts)) {
+    console.log(`Found ${firstItem.contacts.length} contact results from Apollo`);
+    return {
+      results: firstItem.contacts,
+      pagination: firstItem.pagination || { 
+        page: 1,
+        per_page: firstItem.contacts.length,
+        total_entries: firstItem.contacts.length,
+        total_pages: 1
+      }
+    };
+  }
+  
+  console.warn("No recognizable results structure in Apollo response", firstItem);
   return {
-    results: response.contacts,
-    pagination: response.pagination || { 
+    results: [],
+    pagination: { 
       page: 1,
-      per_page: response.contacts.length,
-      total_entries: response.contacts.length,
+      per_page: 0,
+      total_entries: 0,
       total_pages: 1
     }
   };

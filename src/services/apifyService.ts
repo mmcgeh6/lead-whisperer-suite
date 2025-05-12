@@ -135,9 +135,11 @@ const searchApollo = async (params: any, apiKey: string) => {
     
     // Parse the response
     const parsedResponse = parseApolloResponse(response);
+    console.log("Raw search results:", JSON.stringify(parsedResponse.results).substring(0, 200));
+    console.log("Results type:", Array.isArray(parsedResponse.results) ? `Array with ${parsedResponse.results.length} items` : typeof parsedResponse.results);
     
     // Check if we have results
-    if (parsedResponse && parsedResponse.results) {
+    if (parsedResponse && parsedResponse.results && parsedResponse.results.length > 0) {
       console.log(`Found ${parsedResponse.results.length} results from Apollo`);
       return parsedResponse.results;
     } else {
@@ -161,7 +163,7 @@ export const transformApifyResults = (results: any, searchType: string): any[] =
   
   if (searchType === SearchType.PEOPLE) {
     return results.map(person => {
-      // Transform Apollo API contact result to our standard format
+      // Transform Apollo API person result to our standard format
       return {
         contact: {
           firstName: person.first_name || "",
@@ -172,7 +174,7 @@ export const transformApifyResults = (results: any, searchType: string): any[] =
           linkedin_url: person.linkedin_url || ""
         },
         company: {
-          name: person.organization_name || "",
+          name: person.organization?.name || person.organization_name || "",
           industry: person.organization?.industry || "",
           location: person.city ? `${person.city}${person.state ? `, ${person.state}` : ""}` : "",
           website: person.organization?.website_url || "",
