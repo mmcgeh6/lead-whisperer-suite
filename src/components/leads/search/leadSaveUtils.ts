@@ -46,16 +46,15 @@ export const saveSelectedLeads = async (
           updatedAt: new Date().toISOString(),
         };
         
-        // Add company
+        // Add company and get its ID
         console.log("Adding company with enriched data:", companyData.name);
-        const addedCompany = await handleEditCompany(companyData, addCompany);
+        const companyId = await addCompanyAndGetId(companyData, user?.id);
         
-        // Only proceed if we have a valid company object
-        if (addedCompany && addedCompany.id) {
-          savedCompanyIds.push(addedCompany.id);
+        if (companyId) {
+          savedCompanyIds.push(companyId);
           
           // Add contact if this is a person search result with contact info
-          if ((lead.type === 'person' || lead.raw_data.first_name) && addedCompany) {
+          if ((lead.type === 'person' || lead.raw_data.first_name) && companyId) {
             console.log("Adding contact:", `${lead.raw_data.first_name || ""} ${lead.raw_data.last_name || ""}`);
             const contactData: Partial<Contact> = {
               firstName: lead.raw_data.first_name || "",
@@ -64,7 +63,7 @@ export const saveSelectedLeads = async (
               email: lead.raw_data.email || "",
               phone: lead.raw_data.sanitized_phone || lead.raw_data.phone || "",
               linkedin_url: lead.raw_data.linkedin_url || "",
-              companyId: addedCompany.id,
+              companyId: companyId,
               notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
             };
             
@@ -80,7 +79,7 @@ export const saveSelectedLeads = async (
   // Add all companies to the selected list in one batch operation
   if (savedCompanyIds.length > 0 && listId) {
     try {
-      console.log(`Adding ${savedCompanyIds.length} companies to list ${listId}`);
+      console.log(`Adding ${savedCompanyIds.length} companies to list ${listId}:`, savedCompanyIds);
       
       const listCompanies = savedCompanyIds.map(companyId => ({
         list_id: listId,
@@ -121,6 +120,7 @@ export const saveSelectedLeads = async (
       }
       
       console.log(`Successfully added ${newCompanies.length} companies to list ${listId}`);
+      return true;
     } catch (error) {
       console.error("Error in list_companies_new batch insert:", error);
     }
@@ -130,9 +130,74 @@ export const saveSelectedLeads = async (
     title: "Leads Saved",
     description: `${selectedLeads.length} leads have been saved to your database and added to the selected list.`
   });
+  
+  return savedCompanyIds.length > 0;
 };
 
-// Handle editing or creating a company
+// New function to directly save company and get its ID
+async function addCompanyAndGetId(companyData: Partial<Company>, userId: string | undefined): Promise<string | null> {
+  if (!userId || !companyData.name) {
+    console.error("Missing required fields for company creation");
+    return null;
+  }
+
+  try {
+    // First check if the company already exists for this user
+    const { data: existingCompany, error: searchError } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('name', companyData.name)
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (searchError) {
+      console.error("Error checking for existing company:", searchError);
+    }
+
+    if (existingCompany?.id) {
+      console.log("Company already exists with ID:", existingCompany.id);
+      return existingCompany.id;
+    }
+
+    // Company doesn't exist, insert it directly
+    const { data: newCompany, error: insertError } = await supabase
+      .from('companies')
+      .insert({
+        name: companyData.name,
+        website: companyData.website || '',
+        industry: companyData.industry || '',
+        size: companyData.size || '',
+        location: companyData.location || '',
+        description: companyData.description || '',
+        phone: companyData.phone || '',
+        city: companyData.city || '',
+        state: companyData.state || '',
+        country: companyData.country || '',
+        linkedin_url: companyData.linkedin_url || '',
+        facebook_url: companyData.facebook_url || '',
+        twitter_url: companyData.twitter_url || '',
+        user_id: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      console.error("Error inserting company:", insertError);
+      return null;
+    }
+
+    console.log("Successfully created new company with ID:", newCompany.id);
+    return newCompany.id;
+  } catch (error) {
+    console.error("Error in addCompanyAndGetId:", error);
+    return null;
+  }
+}
+
+// This function is still used by other parts of the app
 export const handleEditCompany = async (
   companyData: Partial<Company>,
   addCompany: (company: Company) => Promise<void>

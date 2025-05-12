@@ -16,6 +16,7 @@ export const SearchContainer = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedResults, setSelectedResults] = useState<string[]>([]);
+  const [lastSavedListId, setLastSavedListId] = useState<string | null>(null);
   const { toast } = useToast();
   const { addCompany, addContact } = useAppContext();
 
@@ -102,19 +103,31 @@ export const SearchContainer = () => {
     }
     
     try {
-      await saveSelectedLeads(selectedLeads, user, addCompanyAsync, addContactAsync, toast, listId);
-      
-      // Archive selected results and clear selection
-      setSearchResults(prevResults => 
-        prevResults.map(result => ({
-          ...result,
-          archived: result.selected ? true : result.archived,
-          selected: false
-        }))
+      const saveSuccessful = await saveSelectedLeads(
+        selectedLeads, 
+        user, 
+        addCompanyAsync, 
+        addContactAsync, 
+        toast, 
+        listId
       );
       
-      // Clear selection
-      setSelectedResults([]);
+      if (saveSuccessful) {
+        // Store the list ID for reference
+        setLastSavedListId(listId);
+        
+        // Archive selected results and clear selection
+        setSearchResults(prevResults => 
+          prevResults.map(result => ({
+            ...result,
+            archived: result.selected ? true : result.archived,
+            selected: false
+          }))
+        );
+        
+        // Clear selection
+        setSelectedResults([]);
+      }
     } catch (error) {
       console.error("Error saving leads:", error);
       toast({
