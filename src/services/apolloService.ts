@@ -1,7 +1,7 @@
 
 /**
  * Apollo.io API Service
- * Handles direct integration with the Apollo.io API for lead generation
+ * Handles integration with the Apollo.io API for lead generation via n8n webhook
  */
 
 // Helper function to format search parameters for Apollo.io API
@@ -70,29 +70,35 @@ export const formatApolloSearchUrl = (params: {
   return searchUrl;
 };
 
-// Function to make authenticated requests to Apollo.io API
+// Function to make authenticated requests to Apollo.io API via n8n webhook
 export const apolloApiRequest = async (url: string, apiKey: string): Promise<any> => {
   try {
-    const response = await fetch(url, {
-      method: 'POST',  // Apollo requires POST for search endpoints
+    console.log("Making Apollo API request via n8n webhook");
+    
+    // The n8n webhook URL
+    const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/c12e03c0-2618-4506-ab7d-2ced298ad959";
+    
+    // Send the Apollo URL to the n8n webhook
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'Accept': 'application/json',
-        'x-api-key': apiKey
+        'Accept': 'application/json'
       },
-      // Don't send credentials for cross-origin requests to Apollo
-      credentials: 'omit'
+      body: JSON.stringify({
+        URL: url,
+        apiKey: apiKey
+      })
     });
     
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Apollo API error (${response.status}): ${errorText}`);
+      throw new Error(`n8n webhook error (${response.status}): ${errorText}`);
     }
     
     return await response.json();
   } catch (error) {
-    console.error("Apollo API request failed:", error);
+    console.error("n8n webhook request failed:", error);
     throw error;
   }
 };

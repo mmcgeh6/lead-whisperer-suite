@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdvancedSearch } from "@/components/leads/search/AdvancedSearch";
@@ -17,6 +18,16 @@ export const SearchContainer = () => {
   const [selectedResults, setSelectedResults] = useState<string[]>([]);
   const { toast } = useToast();
   const { addCompany, addContact } = useAppContext();
+
+  // Create wrapper functions that return Promises to satisfy TypeScript
+  const addCompanyAsync = async (company: Company): Promise<void> => {
+    return Promise.resolve(addCompany(company));
+  };
+
+  const addContactAsync = async (contact: Contact): Promise<void> => {
+    return Promise.resolve(addContact(contact));
+  };
+
   const { user } = useAuth();
 
   const handleSearchSubmit = async (searchParams: SearchParams) => {
@@ -91,7 +102,7 @@ export const SearchContainer = () => {
     }
     
     try {
-      await saveSelectedLeads(selectedLeads, user, addCompany, addContact, toast, listId);
+      await saveSelectedLeads(selectedLeads, user, addCompanyAsync, addContactAsync, toast, listId);
       
       // Archive selected results and clear selection
       setSearchResults(prevResults => 

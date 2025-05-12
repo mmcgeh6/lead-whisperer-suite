@@ -1,49 +1,15 @@
 
-// Search types for Apollo.io API integration
-import { apolloApiRequest, formatApolloSearchUrl, parseApolloResponse } from "./apolloService";
-import { archiveSearchResults, saveSearchHistory, updateSearchResultCount } from "./leadStorageService";
+import { formatApolloSearchUrl, apolloApiRequest, parseApolloResponse } from './apolloService';
+import { supabase } from "@/integrations/supabase/client";
 
 export enum SearchType {
   PEOPLE = 'people',
-  COMPANY = 'company'
+  COMPANIES = 'companies'
 }
 
-// Parameters for Apollo.io search
-export interface SearchParams {
-  searchType: SearchType;
-  keywords?: string[];
-  location?: string;
-  departments?: string[];
-  seniorities?: string[];
-  employeeRanges?: string[];
-  emailStatus?: string[];
-  limit?: number;
-  personTitles?: string[];
-  organizationLocations?: string[];
-  keywordFields?: string[];
-}
-
-// App settings interface
-export interface AppSettings {
-  apolloApiKey?: string;
-  companyEnrichmentWebhook?: string;
-  linkedinEnrichmentWebhook?: string;
-  emailFinderWebhook?: string;
-  companyResearchWebhook?: string;
-  marketResearchWebhook?: string;
-  techResearchWebhook?: string;
-  growthResearchWebhook?: string;
-  profileResearchWebhook?: string;
-  contentWebhook?: string;
-  jobsWebhook?: string;
-  awardsWebhook?: string;
-  idealCustomerWebhook?: string;
-  outreachWebhook?: string;
-}
-
-// Person search result interface
+// People search result interface
 export interface PeopleSearchResult {
-  contact?: {
+  contact: {
     firstName?: string;
     lastName?: string;
     title?: string;
@@ -51,7 +17,7 @@ export interface PeopleSearchResult {
     phone?: string;
     linkedin_url?: string;
   };
-  company?: {
+  company: {
     name?: string;
     industry?: string;
     location?: string;
@@ -60,13 +26,11 @@ export interface PeopleSearchResult {
     linkedin_url?: string;
     size?: string;
   };
-  // Allow access to original Apollo.io response fields
-  [key: string]: any;
 }
 
 // Company search result interface
 export interface CompanySearchResult {
-  company?: {
+  company: {
     name?: string;
     industry?: string;
     location?: string;
@@ -75,30 +39,69 @@ export interface CompanySearchResult {
     linkedin_url?: string;
     size?: string;
   };
-  // Allow access to original Apollo.io response fields
-  [key: string]: any;
 }
 
-export type SearchResult = PeopleSearchResult | CompanySearchResult;
-
-// Main search function that uses Apollo.io API directly
-export const searchForLeads = async (params: SearchParams) => {
-  console.log("searchForLeads called with params:", params);
-  
+// Get application settings from Supabase
+export const getAppSettings = async () => {
   try {
-    // Get Apollo API key from settings
-    const settings = await getAppSettings();
-    const apiKey = settings.apolloApiKey;
-    
-    if (!apiKey) {
-      throw new Error("Apollo API key not configured");
+    // Fetch API settings from Supabase
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('*')
+      .eq('id', 'default')
+      .single();
+      
+    if (error) {
+      console.error("Error fetching app settings:", error);
+      return {};
     }
     
-    // Use Apollo.io API to search for leads
-    console.log("Using Apollo.io API for search");
+    // Format settings to match expected keys
+    return {
+      apifyApiKey: data?.apifyapikey || null,
+      apolloApiKey: data?.apolloapikey || null,
+      apifyApolloApiKey: data?.apifyapolloapikey || null,
+      leadProvider: data?.leadprovider || null
+    };
+  } catch (error) {
+    console.error("Failed to load app settings:", error);
+    return {};
+  }
+};
+
+// Main function to search for leads
+export const searchForLeads = async (params: any) => {
+  // Get settings from Supabase
+  const settings = await getAppSettings();
+  
+  console.log("Using settings for search:", {
+    leadProvider: settings.leadProvider,
+    hasApolloKey: Boolean(settings.apolloApiKey),
+    hasApifyApolloKey: Boolean(settings.apifyApolloApiKey)
+  });
+  
+  // Use Apollo API by default or if specified
+  if (!settings.leadProvider || settings.leadProvider === 'apollo') {
+    if (settings.apolloApiKey) {
+      console.log("Searching with Apollo.io API");
+      return await searchApollo(params, settings.apolloApiKey);
+    } else {
+      console.error("Apollo.io API key not found");
+      throw new Error("Apollo.io API key is required. Please add it in API Settings.");
+    }
+  } else {
+    console.error("Unsupported lead provider:", settings.leadProvider);
+    throw new Error(`Unsupported lead provider: ${settings.leadProvider}`);
+  }
+};
+
+// Search using Apollo API
+const searchApollo = async (params: any, apiKey: string) => {
+  try {
+    console.log("Formatting Apollo search URL with params:", params);
     
-    // Format the search URL using the helper function
-    const searchUrl = formatApolloSearchUrl({
+    // Format search URL for Apollo API
+    const url = formatApolloSearchUrl({
       personTitles: params.personTitles,
       location: params.location,
       organizationLocations: params.organizationLocations,
@@ -109,183 +112,80 @@ export const searchForLeads = async (params: SearchParams) => {
       limit: params.limit
     });
     
-    console.log("Apollo API search URL:", searchUrl);
+    console.log("Searching Apollo with URL:", url);
     
-    // Make the API request
-    const response = await apolloApiRequest(searchUrl, apiKey);
-    console.log("Apollo API response received:", response);
+    // Make the request via our n8n webhook
+    const response = await apolloApiRequest(url, apiKey);
+    console.log("Apollo API response received:", response ? "Response received" : "No response");
     
     // Parse the response
     const parsedResponse = parseApolloResponse(response);
     
-    // Fix: Check if parsedResponse has results property or is an array directly
-    if (Array.isArray(parsedResponse)) {
-      return parsedResponse;
+    // Check if we have results
+    if (parsedResponse && parsedResponse.results) {
+      console.log(`Found ${parsedResponse.results.length} results from Apollo`);
+      return parsedResponse.results;
     } else {
-      return parsedResponse.results || [];
+      console.log("No results found or response format error");
+      return [];
     }
   } catch (error) {
-    console.error("Error in searchForLeads:", error);
-    throw new Error(`Failed to search for leads: ${error instanceof Error ? error.message : String(error)}`);
+    console.error("Error in Apollo search:", error);
+    throw error;
   }
 };
 
-// Function to get app settings from Supabase
-export const getAppSettings = async (): Promise<AppSettings> => {
-  try {
-    // Import supabase client
-    const { supabase } = await import('@/integrations/supabase/client');
-    
-    // Get the settings from the app_settings table
-    const { data, error } = await supabase
-      .from('app_settings')
-      .select('*')
-      .eq('id', 'default')
-      .limit(1)
-      .single();
-    
-    if (error) {
-      console.error("Error fetching app settings:", error);
-      return {};
-    }
-    
-    if (!data) {
-      console.log("No app settings found, returning default empty object");
-      return {};
-    }
-    
-    // Convert snake_case to camelCase for consistency
-    const settings: AppSettings = {
-      apolloApiKey: data.apolloapikey,
-      companyEnrichmentWebhook: data.companyenrichmentwebhook,
-      linkedinEnrichmentWebhook: data.linkedinenrichmentwebhook,
-      emailFinderWebhook: data.emailfinderwebhook,
-      companyResearchWebhook: data.companyresearchwebhook,
-      marketResearchWebhook: data.marketresearchwebhook,
-      techResearchWebhook: data.techresearchwebhook,
-      growthResearchWebhook: data.growthresearchwebhook,
-      profileResearchWebhook: data.profile_research_webhook,
-      contentWebhook: data.content_webhook,
-      jobsWebhook: data.jobs_webhook,
-      awardsWebhook: data.awards_webhook,
-      idealCustomerWebhook: data.ideal_customer_webhook,
-      outreachWebhook: data.outreach_webhook
-    };
-    
-    return settings;
-  } catch (error) {
-    console.error("Error in getAppSettings:", error);
-    return {};
-  }
-};
-
-// Function to transform Apollo API results into consistent format
-export const transformApifyResults = (results: any[], searchType: string) => {
-  if (!results || !Array.isArray(results) || results.length === 0) {
+// Transform results based on search type
+export const transformApifyResults = (results: any, searchType: string): any[] => {
+  if (!results || !Array.isArray(results)) {
+    console.error("Invalid results format:", results);
     return [];
   }
   
-  console.log(`Transforming ${results.length} ${searchType} results`);
+  console.log(`Transforming ${results.length} results from search type: ${searchType}`);
   
-  try {
-    if (searchType === 'people') {
-      return results.map(result => transformPersonResult(result));
-    } else if (searchType === 'companies' || searchType === 'organizations') {
-      return results.map(result => transformCompanyResult(result));
-    }
-    
+  if (searchType === SearchType.PEOPLE) {
+    return results.map(person => {
+      // Transform Apollo API contact result to our standard format
+      return {
+        contact: {
+          firstName: person.first_name || "",
+          lastName: person.last_name || "",
+          title: person.title || "",
+          email: person.email || "",
+          phone: person.phone_number || person.mobile_phone || "",
+          linkedin_url: person.linkedin_url || ""
+        },
+        company: {
+          name: person.organization_name || "",
+          industry: person.organization?.industry || "",
+          location: person.city ? `${person.city}${person.state ? `, ${person.state}` : ""}` : "",
+          website: person.organization?.website_url || "",
+          description: person.organization?.short_description || "",
+          linkedin_url: person.organization?.linkedin_url || "",
+          size: person.organization?.estimated_num_employees || ""
+        }
+      };
+    });
+  } 
+  else if (searchType === SearchType.COMPANIES) {
+    return results.map(company => {
+      // Transform Apollo API company result to our standard format
+      return {
+        company: {
+          name: company.name || "",
+          industry: company.industry || "",
+          location: company.location || "",
+          website: company.website_url || "",
+          description: company.short_description || "",
+          linkedin_url: company.linkedin_url || "",
+          size: company.estimated_num_employees || ""
+        }
+      };
+    });
+  } 
+  else {
+    console.error("Unsupported search type:", searchType);
     return [];
-  } catch (error) {
-    console.error("Error transforming results:", error);
-    return [];
-  }
-};
-
-// Function to transform a person result from Apollo.io API format
-const transformPersonResult = (result: any): PeopleSearchResult => {
-  try {
-    // Extract person/contact data
-    const person = {
-      firstName: result.first_name || "",
-      lastName: result.last_name || "",
-      title: result.title || "",
-      email: result.email || "",
-      phone: result.sanitized_phone || "",
-      linkedin_url: result.linkedin_url || ""
-    };
-    
-    // Extract company information
-    const company = {
-      name: result.organization_name || "",
-      industry: result.organization?.industry || "",
-      location: result.present_raw_address || `${result.city || ""} ${result.state || ""} ${result.country || ""}`.trim() || "",
-      website: result.organization?.website_url || "",
-      description: "",
-      linkedin_url: result.organization?.linkedin_url || "",
-      size: ""
-    };
-    
-    // Return both the extracted data and the original data
-    return {
-      contact: person,
-      company: company,
-      ...result  // Include original Apollo.io data
-    };
-  } catch (error) {
-    console.error("Error transforming person result:", error);
-    return {
-      contact: {
-        firstName: "",
-        lastName: "",
-        title: "",
-        email: "",
-        phone: "",
-        linkedin_url: ""
-      },
-      company: {
-        name: "",
-        industry: "",
-        location: "",
-        website: "",
-        description: "",
-        linkedin_url: "",
-        size: ""
-      }
-    };
-  }
-};
-
-// Function to transform a company result
-const transformCompanyResult = (result: any): CompanySearchResult => {
-  try {
-    const organization = result.organization || {};
-    
-    const company = {
-      name: organization.name || "",
-      industry: organization.industry || "",
-      location: organization.location || "",
-      website: organization.website || "",
-      description: organization.description || "",
-      linkedin_url: organization.linkedin_url || "",
-      size: organization.size || ""
-    };
-    
-    return {
-      company,
-      ...result  // Include original Apollo.io data
-    };
-  } catch (error) {
-    console.error("Error transforming company result:", error);
-    return {
-      company: {
-        name: "",
-        industry: "",
-        location: "",
-        website: "",
-        description: "",
-        linkedin_url: "",
-        size: ""
-      }
-    };
   }
 };
