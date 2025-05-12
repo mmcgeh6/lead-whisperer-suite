@@ -10,8 +10,8 @@ import {
   transformApifyResults, 
   getAppSettings,
   SearchType, 
-  AppSettings, 
-  PeopleSearchResult 
+  PeopleSearchResult,
+  AppSettings
 } from "@/services/apifyService";
 import { archiveSearchResults, saveSearchHistory, updateSearchResultCount } from "@/services/leadStorageService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

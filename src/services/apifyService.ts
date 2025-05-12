@@ -7,6 +7,14 @@ export enum SearchType {
   COMPANIES = 'companies'
 }
 
+// Type definition for app settings
+export interface AppSettings {
+  apifyApiKey?: string | null;
+  apolloApiKey?: string | null;
+  apifyApolloApiKey?: string | null;
+  leadProvider?: string | null;
+}
+
 // People search result interface
 export interface PeopleSearchResult {
   contact: {
@@ -42,7 +50,7 @@ export interface CompanySearchResult {
 }
 
 // Get application settings from Supabase
-export const getAppSettings = async () => {
+export const getAppSettings = async (): Promise<AppSettings> => {
   try {
     // Fetch API settings from Supabase
     const { data, error } = await supabase
@@ -58,7 +66,6 @@ export const getAppSettings = async () => {
     
     // Format settings to match expected keys
     return {
-      apifyApiKey: data?.apifyapikey || null,
       apolloApiKey: data?.apolloapikey || null,
       apifyApolloApiKey: data?.apifyapolloapikey || null,
       leadProvider: data?.leadprovider || null

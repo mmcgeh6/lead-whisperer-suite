@@ -1,4 +1,3 @@
-
 /**
  * Apollo.io API Service
  * Handles integration with the Apollo.io API for lead generation via n8n webhook
@@ -103,12 +102,31 @@ export const apolloApiRequest = async (url: string, apiKey: string): Promise<any
   }
 };
 
+// Interface for Apollo API response
+export interface ApolloResponse {
+  results: any[];
+  pagination: {
+    page: number;
+    per_page: number;
+    total_entries: number;
+    total_pages: number;
+  };
+}
+
 // Parse Apollo API response into a standardized format
-export const parseApolloResponse = (response: any) => {
+export const parseApolloResponse = (response: any): ApolloResponse => {
   // Check if we have a valid response with contacts
   if (!response || !response.contacts || !Array.isArray(response.contacts)) {
     console.warn("Invalid Apollo.io API response format", response);
-    return [];
+    return {
+      results: [],
+      pagination: { 
+        page: 1,
+        per_page: 0,
+        total_entries: 0,
+        total_pages: 1
+      }
+    };
   }
   
   return {
