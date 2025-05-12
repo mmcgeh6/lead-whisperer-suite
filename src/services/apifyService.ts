@@ -118,8 +118,12 @@ export const searchForLeads = async (params: SearchParams) => {
     // Parse the response
     const parsedResponse = parseApolloResponse(response);
     
-    // Return the results array
-    return parsedResponse.results || [];
+    // Fix: Check if parsedResponse has results property or is an array directly
+    if (Array.isArray(parsedResponse)) {
+      return parsedResponse;
+    } else {
+      return parsedResponse.results || [];
+    }
   } catch (error) {
     console.error("Error in searchForLeads:", error);
     throw new Error(`Failed to search for leads: ${error instanceof Error ? error.message : String(error)}`);
