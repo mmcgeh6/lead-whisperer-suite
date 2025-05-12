@@ -384,13 +384,13 @@ const LeadSearchPage = () => {
         keywords: companyData.keywords || [],
         createdAt: companyData.createdAt || new Date().toISOString(),
         updatedAt: companyData.updatedAt || new Date().toISOString(),
-        insights: companyData.insights,
-        call_script: companyData.call_script,
-        email_script: companyData.email_script,
-        text_script: companyData.text_script,
-        social_dm_script: companyData.social_dm_script,
-        research_notes: companyData.research_notes,
-        user_id: companyData.user_id,
+        insights: companyData.insights || null,
+        call_script: companyData.call_script || null,
+        email_script: companyData.email_script || null,
+        text_script: companyData.text_script || null,
+        social_dm_script: companyData.social_dm_script || null,
+        research_notes: companyData.research_notes || null,
+        user_id: companyData.user_id || null,
       };
       
       // Call addCompany from AppContext

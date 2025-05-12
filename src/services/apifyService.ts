@@ -1,3 +1,4 @@
+
 // Add a proper SearchType enum to address the type issues
 export enum SearchType {
   PEOPLE = 'people',
@@ -126,13 +127,15 @@ const searchWithApollo = async (params: SearchParams) => {
   try {
     // Make the API call to Apollo with the proper headers
     const response = await fetch(searchUrl, {
-      method: 'POST',
+      method: 'POST',  // Apollo requires POST for search endpoint
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
         'Accept': 'application/json',
         'x-api-key': apiKey
-      }
+      },
+      // Use mode: 'no-cors' to bypass CORS restrictions - note this will affect response handling
+      // mode: 'no-cors'  // Uncomment this if CORS issues continue
     });
     
     if (!response.ok) {
