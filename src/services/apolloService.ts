@@ -29,7 +29,7 @@ export const formatApolloSearchParams = (params: {
   };
 };
 
-// Function to make Apollo.io API requests directly from the frontend
+// Function to make Apollo.io API requests directly from the frontend with pagination support
 export const apolloApiRequest = async (params: any, apiKey: string): Promise<any> => {
   try {
     console.log("Making direct Apollo.io API request");
@@ -37,89 +37,138 @@ export const apolloApiRequest = async (params: any, apiKey: string): Promise<any
     
     // Format search parameters
     const searchParams = formatApolloSearchParams(params);
-    
     console.log("Formatted search params:", searchParams);
     
-    // Build the Apollo.io API URL
-    const apolloUrl = new URL('https://api.apollo.io/api/v1/mixed_people/search');
+    // Calculate pagination
+    const totalLimit = searchParams.limit;
+    const maxPerPage = 100; // Apollo.io max per page
+    const totalPages = Math.ceil(totalLimit / maxPerPage);
     
-    // Add search parameters to URL
-    if (searchParams.personTitles && searchParams.personTitles.length > 0) {
-      searchParams.personTitles.forEach((title: string) => {
-        apolloUrl.searchParams.append('person_titles[]', title);
-      });
-    }
+    console.log(`Total requested: ${totalLimit}, Pages needed: ${totalPages}`);
     
-    if (searchParams.location) {
-      apolloUrl.searchParams.append('person_locations[]', searchParams.location);
-    }
+    let allResults: any[] = [];
     
-    if (searchParams.organizationLocations && searchParams.organizationLocations.length > 0) {
-      searchParams.organizationLocations.forEach((location: string) => {
-        apolloUrl.searchParams.append('organization_locations[]', location);
-      });
-    }
-    
-    if (searchParams.seniorities && searchParams.seniorities.length > 0) {
-      searchParams.seniorities.forEach((seniority: string) => {
-        apolloUrl.searchParams.append('person_seniorities[]', seniority);
-      });
-    }
-    
-    if (searchParams.emailStatus && searchParams.emailStatus.length > 0) {
-      searchParams.emailStatus.forEach((status: string) => {
-        apolloUrl.searchParams.append('contact_email_status[]', status);
-      });
-    }
-    
-    if (searchParams.employeeRanges && searchParams.employeeRanges.length > 0) {
-      searchParams.employeeRanges.forEach((range: string) => {
-        apolloUrl.searchParams.append('organization_num_employees_ranges[]', range);
-      });
-    }
-
-    if (searchParams.keywords && searchParams.keywords.length > 0) {
-      const keywordsString = searchParams.keywords.join(" ");
-      apolloUrl.searchParams.append('q_keywords', keywordsString);
-    }
-    
-    apolloUrl.searchParams.append('page', '1');
-    apolloUrl.searchParams.append('per_page', (searchParams.limit || 20).toString());
-
-    console.log('Making direct Apollo.io API request to:', apolloUrl.toString());
-
-    // Make the direct request to Apollo.io API
-    const response = await fetch(apolloUrl.toString(), {
-      method: 'POST',
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Content-Type': 'application/json',
-        'accept': 'application/json',
-        'x-api-key': apiKey
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Apollo.io API error: ${response.status} - ${errorText}`);
+    // Make requests for each page needed
+    for (let page = 1; page <= totalPages; page++) {
+      const currentPageLimit = Math.min(maxPerPage, totalLimit - ((page - 1) * maxPerPage));
       
-      let errorMessage = 'Apollo.io API request failed';
-      if (response.status === 401) {
-        errorMessage = 'Invalid Apollo.io API key';
-      } else if (response.status === 429) {
-        errorMessage = 'Apollo.io API rate limit exceeded';
-      } else if (response.status === 403) {
-        errorMessage = 'Apollo.io API access forbidden';
+      console.log(`Fetching page ${page}/${totalPages} with ${currentPageLimit} results`);
+      
+      // Build the Apollo.io API URL for this page
+      const apolloUrl = new URL('https://api.apollo.io/api/v1/mixed_people/search');
+      
+      // Add person_titles[] parameter (empty if no titles provided)
+      if (searchParams.personTitles && searchParams.personTitles.length > 0) {
+        searchParams.personTitles.forEach((title: string) => {
+          apolloUrl.searchParams.append('person_titles[]', title);
+        });
+      } else {
+        // Add empty person_titles[] parameter as shown in working example
+        apolloUrl.searchParams.append('person_titles[]', '');
       }
       
-      throw new Error(`${errorMessage}: ${errorText}`);
+      // Add person_locations[] parameter
+      if (searchParams.location) {
+        apolloUrl.searchParams.append('person_locations[]', searchParams.location);
+      }
+      
+      // Add organization_locations[] parameter
+      if (searchParams.organizationLocations && searchParams.organizationLocations.length > 0) {
+        searchParams.organizationLocations.forEach((location: string) => {
+          apolloUrl.searchParams.append('organization_locations[]', location);
+        });
+      }
+      
+      // Add person_seniorities[] parameter
+      if (searchParams.seniorities && searchParams.seniorities.length > 0) {
+        searchParams.seniorities.forEach((seniority: string) => {
+          apolloUrl.searchParams.append('person_seniorities[]', seniority);
+        });
+      }
+      
+      // Add contact_email_status[] parameter
+      if (searchParams.emailStatus && searchParams.emailStatus.length > 0) {
+        searchParams.emailStatus.forEach((status: string) => {
+          apolloUrl.searchParams.append('contact_email_status[]', status);
+        });
+      }
+      
+      // Add organization_num_employees_ranges[] parameter
+      if (searchParams.employeeRanges && searchParams.employeeRanges.length > 0) {
+        searchParams.employeeRanges.forEach((range: string) => {
+          apolloUrl.searchParams.append('organization_num_employees_ranges[]', range);
+        });
+      }
+
+      // Add q_keywords parameter (combine keywords into single string)
+      if (searchParams.keywords && searchParams.keywords.length > 0) {
+        const keywordsString = searchParams.keywords.join(" ");
+        apolloUrl.searchParams.append('q_keywords', keywordsString);
+      }
+      
+      // Add pagination parameters
+      apolloUrl.searchParams.append('page', page.toString());
+      apolloUrl.searchParams.append('per_page', currentPageLimit.toString());
+
+      console.log(`Making Apollo.io API request to: ${apolloUrl.toString()}`);
+
+      // Make the direct request to Apollo.io API
+      const response = await fetch(apolloUrl.toString(), {
+        method: 'POST',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+          'x-api-key': apiKey
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Apollo.io API error on page ${page}: ${response.status} - ${errorText}`);
+        
+        let errorMessage = 'Apollo.io API request failed';
+        if (response.status === 401) {
+          errorMessage = 'Invalid Apollo.io API key';
+        } else if (response.status === 429) {
+          errorMessage = 'Apollo.io API rate limit exceeded';
+        } else if (response.status === 403) {
+          errorMessage = 'Apollo.io API access forbidden';
+        }
+        
+        throw new Error(`${errorMessage}: ${errorText}`);
+      }
+
+      const pageData = await response.json();
+      console.log(`Apollo.io API page ${page} response received successfully`);
+      console.log(`Page ${page} data sample:`, JSON.stringify(pageData).substring(0, 500));
+
+      // Add this page's results to our collection
+      if (pageData.people && Array.isArray(pageData.people)) {
+        allResults = allResults.concat(pageData.people);
+        console.log(`Added ${pageData.people.length} results from page ${page}. Total so far: ${allResults.length}`);
+      }
+      
+      // If this page returned fewer results than requested, we've reached the end
+      if (!pageData.people || pageData.people.length < currentPageLimit) {
+        console.log(`Page ${page} returned fewer results than requested (${pageData.people?.length || 0} < ${currentPageLimit}). Stopping pagination.`);
+        break;
+      }
     }
 
-    const data = await response.json();
-    console.log('Apollo.io API response received successfully');
-    console.log('Response data sample:', JSON.stringify(data).substring(0, 500));
+    // Return combined results in Apollo.io format
+    const combinedResponse = {
+      people: allResults,
+      pagination: {
+        page: 1,
+        per_page: allResults.length,
+        total_entries: allResults.length,
+        total_pages: 1
+      }
+    };
 
-    return data;
+    console.log(`Final combined response: ${allResults.length} total people results`);
+    return combinedResponse;
     
   } catch (error) {
     console.error("Apollo.io API request failed:", error);
