@@ -23,9 +23,28 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@/components/ui/tooltip";
-import { ExternalLink, Mail, Phone, User, Building2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ExternalLink, Mail, Phone, User, Building2, MoreVertical, Plus } from "lucide-react";
 import { SearchResult } from "@/components/leads/search/searchUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
 
 interface SearchResultsProps {
   results: SearchResult[];
@@ -42,6 +61,11 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 }) => {
   const [selectedList, setSelectedList] = useState<string>("");
   const [lists, setLists] = useState<{id: string, name: string}[]>([]);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [newListDescription, setNewListDescription] = useState("");
+  const { toast } = useToast();
+  const { user } = useAuth();
   
   React.useEffect(() => {
     const fetchLists = async () => {
@@ -69,6 +93,66 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
     
     fetchLists();
   }, []);
+
+  const handleCreateList = async () => {
+    if (!newListName.trim() || !user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('lists')
+        .insert({
+          name: newListName.trim(),
+          description: newListDescription.trim() || null,
+          user_id: user.id,
+        })
+        .select();
+      
+      if (error) throw error;
+      
+      toast({
+        title: "List created",
+        description: `"${newListName}" has been created successfully.`
+      });
+      
+      // Add to lists array and select it
+      const newList = data[0];
+      setLists(prev => [newList, ...prev]);
+      setSelectedList(newList.id);
+      
+      setNewListName("");
+      setNewListDescription("");
+      setIsCreateDialogOpen(false);
+    } catch (error) {
+      console.error('Error creating list:', error);
+      toast({
+        title: "Failed to create list",
+        description: "Please try again later",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddToSpecificList = async (listId: string, resultId: string) => {
+    // Find the result and add it to the specific list
+    const result = results.find(r => r.id === resultId);
+    if (!result) return;
+
+    try {
+      // This would need to be implemented to add individual results to lists
+      // For now, we'll show a toast indicating the action
+      toast({
+        title: "Feature coming soon",
+        description: "Individual lead list management will be available soon."
+      });
+    } catch (error) {
+      console.error('Error adding to list:', error);
+      toast({
+        title: "Failed to add to list",
+        description: "Please try again later",
+        variant: "destructive"
+      });
+    }
+  };
   
   // Function to get icon based on result type
   const getTypeIcon = (type: 'person' | 'company') => {
@@ -95,6 +179,14 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
               ))}
             </SelectContent>
           </Select>
+
+          <Button 
+            variant="outline"
+            onClick={() => setIsCreateDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New List
+          </Button>
           
           <Button 
             onClick={() => selectedList ? onSaveToList(selectedList) : null}
@@ -120,6 +212,9 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
               <TableHead className="hidden md:table-cell">Company</TableHead>
               <TableHead className="hidden lg:table-cell">Location</TableHead>
               <TableHead className="w-[100px]">Contact</TableHead>
+              <TableHead className="w-[40px]">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -211,12 +306,37 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
                     )}
                   </div>
                 </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => onResultSelection(result.id, !result.selected)}
+                      >
+                        {result.selected ? 'Deselect' : 'Select'}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {lists.map(list => (
+                        <DropdownMenuItem 
+                          key={list.id}
+                          onClick={() => handleAddToSpecificList(list.id, result.id)}
+                        >
+                          Add to {list.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
               </TableRow>
             ))}
             
             {results.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   No results found or all results have been archived.
                 </TableCell>
               </TableRow>
@@ -224,6 +344,53 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
           </TableBody>
         </Table>
       </div>
+
+      {/* Create List Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New List</DialogTitle>
+            <DialogDescription>
+              Create a new list to organize your leads
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="name" className="text-sm font-medium">
+                List Name
+              </label>
+              <Input
+                id="name"
+                placeholder="e.g., Tech Companies"
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="description" className="text-sm font-medium">
+                Description (Optional)
+              </label>
+              <Textarea
+                id="description"
+                placeholder="Brief description of this list"
+                value={newListDescription}
+                onChange={(e) => setNewListDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateList} disabled={!newListName.trim()}>
+              Create List
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1,186 +1,182 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
+import { Building2, Globe, MapPin, Users, Phone, MoreVertical, Edit, List } from "lucide-react";
 import { Company } from "@/types";
-import { Eye, Edit, Building2, MapPin, Users } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
+import { CompanyListManager } from "@/components/leads/search/CompanyListManager";
 
 interface CompanyListProps {
-  newLeads?: Partial<Company>[];
-  selectedCompanies?: string[];
-  onCompanySelect?: (id: string, selected: boolean) => void;
-  hideOptions?: boolean;
+  newLeads: Partial<Company>[];
+  selectedCompanies: string[];
+  onCompanySelect: (id: string, isSelected: boolean) => void;
 }
 
 export const CompanyList = ({ 
-  newLeads = [], 
-  selectedCompanies = [], 
-  onCompanySelect,
-  hideOptions = false
+  newLeads, 
+  selectedCompanies, 
+  onCompanySelect 
 }: CompanyListProps) => {
-  const [displayCompanies, setDisplayCompanies] = useState<Array<Company>>([]);
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  
-  useEffect(() => {
-    // If we have newLeads (from a filter/list), use those
-    if (newLeads && newLeads.length > 0) {
-      // Filter out any leads that don't have the required fields
-      const validNewLeads = newLeads.filter(lead => lead.id && lead.name) as Company[];
-      setDisplayCompanies(validNewLeads);
-    } else {
-      // Otherwise, load companies from database if user is authenticated
-      if (user) {
-        loadCompanies();
-      }
-    }
-  }, [newLeads, user]);
+  const [listManagerOpen, setListManagerOpen] = useState(false);
+  const [selectedCompanyForList, setSelectedCompanyForList] = useState<{id: string, name: string} | null>(null);
 
-  const loadCompanies = async () => {
-    if (!user) return;
-    
-    try {
-      console.log("Loading companies for user:", user.id);
-      
-      // Fetch companies associated with the current user
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-        
-      if (error) {
-        console.error('Error loading companies:', error);
-        return;
-      }
-      
-      if (data) {
-        console.log(`Loaded ${data.length} companies from database`);
-        
-        // Transform the data to match our Company type (convert snake_case to camelCase)
-        const formattedCompanies: Company[] = data.map(item => ({
-          id: item.id,
-          name: item.name,
-          website: item.website || "",
-          industry: item.industry || "",
-          industry_vertical: item.industry_vertical,
-          size: item.size || "",
-          location: item.location || "",
-          street: item.street,
-          city: item.city,
-          state: item.state,
-          zip: item.zip,
-          country: item.country,
-          phone: item.phone,
-          description: item.description || "",
-          facebook_url: item.facebook_url,
-          twitter_url: item.twitter_url,
-          linkedin_url: item.linkedin_url,
-          keywords: item.keywords,
-          createdAt: item.created_at || new Date().toISOString(),
-          updatedAt: item.updated_at || new Date().toISOString(),
-          call_script: item.call_script,
-          email_script: item.email_script,
-          text_script: item.text_script,
-          social_dm_script: item.social_dm_script,
-          research_notes: item.research_notes,
-          user_id: item.user_id
-        }));
-        
-        setDisplayCompanies(formattedCompanies);
-      }
-    } catch (error) {
-      console.error('Error in loadCompanies:', error);
+  const handleManageLists = (company: Partial<Company>) => {
+    if (company.id && company.name) {
+      setSelectedCompanyForList({
+        id: company.id,
+        name: company.name
+      });
+      setListManagerOpen(true);
     }
   };
 
-  const handleViewCompany = (id: string) => {
-    console.log("Navigating to company:", id);
-    navigate(`/leads/company/${id}`);
-  };
-
-  const handleEditCompany = (id: string) => {
-    navigate(`/leads/company/${id}/edit`);
-  };
-
-  const handleAddCompany = () => {
-    navigate("/leads/company/new");
-  };
-  
-  if (displayCompanies.length === 0) {
+  if (!newLeads || newLeads.length === 0) {
     return (
-      <Card className="p-6 text-center">
-        <p className="text-gray-500 mb-4">No companies found</p>
-        <Button onClick={handleAddCompany}>
-          Add Your First Company
-        </Button>
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-gray-500">
+            <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-medium mb-2">No companies found</h3>
+            <p className="mb-4">Start by searching for new leads or add companies manually.</p>
+          </div>
+        </CardContent>
       </Card>
     );
   }
-  
+
   return (
-    <div className="space-y-4">
-      {displayCompanies.map((company) => (
-        <Card key={company.id} className="shadow-sm">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center space-x-4">
-              {!hideOptions && onCompanySelect && (
-                <Checkbox
-                  id={`company-${company.id}`}
-                  checked={selectedCompanies?.includes(company.id)}
-                  onCheckedChange={(checked) => {
-                    onCompanySelect(company.id, !!checked);
-                  }}
-                />
+    <>
+      <div className="space-y-4">
+        {newLeads.map((company) => (
+          <Card key={company.id} className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    checked={selectedCompanies.includes(company.id || "")}
+                    onCheckedChange={(checked) => {
+                      if (company.id) {
+                        onCompanySelect(company.id, checked === true);
+                      }
+                    }}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <CardTitle className="text-xl mb-2 flex items-center">
+                      <Building2 className="h-5 w-5 mr-2 text-blue-600" />
+                      {company.name || "Unknown Company"}
+                    </CardTitle>
+                    
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                      {company.industry && (
+                        <Badge variant="secondary">{company.industry}</Badge>
+                      )}
+                      {company.size && (
+                        <span className="flex items-center">
+                          <Users className="h-4 w-4 mr-1" />
+                          {company.size}
+                        </span>
+                      )}
+                      {company.location && (
+                        <span className="flex items-center">
+                          <MapPin className="h-4 w-4 mr-1" />
+                          {company.location}
+                        </span>
+                      )}
+                      {company.phone && (
+                        <span className="flex items-center">
+                          <Phone className="h-4 w-4 mr-1" />
+                          {company.phone}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link to={`/leads/company/${company.id}`}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Company
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleManageLists(company)}>
+                      <List className="h-4 w-4 mr-2" />
+                      Manage Lists
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CardHeader>
+            
+            <CardContent>
+              {company.website && (
+                <div className="flex items-center mb-3">
+                  <Globe className="h-4 w-4 mr-2 text-gray-500" />
+                  <a 
+                    href={company.website.startsWith('http') ? company.website : `https://${company.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {company.website}
+                  </a>
+                </div>
               )}
-              <div>
-                <h3 className="text-lg font-semibold">{company.name}</h3>
-                <div className="text-gray-500 flex flex-wrap items-center gap-x-4 gap-y-2 mt-1">
-                  {company.industry && (
-                    <div className="flex items-center">
-                      <Building2 className="h-4 w-4 mr-1" />
-                      <span>{company.industry}</span>
-                    </div>
-                  )}
-                  {company.location && (
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      <span>{company.location}</span>
-                    </div>
-                  )}
-                  {company.size && (
-                    <div className="flex items-center">
-                      <Users className="h-4 w-4 mr-1" />
-                      <span>{company.size}</span>
-                    </div>
+              
+              {company.description && (
+                <p className="text-gray-600 mb-4 line-clamp-3">
+                  {company.description}
+                </p>
+              )}
+              
+              <div className="flex justify-between items-center">
+                <div className="text-xs text-gray-500">
+                  {company.createdAt && (
+                    <span>Added {new Date(company.createdAt).toLocaleDateString()}</span>
                   )}
                 </div>
-              </div>
-            </div>
-            {!hideOptions && (
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleViewCompany(company.id)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleEditCompany(company.id)}
-                >
-                  <Edit className="h-4 w-4" />
+                
+                <Button asChild variant="outline" size="sm">
+                  <Link to={`/leads/company/${company.id}`}>
+                    View Details
+                  </Link>
                 </Button>
               </div>
-            )}
-          </div>
-        </Card>
-      ))}
-    </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <CompanyListManager
+        isOpen={listManagerOpen}
+        onClose={() => {
+          setListManagerOpen(false);
+          setSelectedCompanyForList(null);
+        }}
+        companyId={selectedCompanyForList?.id}
+        companyName={selectedCompanyForList?.name}
+        onListSelect={(listId) => {
+          console.log(`Company ${selectedCompanyForList?.id} added to list ${listId}`);
+        }}
+      />
+    </>
   );
 };
