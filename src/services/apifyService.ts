@@ -1,5 +1,5 @@
 
-import { formatApolloSearchUrl, apolloApiRequest, parseApolloResponse } from './apolloService';
+import { apolloApiRequest, parseApolloResponse } from './apolloService';
 import { supabase } from "@/integrations/supabase/client";
 
 export enum SearchType {
@@ -9,9 +9,7 @@ export enum SearchType {
 
 // Type definition for app settings
 export interface AppSettings {
-  apifyApiKey?: string | null;
   apolloApiKey?: string | null;
-  apifyApolloApiKey?: string | null;
   leadProvider?: string | null;
 }
 
@@ -67,7 +65,6 @@ export const getAppSettings = async (): Promise<AppSettings> => {
     // Format settings to match expected keys
     return {
       apolloApiKey: data?.apolloapikey || null,
-      apifyApolloApiKey: data?.apifyapolloapikey || null,
       leadProvider: data?.leadprovider || null
     };
   } catch (error) {
@@ -76,53 +73,33 @@ export const getAppSettings = async (): Promise<AppSettings> => {
   }
 };
 
-// Main function to search for leads
+// Main function to search for leads using Apollo.io API directly
 export const searchForLeads = async (params: any) => {
   // Get settings from Supabase
   const settings = await getAppSettings();
   
   console.log("Using settings for search:", {
     leadProvider: settings.leadProvider,
-    hasApolloKey: Boolean(settings.apolloApiKey),
-    hasApifyApolloKey: Boolean(settings.apifyApolloApiKey)
+    hasApolloKey: Boolean(settings.apolloApiKey)
   });
   
-  // Use Apollo API by default or if specified
-  if (!settings.leadProvider || settings.leadProvider === 'apollo' || settings.leadProvider === 'apollo.io') {
-    if (settings.apolloApiKey) {
-      console.log("Searching with direct Apollo.io API");
-      return await searchApollo(params, settings.apolloApiKey);
-    } else {
-      console.error("Apollo.io API key not found");
-      throw new Error("Apollo.io API key is required. Please add it in API Settings.");
-    }
-  } else {
-    console.error("Unsupported lead provider:", settings.leadProvider);
-    throw new Error(`Unsupported lead provider: ${settings.leadProvider}`);
+  // Check for Apollo API key
+  if (!settings.apolloApiKey) {
+    console.error("Apollo.io API key not found");
+    throw new Error("Apollo.io API key is required. Please add it in API Settings.");
   }
+
+  console.log("Searching with direct Apollo.io API");
+  return await searchApollo(params, settings.apolloApiKey);
 };
 
 // Search using Apollo API directly
 const searchApollo = async (params: any, apiKey: string) => {
   try {
-    console.log("Formatting Apollo search URL with params:", params);
+    console.log("Starting Apollo search with params:", params);
     
-    // Format search URL for Apollo API
-    const url = formatApolloSearchUrl({
-      personTitles: params.personTitles,
-      location: params.location,
-      organizationLocations: params.organizationLocations,
-      seniorities: params.seniorities,
-      emailStatus: params.emailStatus,
-      employeeRanges: params.employeeRanges,
-      keywords: params.keywords,
-      limit: params.limit
-    });
-    
-    console.log("Searching Apollo with URL:", url);
-    
-    // Make the direct request to Apollo.io API
-    const response = await apolloApiRequest(url, apiKey);
+    // Make the direct POST request to Apollo.io API
+    const response = await apolloApiRequest(params, apiKey);
     console.log("Apollo.io API response received:", response ? "Response received" : "No response");
     
     // Parse the response

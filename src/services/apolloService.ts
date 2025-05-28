@@ -5,7 +5,7 @@
  */
 
 // Helper function to format search parameters for Apollo.io API
-export const formatApolloSearchUrl = (params: {
+export const formatApolloSearchParams = (params: {
   personTitles?: string[];
   location?: string;
   organizationLocations?: string[];
@@ -14,65 +14,72 @@ export const formatApolloSearchUrl = (params: {
   employeeRanges?: string[];
   keywords?: string[];
   limit?: number;
-}): string => {
-  let searchUrl = 'https://api.apollo.io/api/v1/mixed_people/search?';
+}) => {
+  const searchParams = new URLSearchParams();
   
-  // Add person titles if available (encode properly for URL)
+  // Add person titles if available
   if (params.personTitles && params.personTitles.length > 0) {
     params.personTitles.forEach(title => {
-      searchUrl += `person_titles[]=${encodeURIComponent(title)}&`;
+      searchParams.append('person_titles[]', title);
     });
   }
   
   // Add person location if available
   if (params.location) {
-    searchUrl += `person_locations[]=${encodeURIComponent(params.location)}&`;
+    searchParams.append('person_locations[]', params.location);
   }
   
   // Add organization locations if available
   if (params.organizationLocations && params.organizationLocations.length > 0) {
     params.organizationLocations.forEach(location => {
-      searchUrl += `organization_locations[]=${encodeURIComponent(location)}&`;
+      searchParams.append('organization_locations[]', location);
     });
   }
   
   // Add seniorities if available
   if (params.seniorities && params.seniorities.length > 0) {
     params.seniorities.forEach(seniority => {
-      searchUrl += `person_seniorities[]=${encodeURIComponent(seniority)}&`;
+      searchParams.append('person_seniorities[]', seniority);
     });
   }
   
   // Add email status if available
   if (params.emailStatus && params.emailStatus.length > 0) {
     params.emailStatus.forEach(status => {
-      searchUrl += `contact_email_status[]=${encodeURIComponent(status)}&`;
+      searchParams.append('contact_email_status[]', status);
     });
   }
   
   // Add employee ranges if available
   if (params.employeeRanges && params.employeeRanges.length > 0) {
     params.employeeRanges.forEach(range => {
-      searchUrl += `organization_num_employees_ranges[]=${encodeURIComponent(range)}&`;
+      searchParams.append('organization_num_employees_ranges[]', range);
     });
   }
 
   // Add keywords (using q_keywords for Apollo's API)
   if (params.keywords && params.keywords.length > 0) {
     const keywordsString = params.keywords.join(" ");
-    searchUrl += `q_keywords=${encodeURIComponent(keywordsString)}&`;
+    searchParams.append('q_keywords', keywordsString);
   }
   
   // Add page and per_page parameters
-  searchUrl += `page=1&per_page=${params.limit || 20}`;
+  searchParams.append('page', '1');
+  searchParams.append('per_page', (params.limit || 20).toString());
   
-  return searchUrl;
+  return searchParams;
 };
 
-// Function to make direct authenticated requests to Apollo.io API
-export const apolloApiRequest = async (url: string, apiKey: string): Promise<any> => {
+// Function to make direct authenticated POST requests to Apollo.io API
+export const apolloApiRequest = async (params: any, apiKey: string): Promise<any> => {
   try {
-    console.log("Making direct Apollo.io API request");
+    console.log("Making direct Apollo.io API POST request");
+    console.log("Request params:", params);
+    
+    // Format search parameters
+    const searchParams = formatApolloSearchParams(params);
+    const url = `https://api.apollo.io/api/v1/mixed_people/search?${searchParams.toString()}`;
+    
     console.log("Request URL:", url);
     
     // Set up timeout
@@ -80,11 +87,12 @@ export const apolloApiRequest = async (url: string, apiKey: string): Promise<any
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
     const response = await fetch(url, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Cache-Control': 'no-cache',
         'Content-Type': 'application/json',
-        'X-Api-Key': apiKey // Apollo.io uses X-Api-Key header
+        'accept': 'application/json',
+        'x-api-key': apiKey // Apollo.io uses x-api-key header
       },
       signal: controller.signal
     });
