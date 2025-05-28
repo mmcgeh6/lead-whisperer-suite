@@ -1,7 +1,7 @@
 
 /**
  * Apollo.io API Service
- * Handles integration with the Apollo.io API for lead generation via n8n webhook
+ * Handles direct integration with the Apollo.io API for lead generation
  */
 
 // Helper function to format search parameters for Apollo.io API
@@ -69,35 +69,22 @@ export const formatApolloSearchUrl = (params: {
   return searchUrl;
 };
 
-// Function to make authenticated requests to Apollo.io API via n8n webhook
+// Function to make direct authenticated requests to Apollo.io API
 export const apolloApiRequest = async (url: string, apiKey: string): Promise<any> => {
   try {
-    console.log("Making Apollo API request via n8n webhook");
+    console.log("Making direct Apollo.io API request");
+    console.log("Request URL:", url);
     
-    // The n8n webhook URL
-    const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/c12e03c0-2618-4506-ab7d-2ced298ad959";
-    
-    // First, let's try to check if the webhook is accessible
-    console.log("Testing webhook accessibility...");
-    
-    // Encode parameters for GET request
-    const encodedURL = encodeURIComponent(url);
-    const encodedApiKey = encodeURIComponent(apiKey);
-    
-    // Use GET request with query parameters instead of POST with body
-    const requestUrl = `${webhookUrl}?URL=${encodedURL}&apiKey=${encodedApiKey}`;
-    
-    console.log("Sending GET request to webhook");
-    
-    // Send the GET request with timeout
+    // Set up timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
-    const response = await fetch(requestUrl, {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'Cache-Control': 'no-cache',
+        'Content-Type': 'application/json',
+        'X-Api-Key': apiKey // Apollo.io uses X-Api-Key header
       },
       signal: controller.signal
     });
@@ -106,31 +93,40 @@ export const apolloApiRequest = async (url: string, apiKey: string): Promise<any
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Webhook returned error status ${response.status}:`, errorText);
-      throw new Error(`Webhook service returned ${response.status}: ${errorText || 'Unknown error'}`);
+      console.error(`Apollo.io API returned error status ${response.status}:`, errorText);
+      
+      if (response.status === 401) {
+        throw new Error('Invalid Apollo.io API key. Please check your API key in settings.');
+      } else if (response.status === 429) {
+        throw new Error('Apollo.io API rate limit exceeded. Please try again later.');
+      } else if (response.status === 403) {
+        throw new Error('Access forbidden. Please check your Apollo.io API permissions.');
+      } else {
+        throw new Error(`Apollo.io API returned ${response.status}: ${errorText || 'Unknown error'}`);
+      }
     }
     
     const data = await response.json();
-    console.log("Successfully received response from webhook");
+    console.log("Successfully received response from Apollo.io API");
     return data;
     
   } catch (error) {
-    console.error("Webhook request failed:", error);
+    console.error("Apollo.io API request failed:", error);
     
     // Provide more specific error messages
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
-      throw new Error('Unable to connect to the search service. The webhook service may be down or unreachable. Please try again later or contact support if the issue persists.');
+      throw new Error('Unable to connect to Apollo.io API. Please check your internet connection and try again.');
     } else if (error.name === 'AbortError') {
-      throw new Error('Search request timed out. Please try again with fewer search parameters or contact support.');
+      throw new Error('Apollo.io API request timed out. Please try again.');
     } else {
-      throw new Error(`Search service error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+      throw new Error(`Apollo.io API error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
     }
   }
 };
 
 // Interface for Apollo API response
 export interface ApolloResponse {
-  results: any[];
+  people: any[];
   pagination: {
     page: number;
     per_page: number;
@@ -142,10 +138,10 @@ export interface ApolloResponse {
 // Parse Apollo API response into a standardized format
 export const parseApolloResponse = (response: any): ApolloResponse => {
   // Check if we have a valid response structure
-  if (!response || !Array.isArray(response) || response.length === 0) {
-    console.warn("Invalid Apollo.io API response format", response);
+  if (!response) {
+    console.warn("No response from Apollo.io API");
     return {
-      results: [],
+      people: [],
       pagination: { 
         page: 1,
         per_page: 0,
@@ -155,45 +151,19 @@ export const parseApolloResponse = (response: any): ApolloResponse => {
     };
   }
   
-  // The API response is an array where the first element contains the data
-  const firstItem = response[0];
+  // Apollo.io API returns data in this format directly
+  const people = response.people || [];
+  const pagination = response.pagination || {
+    page: 1,
+    per_page: people.length,
+    total_entries: people.length,
+    total_pages: 1
+  };
   
-  // Check for people property which contains the search results
-  if (firstItem && Array.isArray(firstItem.people)) {
-    console.log(`Found ${firstItem.people.length} people results from Apollo`);
-    return {
-      results: firstItem.people,
-      pagination: firstItem.pagination || { 
-        page: 1,
-        per_page: firstItem.people.length,
-        total_entries: firstItem.people.length,
-        total_pages: 1
-      }
-    };
-  }
+  console.log(`Found ${people.length} people results from Apollo.io`);
   
-  // Check for contacts property as a fallback
-  if (firstItem && Array.isArray(firstItem.contacts)) {
-    console.log(`Found ${firstItem.contacts.length} contact results from Apollo`);
-    return {
-      results: firstItem.contacts,
-      pagination: firstItem.pagination || { 
-        page: 1,
-        per_page: firstItem.contacts.length,
-        total_entries: firstItem.contacts.length,
-        total_pages: 1
-      }
-    };
-  }
-  
-  console.warn("No recognizable results structure in Apollo response", firstItem);
   return {
-    results: [],
-    pagination: { 
-      page: 1,
-      per_page: 0,
-      total_entries: 0,
-      total_pages: 1
-    }
+    people: people,
+    pagination: pagination
   };
 };

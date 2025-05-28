@@ -88,17 +88,9 @@ export const searchForLeads = async (params: any) => {
   });
   
   // Use Apollo API by default or if specified
-  if (!settings.leadProvider || settings.leadProvider === 'apollo') {
+  if (!settings.leadProvider || settings.leadProvider === 'apollo' || settings.leadProvider === 'apollo.io') {
     if (settings.apolloApiKey) {
-      console.log("Searching with Apollo.io API");
-      return await searchApollo(params, settings.apolloApiKey);
-    } else {
-      console.error("Apollo.io API key not found");
-      throw new Error("Apollo.io API key is required. Please add it in API Settings.");
-    }
-  } else if (settings.leadProvider === 'apollo.io') {
-    if (settings.apolloApiKey) {
-      console.log("Searching with Apollo.io API");
+      console.log("Searching with direct Apollo.io API");
       return await searchApollo(params, settings.apolloApiKey);
     } else {
       console.error("Apollo.io API key not found");
@@ -110,7 +102,7 @@ export const searchForLeads = async (params: any) => {
   }
 };
 
-// Search using Apollo API
+// Search using Apollo API directly
 const searchApollo = async (params: any, apiKey: string) => {
   try {
     console.log("Formatting Apollo search URL with params:", params);
@@ -129,21 +121,20 @@ const searchApollo = async (params: any, apiKey: string) => {
     
     console.log("Searching Apollo with URL:", url);
     
-    // Make the request via our n8n webhook
+    // Make the direct request to Apollo.io API
     const response = await apolloApiRequest(url, apiKey);
-    console.log("Apollo API response received:", response ? "Response received" : "No response");
+    console.log("Apollo.io API response received:", response ? "Response received" : "No response");
     
     // Parse the response
     const parsedResponse = parseApolloResponse(response);
-    console.log("Raw search results:", JSON.stringify(parsedResponse.results).substring(0, 200));
-    console.log("Results type:", Array.isArray(parsedResponse.results) ? `Array with ${parsedResponse.results.length} items` : typeof parsedResponse.results);
+    console.log("Parsed Apollo response:", parsedResponse);
     
     // Check if we have results
-    if (parsedResponse && parsedResponse.results && parsedResponse.results.length > 0) {
-      console.log(`Found ${parsedResponse.results.length} results from Apollo`);
-      return parsedResponse.results;
+    if (parsedResponse && parsedResponse.people && parsedResponse.people.length > 0) {
+      console.log(`Found ${parsedResponse.people.length} results from Apollo.io`);
+      return parsedResponse.people;
     } else {
-      console.log("No results found or response format error");
+      console.log("No results found from Apollo.io");
       return [];
     }
   } catch (error) {
