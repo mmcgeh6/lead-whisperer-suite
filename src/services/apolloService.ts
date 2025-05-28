@@ -77,6 +77,9 @@ export const apolloApiRequest = async (url: string, apiKey: string): Promise<any
     // The n8n webhook URL
     const webhookUrl = "https://n8n-service-el78.onrender.com/webhook-test/c12e03c0-2618-4506-ab7d-2ced298ad959";
     
+    // First, let's try to check if the webhook is accessible
+    console.log("Testing webhook accessibility...");
+    
     // Encode parameters for GET request
     const encodedURL = encodeURIComponent(url);
     const encodedApiKey = encodeURIComponent(apiKey);
@@ -86,23 +89,42 @@ export const apolloApiRequest = async (url: string, apiKey: string): Promise<any
     
     console.log("Sending GET request to webhook");
     
-    // Send the GET request
+    // Send the GET request with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
     const response = await fetch(requestUrl, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json'
-      }
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`n8n webhook error (${response.status}): ${errorText}`);
+      console.error(`Webhook returned error status ${response.status}:`, errorText);
+      throw new Error(`Webhook service returned ${response.status}: ${errorText || 'Unknown error'}`);
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log("Successfully received response from webhook");
+    return data;
+    
   } catch (error) {
-    console.error("n8n webhook request failed:", error);
-    throw error;
+    console.error("Webhook request failed:", error);
+    
+    // Provide more specific error messages
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error('Unable to connect to the search service. The webhook service may be down or unreachable. Please try again later or contact support if the issue persists.');
+    } else if (error.name === 'AbortError') {
+      throw new Error('Search request timed out. Please try again with fewer search parameters or contact support.');
+    } else {
+      throw new Error(`Search service error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+    }
   }
 };
 

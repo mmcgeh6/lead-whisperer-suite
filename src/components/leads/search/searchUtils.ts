@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { 
   searchForLeads, 
@@ -125,44 +124,80 @@ export const handleSearch = async (searchParams: SearchParams, user: any, toast:
     }
   }
   
-  // Call the search service with the parameters
-  const results = await searchForLeads(apiParams);
-  
-  console.log("Raw search results:", results);
-  console.log("Results type:", Array.isArray(results) ? `Array with ${results.length} items` : typeof results);
-  
-  if (results && Array.isArray(results) && results.length > 0) {
-    console.log("First result sample:", JSON.stringify(results[0]).substring(0, 200));
-  }
-  
-  // Transform results
-  const transformedLeads = transformApifyResults(results, 'people');
-  
-  console.log("Transformed leads:", transformedLeads);
-  
-  if (!transformedLeads || transformedLeads.length === 0) {
-    return [];
-  }
-  
-  // Update search history with result count
-  if (user && searchHistoryId) {
-    try {
-      await supabase
-        .from('search_history')
-        .update({ result_count: transformedLeads.length })
-        .eq('id', searchHistoryId);
-    } catch (err) {
-      console.error("Error updating search history:", err);
+  try {
+    // Call the search service with the parameters
+    const results = await searchForLeads(apiParams);
+    
+    console.log("Raw search results:", results);
+    console.log("Results type:", Array.isArray(results) ? `Array with ${results.length} items` : typeof results);
+    
+    if (results && Array.isArray(results) && results.length > 0) {
+      console.log("First result sample:", JSON.stringify(results[0]).substring(0, 200));
     }
     
-    // Save results to archive
-    if (transformedLeads.length > 0) {
-      saveSearchResults(transformedLeads, searchHistoryId);
+    // Transform results
+    const transformedLeads = transformApifyResults(results, 'people');
+    
+    console.log("Transformed leads:", transformedLeads);
+    
+    if (!transformedLeads || transformedLeads.length === 0) {
+      return [];
     }
+    
+    // Update search history with result count
+    if (user && searchHistoryId) {
+      try {
+        await supabase
+          .from('search_history')
+          .update({ result_count: transformedLeads.length })
+          .eq('id', searchHistoryId);
+      } catch (err) {
+        console.error("Error updating search history:", err);
+      }
+      
+      // Save results to archive
+      if (transformedLeads.length > 0) {
+        saveSearchResults(transformedLeads, searchHistoryId);
+      }
+    }
+    
+    // Map transformed leads to search results format
+    return mapLeadsToSearchResults(transformedLeads);
+    
+  } catch (error) {
+    console.error("Search error in handleSearch:", error);
+    
+    // Provide user-friendly error messages
+    if (error instanceof Error) {
+      if (error.message.includes('webhook service') || error.message.includes('Unable to connect')) {
+        toast({
+          title: "Service Unavailable",
+          description: "The search service is currently unavailable. This may be temporary. Please try again in a few minutes.",
+          variant: "destructive",
+        });
+      } else if (error.message.includes('timeout')) {
+        toast({
+          title: "Search Timeout",
+          description: "The search took too long to complete. Try using fewer search parameters or try again later.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Search Failed",
+          description: error.message || "An unexpected error occurred during search.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      toast({
+        title: "Search Failed",
+        description: "An unexpected error occurred during search.",
+        variant: "destructive",
+      });
+    }
+    
+    throw error; // Re-throw to be handled by calling component
   }
-  
-  // Map transformed leads to search results format
-  return mapLeadsToSearchResults(transformedLeads);
 };
 
 // Save search results to archive
