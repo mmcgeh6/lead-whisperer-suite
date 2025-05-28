@@ -23,6 +23,7 @@ export type Database = {
           id: string
           ideal_customer_webhook: string | null
           jobs_webhook: string | null
+          lead_search_webhook: string | null
           leadprovider: string | null
           linkedinenrichmentwebhook: string | null
           marketresearchwebhook: string | null
@@ -44,6 +45,7 @@ export type Database = {
           id: string
           ideal_customer_webhook?: string | null
           jobs_webhook?: string | null
+          lead_search_webhook?: string | null
           leadprovider?: string | null
           linkedinenrichmentwebhook?: string | null
           marketresearchwebhook?: string | null
@@ -65,6 +67,7 @@ export type Database = {
           id?: string
           ideal_customer_webhook?: string | null
           jobs_webhook?: string | null
+          lead_search_webhook?: string | null
           leadprovider?: string | null
           linkedinenrichmentwebhook?: string | null
           marketresearchwebhook?: string | null
