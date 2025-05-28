@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Apollo.io API Service
- * Handles integration with the Apollo.io API via Supabase Edge Function
+ * Handles direct integration with the Apollo.io API from the frontend
  */
 
 // Helper function to format search parameters for Apollo.io API
@@ -29,10 +29,10 @@ export const formatApolloSearchParams = (params: {
   };
 };
 
-// Function to make Apollo.io API requests via Supabase Edge Function
+// Function to make Apollo.io API requests directly from the frontend
 export const apolloApiRequest = async (params: any, apiKey: string): Promise<any> => {
   try {
-    console.log("Making Apollo.io API request via Supabase Edge Function");
+    console.log("Making direct Apollo.io API request");
     console.log("Request params:", params);
     
     // Format search parameters
@@ -40,25 +40,85 @@ export const apolloApiRequest = async (params: any, apiKey: string): Promise<any
     
     console.log("Formatted search params:", searchParams);
     
-    // Call the Supabase Edge Function
-    const { data, error } = await supabase.functions.invoke('apollo-search', {
-      body: {
-        searchParams,
-        apiKey
+    // Build the Apollo.io API URL
+    const apolloUrl = new URL('https://api.apollo.io/api/v1/mixed_people/search');
+    
+    // Add search parameters to URL
+    if (searchParams.personTitles && searchParams.personTitles.length > 0) {
+      searchParams.personTitles.forEach((title: string) => {
+        apolloUrl.searchParams.append('person_titles[]', title);
+      });
+    }
+    
+    if (searchParams.location) {
+      apolloUrl.searchParams.append('person_locations[]', searchParams.location);
+    }
+    
+    if (searchParams.organizationLocations && searchParams.organizationLocations.length > 0) {
+      searchParams.organizationLocations.forEach((location: string) => {
+        apolloUrl.searchParams.append('organization_locations[]', location);
+      });
+    }
+    
+    if (searchParams.seniorities && searchParams.seniorities.length > 0) {
+      searchParams.seniorities.forEach((seniority: string) => {
+        apolloUrl.searchParams.append('person_seniorities[]', seniority);
+      });
+    }
+    
+    if (searchParams.emailStatus && searchParams.emailStatus.length > 0) {
+      searchParams.emailStatus.forEach((status: string) => {
+        apolloUrl.searchParams.append('contact_email_status[]', status);
+      });
+    }
+    
+    if (searchParams.employeeRanges && searchParams.employeeRanges.length > 0) {
+      searchParams.employeeRanges.forEach((range: string) => {
+        apolloUrl.searchParams.append('organization_num_employees_ranges[]', range);
+      });
+    }
+
+    if (searchParams.keywords && searchParams.keywords.length > 0) {
+      const keywordsString = searchParams.keywords.join(" ");
+      apolloUrl.searchParams.append('q_keywords', keywordsString);
+    }
+    
+    apolloUrl.searchParams.append('page', '1');
+    apolloUrl.searchParams.append('per_page', (searchParams.limit || 20).toString());
+
+    console.log('Making direct Apollo.io API request to:', apolloUrl.toString());
+
+    // Make the direct request to Apollo.io API
+    const response = await fetch(apolloUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Content-Type': 'application/json',
+        'accept': 'application/json',
+        'x-api-key': apiKey
       }
     });
-    
-    if (error) {
-      console.error("Supabase Edge Function error:", error);
-      throw new Error(`Edge Function error: ${error.message}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Apollo.io API error: ${response.status} - ${errorText}`);
+      
+      let errorMessage = 'Apollo.io API request failed';
+      if (response.status === 401) {
+        errorMessage = 'Invalid Apollo.io API key';
+      } else if (response.status === 429) {
+        errorMessage = 'Apollo.io API rate limit exceeded';
+      } else if (response.status === 403) {
+        errorMessage = 'Apollo.io API access forbidden';
+      }
+      
+      throw new Error(`${errorMessage}: ${errorText}`);
     }
-    
-    if (data.error) {
-      console.error("Apollo.io API error from Edge Function:", data.error);
-      throw new Error(data.error);
-    }
-    
-    console.log("Successfully received response from Apollo.io API via Edge Function");
+
+    const data = await response.json();
+    console.log('Apollo.io API response received successfully');
+    console.log('Response data sample:', JSON.stringify(data).substring(0, 500));
+
     return data;
     
   } catch (error) {
@@ -66,14 +126,14 @@ export const apolloApiRequest = async (params: any, apiKey: string): Promise<any
     
     // Provide more specific error messages
     if (error instanceof Error) {
-      if (error.message.includes('Edge Function error')) {
-        throw new Error(`Apollo.io API error: ${error.message}`);
-      } else if (error.message.includes('Invalid Apollo.io API key')) {
+      if (error.message.includes('Invalid Apollo.io API key')) {
         throw new Error('Invalid Apollo.io API key. Please check your API key in settings.');
       } else if (error.message.includes('rate limit')) {
         throw new Error('Apollo.io API rate limit exceeded. Please try again later.');
       } else if (error.message.includes('access forbidden')) {
         throw new Error('Access forbidden. Please check your Apollo.io API permissions.');
+      } else if (error.message.includes('Failed to fetch')) {
+        throw new Error('Network error: Unable to connect to Apollo.io API. Please check your internet connection.');
       } else {
         throw new Error(`Apollo.io API error: ${error.message}`);
       }
