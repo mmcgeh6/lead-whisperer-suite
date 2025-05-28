@@ -73,7 +73,7 @@ export const getAppSettings = async (): Promise<AppSettings> => {
   }
 };
 
-// Main function to search for leads using Apollo.io API directly
+// Main function to search for leads using Apollo.io API via Supabase Edge Function
 export const searchForLeads = async (params: any) => {
   // Get settings from Supabase
   const settings = await getAppSettings();
@@ -89,16 +89,16 @@ export const searchForLeads = async (params: any) => {
     throw new Error("Apollo.io API key is required. Please add it in API Settings.");
   }
 
-  console.log("Searching with direct Apollo.io API");
+  console.log("Searching with Apollo.io API via Supabase Edge Function");
   return await searchApollo(params, settings.apolloApiKey);
 };
 
-// Search using Apollo API directly
+// Search using Apollo API via Supabase Edge Function
 const searchApollo = async (params: any, apiKey: string) => {
   try {
     console.log("Starting Apollo search with params:", params);
     
-    // Make the direct POST request to Apollo.io API
+    // Make the request via Supabase Edge Function
     const response = await apolloApiRequest(params, apiKey);
     console.log("Apollo.io API response received:", response ? "Response received" : "No response");
     
