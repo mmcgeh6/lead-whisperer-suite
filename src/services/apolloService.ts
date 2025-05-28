@@ -6,7 +6,49 @@ import { supabase } from "@/integrations/supabase/client";
  * Handles integration with Apollo.io API through n8n webhook to avoid CORS issues
  */
 
-const N8N_WEBHOOK_URL = "https://n8n-service-el78.onrender.com/webhook-test/c12e03c0-2618-4506-ab7d-2ced298ad959";
+// Helper function to get the lead search webhook URL from settings
+const getLeadSearchWebhookUrl = async (): Promise<string> => {
+  try {
+    // Try to get from Supabase first
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('lead_search_webhook')
+      .eq('id', 'default')
+      .single();
+    
+    if (!error && data?.lead_search_webhook) {
+      console.log("Using lead search webhook from database:", data.lead_search_webhook);
+      return data.lead_search_webhook;
+    }
+    
+    // Fallback to localStorage
+    const localWebhook = localStorage.getItem('lead_search_webhook');
+    if (localWebhook) {
+      console.log("Using lead search webhook from localStorage:", localWebhook);
+      return localWebhook;
+    }
+    
+    // Final fallback to hardcoded URL
+    const fallbackUrl = "https://n8n-service-el78.onrender.com/webhook-test/c12e03c0-2618-4506-ab7d-2ced298ad959";
+    console.log("Using fallback lead search webhook URL:", fallbackUrl);
+    return fallbackUrl;
+    
+  } catch (error) {
+    console.error("Error getting lead search webhook URL:", error);
+    
+    // Fallback to localStorage
+    const localWebhook = localStorage.getItem('lead_search_webhook');
+    if (localWebhook) {
+      console.log("Using lead search webhook from localStorage (after error):", localWebhook);
+      return localWebhook;
+    }
+    
+    // Final fallback
+    const fallbackUrl = "https://n8n-service-el78.onrender.com/webhook-test/c12e03c0-2618-4506-ab7d-2ced298ad959";
+    console.log("Using fallback lead search webhook URL (after error):", fallbackUrl);
+    return fallbackUrl;
+  }
+};
 
 // Helper function to format search parameters for Apollo.io API
 export const formatApolloSearchParams = (params: {
@@ -98,6 +140,10 @@ export const apolloApiRequest = async (params: any, apiKey: string): Promise<any
     console.log("Making Apollo.io API request via n8n webhook");
     console.log("Request params:", params);
     
+    // Get the webhook URL from settings
+    const webhookUrl = await getLeadSearchWebhookUrl();
+    console.log("Using webhook URL:", webhookUrl);
+    
     // Build the Apollo.io API URL
     const apolloQuery = buildApolloUrl(params);
     console.log("Built Apollo query URL:", apolloQuery);
@@ -112,7 +158,7 @@ export const apolloApiRequest = async (params: any, apiKey: string): Promise<any
     console.log("Sending to n8n webhook:", webhookPayload);
 
     // Make the request to n8n webhook
-    const response = await fetch(N8N_WEBHOOK_URL, {
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -138,7 +184,7 @@ export const apolloApiRequest = async (params: any, apiKey: string): Promise<any
     // Provide more specific error messages
     if (error instanceof Error) {
       if (error.message.includes('Failed to fetch')) {
-        throw new Error('Network error: Unable to connect to n8n webhook. Please check your internet connection.');
+        throw new Error('Network error: Unable to connect to n8n webhook. Please check your internet connection and webhook settings.');
       } else {
         throw new Error(`n8n webhook error: ${error.message}`);
       }

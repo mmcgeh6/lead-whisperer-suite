@@ -26,7 +26,8 @@ const webhookSettingsSchema = z.object({
   outreachWebhook: z.string().url().optional().or(z.literal("")),
   awardsWebhook: z.string().url().optional().or(z.literal("")),
   jobsWebhook: z.string().url().optional().or(z.literal("")),
-  contentWebhook: z.string().url().optional().or(z.literal(""))
+  contentWebhook: z.string().url().optional().or(z.literal("")),
+  leadSearchWebhook: z.string().url().optional().or(z.literal(""))
 });
 
 type WebhookSettingsValues = z.infer<typeof webhookSettingsSchema>;
@@ -49,7 +50,8 @@ export const WebhookSettings = () => {
       outreachWebhook: '',
       awardsWebhook: '',
       jobsWebhook: '',
-      contentWebhook: ''
+      contentWebhook: '',
+      leadSearchWebhook: ''
     },
   });
   
@@ -60,7 +62,7 @@ export const WebhookSettings = () => {
         // Fetch webhook settings from Supabase
         const { data, error } = await supabase
           .from('app_settings')
-          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook, outreach_webhook, awards_webhook, jobs_webhook, content_webhook')
+          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook, outreach_webhook, awards_webhook, jobs_webhook, content_webhook, lead_search_webhook')
           .eq('id', 'default')
           .single();
           
@@ -83,6 +85,7 @@ export const WebhookSettings = () => {
           form.setValue('awardsWebhook', data.awards_webhook || '');
           form.setValue('jobsWebhook', data.jobs_webhook || '');
           form.setValue('contentWebhook', data.content_webhook || '');
+          form.setValue('leadSearchWebhook', data.lead_search_webhook || '');
           
           // Also update localStorage for fallback
           if (data.profile_research_webhook) {
@@ -109,6 +112,10 @@ export const WebhookSettings = () => {
           if (data.content_webhook) {
             localStorage.setItem('content_webhook', data.content_webhook);
           }
+          
+          if (data.lead_search_webhook) {
+            localStorage.setItem('lead_search_webhook', data.lead_search_webhook);
+          }
         }
       } catch (error) {
         console.error("Failed to load webhook settings:", error);
@@ -125,6 +132,7 @@ export const WebhookSettings = () => {
         const awardsWebhook = localStorage.getItem('awards_webhook');
         const jobsWebhook = localStorage.getItem('jobs_webhook');
         const contentWebhook = localStorage.getItem('content_webhook');
+        const leadSearchWebhook = localStorage.getItem('lead_search_webhook');
         
         if (profileResearchWebhook) {
           form.setValue('profileResearchWebhook', profileResearchWebhook);
@@ -148,6 +156,10 @@ export const WebhookSettings = () => {
         
         if (contentWebhook) {
           form.setValue('contentWebhook', contentWebhook);
+        }
+        
+        if (leadSearchWebhook) {
+          form.setValue('leadSearchWebhook', leadSearchWebhook);
         }
       } finally {
         setIsLoading(false);
@@ -177,6 +189,7 @@ export const WebhookSettings = () => {
           awards_webhook: data.awardsWebhook || null,
           jobs_webhook: data.jobsWebhook || null,
           content_webhook: data.contentWebhook || null,
+          lead_search_webhook: data.leadSearchWebhook || null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       
@@ -195,6 +208,7 @@ export const WebhookSettings = () => {
       localStorage.setItem('awards_webhook', data.awardsWebhook || '');
       localStorage.setItem('jobs_webhook', data.jobsWebhook || '');
       localStorage.setItem('content_webhook', data.contentWebhook || '');
+      localStorage.setItem('lead_search_webhook', data.leadSearchWebhook || '');
       
       console.log("Saved webhooks to localStorage");
       
@@ -250,6 +264,33 @@ export const WebhookSettings = () => {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium mb-3">Lead Search</h3>
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="leadSearchWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lead Search Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/lead-search"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook endpoint for Apollo.io lead search functionality
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+            
+            <Separator className="my-4" />
+            
             <div>
               <h3 className="text-lg font-medium mb-3">Contact & Company Enrichment</h3>
               <div className="space-y-4">
