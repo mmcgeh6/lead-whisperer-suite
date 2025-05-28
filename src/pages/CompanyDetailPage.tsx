@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -9,9 +8,10 @@ import { CompanyContacts } from "@/components/companies/CompanyContacts";
 import { CompanyOutreach } from "@/components/companies/CompanyOutreach";
 import { ContactDetailDialog } from "@/components/contacts/ContactDetailDialog";
 import { Button } from "@/components/ui/button";
-import { CompanyInsights } from "@/components/insights/CompanyInsights";
 import { CompanyResearch } from "@/components/research/CompanyResearch";
 import { SimilarCompanies } from "@/components/insights/SimilarCompanies";
+import { ContentInsights } from "@/components/insights/ContentInsights";
+import { FacebookAdsInsight } from "@/components/insights/FacebookAdsInsight";
 import { useEnrichment } from "@/hooks/useEnrichment";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -200,10 +200,13 @@ const CompanyDetailPage = () => {
         {/* Module 3: Personalized Outreach */}
         <CompanyOutreach companyName={company.name} />
         
-        {/* Module 4: Company Insights */}
-        <CompanyInsights companyId={company.id} />
+        {/* Module 4: Content Insights */}
+        <ContentInsights company={company} />
         
-        {/* Module 5: Company Research */}
+        {/* Module 5: Facebook Ads */}
+        <FacebookAdsInsight company={company} />
+        
+        {/* Module 6: Company Research */}
         <CompanyResearch companyId={company.id} />
       </div>
     </Layout>
