@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -76,62 +75,59 @@ export const formatApolloSearchParams = (params: {
 // Function to build Apollo.io API URL
 const buildApolloUrl = (params: any): string => {
   const searchParams = formatApolloSearchParams(params);
-  const apolloUrl = new URL('https://api.apollo.io/api/v1/mixed_people/search');
+  
+  // Start with base URL
+  let apolloUrl = 'https://api.apollo.io/api/v1/mixed_people/search?';
+  const urlParams: string[] = [];
   
   // Add person_titles[] parameter (empty if no titles provided)
   if (searchParams.personTitles && searchParams.personTitles.length > 0) {
     searchParams.personTitles.forEach((title: string) => {
-      apolloUrl.searchParams.append('person_titles[]', title);
+      urlParams.push(`person_titles[]=${encodeURIComponent(title)}`);
     });
   } else {
-    apolloUrl.searchParams.append('person_titles[]', '');
+    urlParams.push('person_titles[]=');
   }
   
-  // Add person_locations[] parameter
+  // Add person_locations[] parameter (use location for person location)
   if (searchParams.location) {
-    apolloUrl.searchParams.append('person_locations[]', searchParams.location);
-  }
-  
-  // Add organization_locations[] parameter
-  if (searchParams.organizationLocations && searchParams.organizationLocations.length > 0) {
-    searchParams.organizationLocations.forEach((location: string) => {
-      apolloUrl.searchParams.append('organization_locations[]', location);
-    });
+    urlParams.push(`person_locations[]=${encodeURIComponent(searchParams.location)}`);
   }
   
   // Add person_seniorities[] parameter
   if (searchParams.seniorities && searchParams.seniorities.length > 0) {
     searchParams.seniorities.forEach((seniority: string) => {
-      apolloUrl.searchParams.append('person_seniorities[]', seniority);
+      urlParams.push(`person_seniorities[]=${encodeURIComponent(seniority)}`);
     });
   }
   
   // Add contact_email_status[] parameter
   if (searchParams.emailStatus && searchParams.emailStatus.length > 0) {
     searchParams.emailStatus.forEach((status: string) => {
-      apolloUrl.searchParams.append('contact_email_status[]', status);
+      urlParams.push(`contact_email_status[]=${encodeURIComponent(status)}`);
     });
   }
   
   // Add organization_num_employees_ranges[] parameter
   if (searchParams.employeeRanges && searchParams.employeeRanges.length > 0) {
     searchParams.employeeRanges.forEach((range: string) => {
-      apolloUrl.searchParams.append('organization_num_employees_ranges[]', range);
+      urlParams.push(`organization_num_employees_ranges[]=${encodeURIComponent(range)}`);
     });
   }
 
   // Add q_keywords parameter (combine keywords into single string)
   if (searchParams.keywords && searchParams.keywords.length > 0) {
     const keywordsString = searchParams.keywords.join(" ");
-    apolloUrl.searchParams.append('q_keywords', keywordsString);
+    urlParams.push(`q_keywords=${encodeURIComponent(keywordsString)}`);
   }
   
   // Add pagination parameters (default to page 1, max 100 per page)
   const limit = Math.min(searchParams.limit, 100);
-  apolloUrl.searchParams.append('page', '1');
-  apolloUrl.searchParams.append('per_page', limit.toString());
+  urlParams.push('page=1');
+  urlParams.push(`per_page=${limit}`);
 
-  return apolloUrl.toString();
+  // Join all parameters and return the final URL
+  return apolloUrl + urlParams.join('&');
 };
 
 // Function to make Apollo.io API requests via n8n webhook
