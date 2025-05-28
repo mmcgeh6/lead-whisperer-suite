@@ -1,18 +1,12 @@
 
-/**
- * Lead Storage Service
- * Handles storing, retrieving, and archiving lead data in Supabase
- */
-
 import { supabase } from "@/integrations/supabase/client";
-import { PeopleSearchResult } from "./apifyService";
 
 // Save search history to Supabase
 export const saveSearchHistory = async (
   userId: string,
   searchType: string,
   searchParams: any,
-  titles: string[] = []
+  personTitles?: string[]
 ): Promise<string | null> => {
   try {
     const { data, error } = await supabase
@@ -21,29 +15,29 @@ export const saveSearchHistory = async (
         user_id: userId,
         search_type: searchType,
         search_params: searchParams,
-        person_titles: titles,
-        result_count: 0 // Will be updated after results are received
+        person_titles: personTitles || [],
+        result_count: 0 // Will be updated later
       })
       .select('id')
       .single();
-
+      
     if (error) {
       console.error("Error saving search history:", error);
       return null;
     }
     
-    return data.id;
+    return data?.id || null;
   } catch (error) {
-    console.error("Error in saveSearchHistory:", error);
+    console.error("Exception saving search history:", error);
     return null;
   }
 };
 
-// Update search history record with result count
+// Update search result count
 export const updateSearchResultCount = async (
   searchId: string,
   resultCount: number
-): Promise<boolean> => {
+): Promise<void> => {
   try {
     const { error } = await supabase
       .from('search_history')
@@ -51,62 +45,66 @@ export const updateSearchResultCount = async (
       .eq('id', searchId);
       
     if (error) {
-      console.error("Error updating search history count:", error);
-      return false;
+      console.error("Error updating search result count:", error);
     }
-    
-    return true;
   } catch (error) {
-    console.error("Error in updateSearchResultCount:", error);
-    return false;
+    console.error("Exception updating search result count:", error);
   }
 };
 
-// Archive search results to prevent duplicate processing
+// Archive search results to Supabase
 export const archiveSearchResults = async (
   searchId: string,
   results: any[]
-): Promise<boolean> => {
-  if (!results || results.length === 0) {
-    return false;
-  }
-
+): Promise<void> => {
   try {
-    const archiveData = results.map(lead => {
-      // Create a unique identifier to prevent duplicates
-      let uniqueId = `unknown-${Date.now()}-${Math.random()}`;
-      
-      // Type guard for PeopleSearchResult
-      const peopleResult = lead as PeopleSearchResult;
-      
-      // If it has contact and company properties
-      if (peopleResult && peopleResult.contact && peopleResult.company) {
-        uniqueId = `${peopleResult.company.name || ''}-${peopleResult.contact.firstName || ''}-${peopleResult.contact.lastName || ''}-${peopleResult.contact.title || ''}`;
-      }
-      
-      return {
-        search_id: searchId,
-        result_data: lead,
-        unique_identifier: uniqueId
-      };
-    });
+    console.log(`Archiving ${results.length} search results for search ${searchId}`);
     
-    // Use upsert with onConflict to handle duplicates
-    const { error } = await supabase
+    // Prepare data for bulk insert
+    const archiveData = results.map(result => ({
+      search_id: searchId,
+      result_data: result,
+      unique_identifier: `${searchId}-${result.id || Math.random()}`,
+      added_to_list: false
+    }));
+    
+    console.log("Archive data prepared:", archiveData.length, "records");
+    
+    const { data, error } = await supabase
       .from('search_results_archive')
-      .upsert(archiveData, {
-        onConflict: 'unique_identifier',
-        ignoreDuplicates: true
-      });
+      .insert(archiveData)
+      .select('id');
       
     if (error) {
       console.error("Error archiving search results:", error);
-      return false;
+      throw error;
     }
     
-    return true;
+    console.log(`Successfully archived ${data?.length || 0} search results`);
   } catch (error) {
-    console.error("Error in archiveSearchResults:", error);
-    return false;
+    console.error("Exception archiving search results:", error);
+    throw error;
+  }
+};
+
+// Get archived search results
+export const getArchivedSearchResults = async (
+  searchId: string
+): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('search_results_archive')
+      .select('*')
+      .eq('search_id', searchId);
+      
+    if (error) {
+      console.error("Error getting archived search results:", error);
+      return [];
+    }
+    
+    return data?.map(item => item.result_data) || [];
+  } catch (error) {
+    console.error("Exception getting archived search results:", error);
+    return [];
   }
 };
