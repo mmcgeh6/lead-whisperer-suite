@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -217,9 +218,21 @@ export const parseApolloResponse = (response: any): ApolloResponse => {
     };
   }
   
+  console.log("Raw response structure:", typeof response, Array.isArray(response));
+  
+  // Handle array response from n8n webhook
+  let apolloData;
+  if (Array.isArray(response) && response.length > 0) {
+    // n8n webhook returns an array, get the first element which contains the Apollo response
+    apolloData = response[0];
+    console.log("Extracting Apollo data from array response");
+  } else {
+    apolloData = response;
+  }
+  
   // Apollo.io API returns data in this format directly
-  const people = response.people || [];
-  const pagination = response.pagination || {
+  const people = apolloData?.people || [];
+  const pagination = apolloData?.pagination || {
     page: 1,
     per_page: people.length,
     total_entries: people.length,
@@ -227,6 +240,11 @@ export const parseApolloResponse = (response: any): ApolloResponse => {
   };
   
   console.log(`Found ${people.length} people results from Apollo.io via n8n webhook`);
+  console.log("Pagination info:", pagination);
+  
+  if (people.length > 0) {
+    console.log("First person sample:", JSON.stringify(people[0]).substring(0, 200));
+  }
   
   return {
     people: people,
