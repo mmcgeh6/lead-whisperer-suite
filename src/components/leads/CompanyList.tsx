@@ -1,10 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useAppContext } from "@/context/AppContext";
 import { Company } from "@/types";
 import { Eye, Edit, Building2, MapPin, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -23,7 +21,6 @@ export const CompanyList = ({
   onCompanySelect,
   hideOptions = false
 }: CompanyListProps) => {
-  const { companies } = useAppContext();
   const [displayCompanies, setDisplayCompanies] = useState<Array<Company>>([]);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -38,22 +35,22 @@ export const CompanyList = ({
       // Otherwise, load companies from database if user is authenticated
       if (user) {
         loadCompanies();
-      } else {
-        // Use the existing companies from context if no user
-        setDisplayCompanies(companies);
       }
     }
-  }, [companies, newLeads, user]);
+  }, [newLeads, user]);
 
   const loadCompanies = async () => {
     if (!user) return;
     
     try {
+      console.log("Loading companies for user:", user.id);
+      
       // Fetch companies associated with the current user
       const { data, error } = await supabase
         .from('companies')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
         
       if (error) {
         console.error('Error loading companies:', error);
@@ -61,6 +58,8 @@ export const CompanyList = ({
       }
       
       if (data) {
+        console.log(`Loaded ${data.length} companies from database`);
+        
         // Transform the data to match our Company type (convert snake_case to camelCase)
         const formattedCompanies: Company[] = data.map(item => ({
           id: item.id,
@@ -99,6 +98,7 @@ export const CompanyList = ({
   };
 
   const handleViewCompany = (id: string) => {
+    console.log("Navigating to company:", id);
     navigate(`/leads/company/${id}`);
   };
 

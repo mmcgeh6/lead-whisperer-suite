@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import { Layout } from "@/components/Layout";
@@ -14,21 +14,107 @@ import { CompanyResearch } from "@/components/research/CompanyResearch";
 import { SimilarCompanies } from "@/components/insights/SimilarCompanies";
 import { useEnrichment } from "@/hooks/useEnrichment";
 import { Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { Company } from "@/types";
 
 const CompanyDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { companies, contacts } = useAppContext();
+  const { contacts } = useAppContext();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [company, setCompany] = useState<Company | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  // Find the company and related data
-  const company = companies.find((c) => c.id === id);
+  // Find the related data
   const companyContacts = contacts.filter((c) => c.companyId === id);
   const selectedContact = companyContacts.find(c => c.id === selectedContactId) || null;
   
   // Create enrichment props with proper null handling
   const enrichmentProps = useEnrichment(company || null);
+
+  // Fetch company from database
+  useEffect(() => {
+    const fetchCompany = async () => {
+      if (!id || !user) return;
+      
+      setLoading(true);
+      try {
+        console.log("Fetching company with ID:", id);
+        
+        const { data, error } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching company:", error);
+          if (error.code === 'PGRST116') {
+            // No rows returned
+            setCompany(null);
+          } else {
+            throw error;
+          }
+        } else if (data) {
+          console.log("Found company:", data);
+          // Transform the data to match our Company type
+          const formattedCompany: Company = {
+            id: data.id,
+            name: data.name,
+            website: data.website || "",
+            industry: data.industry || "",
+            industry_vertical: data.industry_vertical,
+            size: data.size || "",
+            location: data.location || "",
+            street: data.street,
+            city: data.city,
+            state: data.state,
+            zip: data.zip,
+            country: data.country,
+            phone: data.phone,
+            description: data.description || "",
+            facebook_url: data.facebook_url,
+            twitter_url: data.twitter_url,
+            linkedin_url: data.linkedin_url,
+            keywords: data.keywords || [],
+            createdAt: data.created_at || new Date().toISOString(),
+            updatedAt: data.updated_at || new Date().toISOString(),
+            call_script: data.call_script,
+            email_script: data.email_script,
+            text_script: data.text_script,
+            social_dm_script: data.social_dm_script,
+            research_notes: data.research_notes,
+            user_id: data.user_id
+          };
+          setCompany(formattedCompany);
+        } else {
+          setCompany(null);
+        }
+      } catch (error) {
+        console.error("Exception fetching company:", error);
+        setCompany(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCompany();
+  }, [id, user]);
+  
+  if (loading) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold mb-4">Loading...</h2>
+          <p className="text-gray-500">Fetching company details...</p>
+        </div>
+      </Layout>
+    );
+  }
   
   if (!company) {
     return (
