@@ -108,6 +108,8 @@ export type Database = {
           state: string | null
           street: string | null
           tags: string[] | null
+          tech_stack_data: Json | null
+          tech_stack_last_updated: string | null
           text_script: string | null
           twitter_url: string | null
           updated_at: string
@@ -138,6 +140,8 @@ export type Database = {
           state?: string | null
           street?: string | null
           tags?: string[] | null
+          tech_stack_data?: Json | null
+          tech_stack_last_updated?: string | null
           text_script?: string | null
           twitter_url?: string | null
           updated_at?: string
@@ -168,6 +172,8 @@ export type Database = {
           state?: string | null
           street?: string | null
           tags?: string[] | null
+          tech_stack_data?: Json | null
+          tech_stack_last_updated?: string | null
           text_script?: string | null
           twitter_url?: string | null
           updated_at?: string
@@ -193,6 +199,8 @@ export type Database = {
           profile_research: string | null
           running_facebook_ads: boolean | null
           suggested_approach: string | null
+          tech_stack_data: Json | null
+          tech_stack_last_updated: string | null
           updated_at: string
         }
         Insert: {
@@ -210,6 +218,8 @@ export type Database = {
           profile_research?: string | null
           running_facebook_ads?: boolean | null
           suggested_approach?: string | null
+          tech_stack_data?: Json | null
+          tech_stack_last_updated?: string | null
           updated_at?: string
         }
         Update: {
@@ -227,6 +237,8 @@ export type Database = {
           profile_research?: string | null
           running_facebook_ads?: boolean | null
           suggested_approach?: string | null
+          tech_stack_data?: Json | null
+          tech_stack_last_updated?: string | null
           updated_at?: string
         }
         Relationships: [
