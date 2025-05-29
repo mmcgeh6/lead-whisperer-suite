@@ -3,18 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const moveCompanyToList = async (companyId: string, oldListId: string | null, newListId: string) => {
   try {
-    // Start a transaction by removing from old list first
-    if (oldListId) {
-      const { error: deleteError } = await supabase
-        .from('list_companies_new')
-        .delete()
-        .eq('company_id', companyId)
-        .eq('list_id', oldListId);
+    // First, remove the company from ALL lists to avoid duplicates
+    const { error: deleteError } = await supabase
+      .from('list_companies_new')
+      .delete()
+      .eq('company_id', companyId);
 
-      if (deleteError) {
-        console.error("Error removing from old list:", deleteError);
-        throw deleteError;
-      }
+    if (deleteError) {
+      console.error("Error removing from all lists:", deleteError);
+      throw deleteError;
     }
 
     // Add to new list
