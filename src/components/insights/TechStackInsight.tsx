@@ -62,7 +62,8 @@ export const TechStackInsight = ({ company }: TechStackInsightProps) => {
         }
 
         if (data?.tech_stack_data) {
-          setTechStackData(data.tech_stack_data as TechStackData);
+          // Properly cast the JSON data to our TechStackData type
+          setTechStackData(data.tech_stack_data as unknown as TechStackData);
         }
       } catch (error) {
         console.error("Error loading tech stack data:", error);
