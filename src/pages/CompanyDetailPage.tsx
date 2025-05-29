@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -6,6 +7,7 @@ import { CompanyBanner } from "@/components/companies/CompanyBanner";
 import { CompanyAbout } from "@/components/companies/CompanyAbout";
 import { CompanyContacts } from "@/components/companies/CompanyContacts";
 import { CompanyOutreach } from "@/components/companies/CompanyOutreach";
+import { CompanyTags } from "@/components/companies/CompanyTags";
 import { ContactDetailDialog } from "@/components/contacts/ContactDetailDialog";
 import { Button } from "@/components/ui/button";
 import { CompanyResearch } from "@/components/research/CompanyResearch";
@@ -156,6 +158,9 @@ const CompanyDetailPage = () => {
           isEnriching={enrichmentProps.isEnriching} 
           handleEnrichCompany={enrichmentProps.handleEnrichCompany} 
         />
+
+        {/* Company Tags */}
+        <CompanyTags company={company} />
 
         {/* Module 1: About Company */}
         <CompanyAbout company={company} />

@@ -27,7 +27,8 @@ const webhookSettingsSchema = z.object({
   awardsWebhook: z.string().url().optional().or(z.literal("")),
   jobsWebhook: z.string().url().optional().or(z.literal("")),
   contentWebhook: z.string().url().optional().or(z.literal("")),
-  leadSearchWebhook: z.string().url().optional().or(z.literal(""))
+  leadSearchWebhook: z.string().url().optional().or(z.literal("")),
+  facebookAdsWebhook: z.string().url().optional().or(z.literal(""))
 });
 
 type WebhookSettingsValues = z.infer<typeof webhookSettingsSchema>;
@@ -51,7 +52,8 @@ export const WebhookSettings = () => {
       awardsWebhook: '',
       jobsWebhook: '',
       contentWebhook: '',
-      leadSearchWebhook: ''
+      leadSearchWebhook: '',
+      facebookAdsWebhook: ''
     },
   });
   
@@ -62,7 +64,7 @@ export const WebhookSettings = () => {
         // Fetch webhook settings from Supabase
         const { data, error } = await supabase
           .from('app_settings')
-          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook, outreach_webhook, awards_webhook, jobs_webhook, content_webhook, lead_search_webhook')
+          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook, outreach_webhook, awards_webhook, jobs_webhook, content_webhook, lead_search_webhook, facebook_ads_webhook')
           .eq('id', 'default')
           .single();
           
@@ -86,6 +88,7 @@ export const WebhookSettings = () => {
           form.setValue('jobsWebhook', data.jobs_webhook || '');
           form.setValue('contentWebhook', data.content_webhook || '');
           form.setValue('leadSearchWebhook', data.lead_search_webhook || '');
+          form.setValue('facebookAdsWebhook', data.facebook_ads_webhook || '');
           
           // Also update localStorage for fallback
           if (data.profile_research_webhook) {
@@ -116,6 +119,10 @@ export const WebhookSettings = () => {
           if (data.lead_search_webhook) {
             localStorage.setItem('lead_search_webhook', data.lead_search_webhook);
           }
+          
+          if (data.facebook_ads_webhook) {
+            localStorage.setItem('facebook_ads_webhook', data.facebook_ads_webhook);
+          }
         }
       } catch (error) {
         console.error("Failed to load webhook settings:", error);
@@ -133,6 +140,7 @@ export const WebhookSettings = () => {
         const jobsWebhook = localStorage.getItem('jobs_webhook');
         const contentWebhook = localStorage.getItem('content_webhook');
         const leadSearchWebhook = localStorage.getItem('lead_search_webhook');
+        const facebookAdsWebhook = localStorage.getItem('facebook_ads_webhook');
         
         if (profileResearchWebhook) {
           form.setValue('profileResearchWebhook', profileResearchWebhook);
@@ -160,6 +168,10 @@ export const WebhookSettings = () => {
         
         if (leadSearchWebhook) {
           form.setValue('leadSearchWebhook', leadSearchWebhook);
+        }
+        
+        if (facebookAdsWebhook) {
+          form.setValue('facebookAdsWebhook', facebookAdsWebhook);
         }
       } finally {
         setIsLoading(false);
@@ -190,6 +202,7 @@ export const WebhookSettings = () => {
           jobs_webhook: data.jobsWebhook || null,
           content_webhook: data.contentWebhook || null,
           lead_search_webhook: data.leadSearchWebhook || null,
+          facebook_ads_webhook: data.facebookAdsWebhook || null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       
@@ -209,6 +222,7 @@ export const WebhookSettings = () => {
       localStorage.setItem('jobs_webhook', data.jobsWebhook || '');
       localStorage.setItem('content_webhook', data.contentWebhook || '');
       localStorage.setItem('lead_search_webhook', data.leadSearchWebhook || '');
+      localStorage.setItem('facebook_ads_webhook', data.facebookAdsWebhook || '');
       
       console.log("Saved webhooks to localStorage");
       
@@ -483,6 +497,26 @@ export const WebhookSettings = () => {
                       </FormControl>
                       <FormDescription>
                         Webhook URL for generating company content audit insights
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="facebookAdsWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Facebook Ads Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/facebook-ads"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook URL for searching Facebook ad campaigns
                       </FormDescription>
                     </FormItem>
                   )}

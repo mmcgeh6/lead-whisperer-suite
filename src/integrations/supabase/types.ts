@@ -19,6 +19,7 @@ export type Database = {
           content_webhook: string | null
           created_at: string | null
           emailfinderwebhook: string | null
+          facebook_ads_webhook: string | null
           growthresearchwebhook: string | null
           id: string
           ideal_customer_webhook: string | null
@@ -41,6 +42,7 @@ export type Database = {
           content_webhook?: string | null
           created_at?: string | null
           emailfinderwebhook?: string | null
+          facebook_ads_webhook?: string | null
           growthresearchwebhook?: string | null
           id: string
           ideal_customer_webhook?: string | null
@@ -63,6 +65,7 @@ export type Database = {
           content_webhook?: string | null
           created_at?: string | null
           emailfinderwebhook?: string | null
+          facebook_ads_webhook?: string | null
           growthresearchwebhook?: string | null
           id?: string
           ideal_customer_webhook?: string | null
