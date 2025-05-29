@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { Company, Contact, EmailTemplate, EmailConfig } from "../types";
 import { mockEmailTemplates } from "../data/mockData";
@@ -69,7 +70,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           facebook_url: company.facebook_url || "",
           twitter_url: company.twitter_url || "",
           linkedin_url: company.linkedin_url || "",
-          keywords: company.keywords || [],
+          tags: company.tags || [],
           call_script: company.call_script || "",
           email_script: company.email_script || "",
           text_script: company.text_script || "",

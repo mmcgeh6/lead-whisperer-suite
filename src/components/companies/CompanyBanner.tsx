@@ -59,13 +59,13 @@ export const CompanyBanner = ({ company, isEnriching, handleEnrichCompany }: Com
                   </a>
                 </div>
               )}
-              {company.keywords && company.keywords.length > 0 && (
+              {company.tags && company.tags.length > 0 && (
                 <div className="flex items-center text-gray-600 col-span-3 flex-wrap">
                   <Hash className="h-4 w-4 mr-2 flex-shrink-0" /> 
                   <div className="flex flex-wrap gap-2">
-                    {company.keywords.map((keyword, index) => (
+                    {company.tags.map((tag, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
-                        {keyword}
+                        {tag}
                       </Badge>
                     ))}
                   </div>
