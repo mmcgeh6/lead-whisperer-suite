@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -14,6 +13,7 @@ import { CompanyResearch } from "@/components/research/CompanyResearch";
 import { SimilarCompanies } from "@/components/insights/SimilarCompanies";
 import { ContentInsights } from "@/components/insights/ContentInsights";
 import { FacebookAdsInsight } from "@/components/insights/FacebookAdsInsight";
+import { TechStackInsight } from "@/components/insights/TechStackInsight";
 import { useEnrichment } from "@/hooks/useEnrichment";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,7 +82,7 @@ const CompanyDetailPage = () => {
             facebook_url: data.facebook_url,
             twitter_url: data.twitter_url,
             linkedin_url: data.linkedin_url,
-            keywords: data.keywords || [],
+            tags: data.tags || [],
             createdAt: data.created_at || new Date().toISOString(),
             updatedAt: data.updated_at || new Date().toISOString(),
             call_script: data.call_script,
@@ -211,7 +211,10 @@ const CompanyDetailPage = () => {
         {/* Module 5: Facebook Ads */}
         <FacebookAdsInsight company={company} />
         
-        {/* Module 6: Company Research */}
+        {/* Module 6: Tech Stack */}
+        <TechStackInsight company={company} />
+        
+        {/* Module 7: Company Research */}
         <CompanyResearch companyId={company.id} />
       </div>
     </Layout>

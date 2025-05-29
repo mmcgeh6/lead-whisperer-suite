@@ -19,7 +19,7 @@ export const CompanyTags = ({ company }: CompanyTagsProps) => {
   const [tagInput, setTagInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const tags = company.keywords || [];
+  const tags = company.tags || [];
 
   const handleAddTags = async () => {
     if (!tagInput.trim()) return;
@@ -46,7 +46,7 @@ export const CompanyTags = ({ company }: CompanyTagsProps) => {
       
       const updatedCompany = {
         ...company,
-        keywords: updatedTags
+        tags: updatedTags
       };
       
       await updateCompany(updatedCompany);
@@ -75,7 +75,7 @@ export const CompanyTags = ({ company }: CompanyTagsProps) => {
       
       const updatedCompany = {
         ...company,
-        keywords: updatedTags
+        tags: updatedTags
       };
       
       await updateCompany(updatedCompany);

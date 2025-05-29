@@ -28,7 +28,8 @@ const webhookSettingsSchema = z.object({
   jobsWebhook: z.string().url().optional().or(z.literal("")),
   contentWebhook: z.string().url().optional().or(z.literal("")),
   leadSearchWebhook: z.string().url().optional().or(z.literal("")),
-  facebookAdsWebhook: z.string().url().optional().or(z.literal(""))
+  facebookAdsWebhook: z.string().url().optional().or(z.literal("")),
+  techStackWebhook: z.string().url().optional().or(z.literal(""))
 });
 
 type WebhookSettingsValues = z.infer<typeof webhookSettingsSchema>;
@@ -53,7 +54,8 @@ export const WebhookSettings = () => {
       jobsWebhook: '',
       contentWebhook: '',
       leadSearchWebhook: '',
-      facebookAdsWebhook: ''
+      facebookAdsWebhook: '',
+      techStackWebhook: ''
     },
   });
   
@@ -64,7 +66,7 @@ export const WebhookSettings = () => {
         // Fetch webhook settings from Supabase
         const { data, error } = await supabase
           .from('app_settings')
-          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook, outreach_webhook, awards_webhook, jobs_webhook, content_webhook, lead_search_webhook, facebook_ads_webhook')
+          .select('emailfinderwebhook, linkedinenrichmentwebhook, companyenrichmentwebhook, profile_research_webhook, ideal_customer_webhook, outreach_webhook, awards_webhook, jobs_webhook, content_webhook, lead_search_webhook, facebook_ads_webhook, tech_stack_webhook')
           .eq('id', 'default')
           .single();
           
@@ -89,6 +91,7 @@ export const WebhookSettings = () => {
           form.setValue('contentWebhook', data.content_webhook || '');
           form.setValue('leadSearchWebhook', data.lead_search_webhook || '');
           form.setValue('facebookAdsWebhook', data.facebook_ads_webhook || '');
+          form.setValue('techStackWebhook', data.tech_stack_webhook || '');
           
           // Also update localStorage for fallback
           if (data.profile_research_webhook) {
@@ -123,6 +126,10 @@ export const WebhookSettings = () => {
           if (data.facebook_ads_webhook) {
             localStorage.setItem('facebook_ads_webhook', data.facebook_ads_webhook);
           }
+          
+          if (data.tech_stack_webhook) {
+            localStorage.setItem('tech_stack_webhook', data.tech_stack_webhook);
+          }
         }
       } catch (error) {
         console.error("Failed to load webhook settings:", error);
@@ -141,6 +148,7 @@ export const WebhookSettings = () => {
         const contentWebhook = localStorage.getItem('content_webhook');
         const leadSearchWebhook = localStorage.getItem('lead_search_webhook');
         const facebookAdsWebhook = localStorage.getItem('facebook_ads_webhook');
+        const techStackWebhook = localStorage.getItem('tech_stack_webhook');
         
         if (profileResearchWebhook) {
           form.setValue('profileResearchWebhook', profileResearchWebhook);
@@ -173,6 +181,10 @@ export const WebhookSettings = () => {
         if (facebookAdsWebhook) {
           form.setValue('facebookAdsWebhook', facebookAdsWebhook);
         }
+        
+        if (techStackWebhook) {
+          form.setValue('techStackWebhook', techStackWebhook);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -203,6 +215,7 @@ export const WebhookSettings = () => {
           content_webhook: data.contentWebhook || null,
           lead_search_webhook: data.leadSearchWebhook || null,
           facebook_ads_webhook: data.facebookAdsWebhook || null,
+          tech_stack_webhook: data.techStackWebhook || null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       
@@ -223,6 +236,7 @@ export const WebhookSettings = () => {
       localStorage.setItem('content_webhook', data.contentWebhook || '');
       localStorage.setItem('lead_search_webhook', data.leadSearchWebhook || '');
       localStorage.setItem('facebook_ads_webhook', data.facebookAdsWebhook || '');
+      localStorage.setItem('tech_stack_webhook', data.techStackWebhook || '');
       
       console.log("Saved webhooks to localStorage");
       
@@ -517,6 +531,26 @@ export const WebhookSettings = () => {
                       </FormControl>
                       <FormDescription>
                         Webhook URL for searching Facebook ad campaigns
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="techStackWebhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tech Stack Webhook</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/webhook/tech-stack"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Webhook URL for analyzing company technology stack
                       </FormDescription>
                     </FormItem>
                   )}

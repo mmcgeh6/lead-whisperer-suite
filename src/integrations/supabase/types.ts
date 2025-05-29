@@ -30,6 +30,7 @@ export type Database = {
           marketresearchwebhook: string | null
           outreach_webhook: string | null
           profile_research_webhook: string | null
+          tech_stack_webhook: string | null
           techresearchwebhook: string | null
           updated_at: string | null
         }
@@ -53,6 +54,7 @@ export type Database = {
           marketresearchwebhook?: string | null
           outreach_webhook?: string | null
           profile_research_webhook?: string | null
+          tech_stack_webhook?: string | null
           techresearchwebhook?: string | null
           updated_at?: string | null
         }
@@ -76,6 +78,7 @@ export type Database = {
           marketresearchwebhook?: string | null
           outreach_webhook?: string | null
           profile_research_webhook?: string | null
+          tech_stack_webhook?: string | null
           techresearchwebhook?: string | null
           updated_at?: string | null
         }
@@ -93,7 +96,6 @@ export type Database = {
           id: string
           industry: string | null
           industry_vertical: string | null
-          keywords: string[] | null
           linkedin_url: string | null
           location: string | null
           name: string
@@ -103,6 +105,7 @@ export type Database = {
           social_dm_script: string | null
           state: string | null
           street: string | null
+          tags: string[] | null
           text_script: string | null
           twitter_url: string | null
           updated_at: string
@@ -121,7 +124,6 @@ export type Database = {
           id?: string
           industry?: string | null
           industry_vertical?: string | null
-          keywords?: string[] | null
           linkedin_url?: string | null
           location?: string | null
           name: string
@@ -131,6 +133,7 @@ export type Database = {
           social_dm_script?: string | null
           state?: string | null
           street?: string | null
+          tags?: string[] | null
           text_script?: string | null
           twitter_url?: string | null
           updated_at?: string
@@ -149,7 +152,6 @@ export type Database = {
           id?: string
           industry?: string | null
           industry_vertical?: string | null
-          keywords?: string[] | null
           linkedin_url?: string | null
           location?: string | null
           name?: string
@@ -159,6 +161,7 @@ export type Database = {
           social_dm_script?: string | null
           state?: string | null
           street?: string | null
+          tags?: string[] | null
           text_script?: string | null
           twitter_url?: string | null
           updated_at?: string
