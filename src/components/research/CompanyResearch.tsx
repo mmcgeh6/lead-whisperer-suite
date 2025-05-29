@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,6 @@ interface CompanyResearchProps {
 export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
   const { companies } = useAppContext();
   const { toast } = useToast();
-  const company = companies.find((c) => c.id === companyId);
   
   const [isGeneratingProfileResearch, setIsGeneratingProfileResearch] = useState(false);
   const [isGeneratingIdealCustomer, setIsGeneratingIdealCustomer] = useState(false);
@@ -29,13 +27,14 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
   const [profileResearchWebhookConfigured, setProfileResearchWebhookConfigured] = useState(false);
   const [idealCustomerWebhookConfigured, setIdealCustomerWebhookConfigured] = useState(false);
   
-  // Check if company exists
-  if (!company) {
-    return <div>Company not found</div>;
-  }
+  // Find company - this is safe to do after hooks since it's just a filter operation
+  const company = companies.find((c) => c.id === companyId);
   
   // On component mount, check if company has existing research data
   useEffect(() => {
+    // Early return if no company - but this is inside useEffect which is okay
+    if (!company) return;
+    
     const fetchCompanyInsights = async () => {
       try {
         // Check if webhook URLs are configured
@@ -106,7 +105,12 @@ export const CompanyResearch = ({ companyId }: CompanyResearchProps) => {
     };
     
     fetchCompanyInsights();
-  }, [companyId]);
+  }, [companyId, company, profileResearchWebhookConfigured, idealCustomerWebhookConfigured]);
+  
+  // Check if company exists AFTER all hooks have been called
+  if (!company) {
+    return <div>Company not found</div>;
+  }
   
   const generateProfileResearch = async () => {
     if (!company) return;
@@ -759,4 +763,3 @@ const renderMarkdownToHtml = (markdown: string): string => {
   
   return html;
 }
-
