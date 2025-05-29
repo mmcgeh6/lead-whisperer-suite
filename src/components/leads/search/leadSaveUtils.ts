@@ -222,7 +222,7 @@ export const handleEditCompany = async (
       facebook_url: companyData.facebook_url || "",
       twitter_url: companyData.twitter_url || "",
       linkedin_url: companyData.linkedin_url || "",
-      keywords: companyData.keywords || [],
+      tags: companyData.tags || [],
       createdAt: companyData.createdAt || new Date().toISOString(),
       updatedAt: companyData.updatedAt || new Date().toISOString(),
       insights: companyData.insights || undefined,
@@ -273,7 +273,7 @@ export const handleEditCompany = async (
           facebook_url: data.facebook_url || "",
           twitter_url: data.twitter_url || "",
           linkedin_url: data.linkedin_url || "",
-          keywords: data.keywords || [],
+          tags: data.tags || [],
           createdAt: data.created_at || new Date().toISOString(),
           updatedAt: data.updated_at || new Date().toISOString(),
           insights: undefined, // No insights property in the database schema

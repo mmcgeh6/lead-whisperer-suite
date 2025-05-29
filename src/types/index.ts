@@ -16,7 +16,7 @@ export interface Company {
   facebook_url?: string;
   twitter_url?: string;
   linkedin_url?: string;
-  keywords?: string[];
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
   insights?: CompanyInsights;
