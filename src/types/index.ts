@@ -1,3 +1,4 @@
+
 export interface Company {
   id: string;
   name: string;
@@ -16,6 +17,8 @@ export interface Company {
   facebook_url?: string;
   twitter_url?: string;
   linkedin_url?: string;
+  logo_url?: string;
+  primary_domain?: string;
   tags?: string[];
   createdAt: string;
   updatedAt: string;
