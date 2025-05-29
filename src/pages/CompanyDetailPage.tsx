@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
@@ -148,6 +149,11 @@ const CompanyDetailPage = () => {
   const handleEditContact = (contactId: string) => {
     navigate(`/contacts/edit/${contactId}`);
   };
+
+  // Handle company update from components
+  const handleCompanyUpdate = (updatedCompany: Company) => {
+    setCompany(updatedCompany);
+  };
   
   return (
     <Layout>
@@ -160,7 +166,7 @@ const CompanyDetailPage = () => {
         />
 
         {/* Company Tags */}
-        <CompanyTags company={company} />
+        <CompanyTags company={company} onCompanyUpdate={handleCompanyUpdate} />
 
         {/* Module 1: About Company */}
         <CompanyAbout company={company} />

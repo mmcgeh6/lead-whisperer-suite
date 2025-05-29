@@ -6,15 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { Company } from "@/types";
-import { useAppContext } from "@/context/AppContext";
 import { Plus, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CompanyTagsProps {
   company: Company;
+  onCompanyUpdate: (updatedCompany: Company) => void;
 }
 
-export const CompanyTags = ({ company }: CompanyTagsProps) => {
-  const { updateCompany } = useAppContext();
+export const CompanyTags = ({ company, onCompanyUpdate }: CompanyTagsProps) => {
   const { toast } = useToast();
   const [tagInput, setTagInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -44,12 +44,23 @@ export const CompanyTags = ({ company }: CompanyTagsProps) => {
       
       const updatedTags = [...tags, ...newTags];
       
+      // Update in Supabase
+      const { error } = await supabase
+        .from('companies')
+        .update({ tags: updatedTags })
+        .eq('id', company.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update local state
       const updatedCompany = {
         ...company,
         tags: updatedTags
       };
       
-      await updateCompany(updatedCompany);
+      onCompanyUpdate(updatedCompany);
       setTagInput("");
       
       toast({
@@ -73,12 +84,23 @@ export const CompanyTags = ({ company }: CompanyTagsProps) => {
     try {
       const updatedTags = tags.filter(tag => tag !== tagToRemove);
       
+      // Update in Supabase
+      const { error } = await supabase
+        .from('companies')
+        .update({ tags: updatedTags })
+        .eq('id', company.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update local state
       const updatedCompany = {
         ...company,
         tags: updatedTags
       };
       
-      await updateCompany(updatedCompany);
+      onCompanyUpdate(updatedCompany);
       
       toast({
         title: "Tag Removed",
