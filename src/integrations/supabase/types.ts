@@ -98,8 +98,10 @@ export type Database = {
           industry_vertical: string | null
           linkedin_url: string | null
           location: string | null
+          logo_url: string | null
           name: string
           phone: string | null
+          primary_domain: string | null
           research_notes: string | null
           size: string | null
           social_dm_script: string | null
@@ -126,8 +128,10 @@ export type Database = {
           industry_vertical?: string | null
           linkedin_url?: string | null
           location?: string | null
+          logo_url?: string | null
           name: string
           phone?: string | null
+          primary_domain?: string | null
           research_notes?: string | null
           size?: string | null
           social_dm_script?: string | null
@@ -154,8 +158,10 @@ export type Database = {
           industry_vertical?: string | null
           linkedin_url?: string | null
           location?: string | null
+          logo_url?: string | null
           name?: string
           phone?: string | null
+          primary_domain?: string | null
           research_notes?: string | null
           size?: string | null
           social_dm_script?: string | null
@@ -242,6 +248,8 @@ export type Database = {
           country: string | null
           created_at: string
           email: string | null
+          email_status: string | null
+          facebook_url: string | null
           first_name: string
           headline: string | null
           id: string
@@ -260,6 +268,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           position: string | null
+          twitter_url: string | null
           updated_at: string
         }
         Insert: {
@@ -270,6 +279,8 @@ export type Database = {
           country?: string | null
           created_at?: string
           email?: string | null
+          email_status?: string | null
+          facebook_url?: string | null
           first_name: string
           headline?: string | null
           id?: string
@@ -288,6 +299,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           position?: string | null
+          twitter_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -298,6 +310,8 @@ export type Database = {
           country?: string | null
           created_at?: string
           email?: string | null
+          email_status?: string | null
+          facebook_url?: string | null
           first_name?: string
           headline?: string | null
           id?: string
@@ -316,6 +330,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           position?: string | null
+          twitter_url?: string | null
           updated_at?: string
         }
         Relationships: [

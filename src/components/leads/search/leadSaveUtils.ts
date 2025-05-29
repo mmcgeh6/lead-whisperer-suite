@@ -34,14 +34,16 @@ export const saveSelectedLeads = async (
           size: rawData.organization?.size || "",
           location: rawData.present_raw_address || lead.location || "",
           description: rawData.organization?.description || "",
-          phone: rawData.phone || "",
+          phone: rawData.organization?.phone || rawData.phone || "",
           city: rawData.city || "",
           state: rawData.state || "",
           country: rawData.country || "",
           linkedin_url: rawData.organization?.linkedin_url || lead.linkedin_url || "",
           facebook_url: rawData.organization?.facebook_url || "",
           twitter_url: rawData.organization?.twitter_url || "",
-          user_id: user?.id, // Associate with the current user
+          logo_url: rawData.organization?.logo_url || "",
+          primary_domain: rawData.organization?.primary_domain || "",
+          user_id: user?.id,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -63,11 +65,15 @@ export const saveSelectedLeads = async (
               email: lead.raw_data.email || "",
               phone: lead.raw_data.sanitized_phone || lead.raw_data.phone || "",
               linkedin_url: lead.raw_data.linkedin_url || "",
+              twitter_url: lead.raw_data.twitter_url || "",
+              facebook_url: lead.raw_data.facebook_url || "",
+              headline: lead.raw_data.headline || "",
+              email_status: lead.raw_data.email_status || lead.raw_data.contact_email_status || "",
               companyId: companyId,
               notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
             };
             
-            await addContact(contactData as Contact);
+            await addContactToDatabase(contactData, companyId);
           }
         }
       }
@@ -160,7 +166,7 @@ async function addCompanyAndGetId(companyData: Partial<Company>, userId: string 
       return existingCompany.id;
     }
 
-    // Company doesn't exist, insert it directly
+    // Company doesn't exist, insert it directly with all the new fields
     const { data: newCompany, error: insertError } = await supabase
       .from('companies')
       .insert({
@@ -177,6 +183,8 @@ async function addCompanyAndGetId(companyData: Partial<Company>, userId: string 
         linkedin_url: companyData.linkedin_url || '',
         facebook_url: companyData.facebook_url || '',
         twitter_url: companyData.twitter_url || '',
+        logo_url: companyData.logo_url || '',
+        primary_domain: companyData.primary_domain || '',
         user_id: userId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -194,6 +202,40 @@ async function addCompanyAndGetId(companyData: Partial<Company>, userId: string 
   } catch (error) {
     console.error("Error in addCompanyAndGetId:", error);
     return null;
+  }
+}
+
+// New function to add contact directly to the database
+async function addContactToDatabase(contactData: Partial<Contact>, companyId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('contacts')
+      .insert({
+        first_name: contactData.firstName || '',
+        last_name: contactData.lastName || '',
+        email: contactData.email || '',
+        phone: contactData.phone || '',
+        position: contactData.title || '',
+        linkedin_url: contactData.linkedin_url || '',
+        twitter_url: contactData.twitter_url || '',
+        facebook_url: contactData.facebook_url || '',
+        headline: contactData.headline || '',
+        email_status: contactData.email_status || '',
+        company_id: companyId,
+        notes: contactData.notes || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error("Error inserting contact:", error);
+      throw error;
+    }
+
+    console.log("Successfully created contact");
+  } catch (error) {
+    console.error("Error in addContactToDatabase:", error);
+    throw error;
   }
 }
 

@@ -55,6 +55,9 @@ export interface Contact {
   country?: string;
   languages?: string[] | any[];
   about?: string;
+  email_status?: string;
+  twitter_url?: string;
+  facebook_url?: string;
 }
 
 export interface LinkedInPost {
