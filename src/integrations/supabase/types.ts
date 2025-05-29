@@ -18,6 +18,7 @@ export type Database = {
           companyresearchwebhook: string | null
           content_webhook: string | null
           created_at: string | null
+          crm_export_webhook: string | null
           emailfinderwebhook: string | null
           facebook_ads_webhook: string | null
           growthresearchwebhook: string | null
@@ -42,6 +43,7 @@ export type Database = {
           companyresearchwebhook?: string | null
           content_webhook?: string | null
           created_at?: string | null
+          crm_export_webhook?: string | null
           emailfinderwebhook?: string | null
           facebook_ads_webhook?: string | null
           growthresearchwebhook?: string | null
@@ -66,6 +68,7 @@ export type Database = {
           companyresearchwebhook?: string | null
           content_webhook?: string | null
           created_at?: string | null
+          crm_export_webhook?: string | null
           emailfinderwebhook?: string | null
           facebook_ads_webhook?: string | null
           growthresearchwebhook?: string | null

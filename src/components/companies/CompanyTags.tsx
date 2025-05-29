@@ -1,176 +1,213 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/ui/use-toast";
-import { Company } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { Company } from "@/types";
+import { moveCompanyToList } from "@/utils/listOperations";
 
 interface CompanyTagsProps {
   company: Company;
   onCompanyUpdate: (updatedCompany: Company) => void;
 }
 
+interface List {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export const CompanyTags = ({ company, onCompanyUpdate }: CompanyTagsProps) => {
+  const [lists, setLists] = useState<List[]>([]);
+  const [currentListId, setCurrentListId] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
-  const [tagInput, setTagInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const tags = company.tags || [];
+  const { user } = useAuth();
 
-  const handleAddTags = async () => {
-    if (!tagInput.trim()) return;
-    
-    setIsLoading(true);
+  // Load lists and find which list this company belongs to
+  useEffect(() => {
+    const loadLists = async () => {
+      if (!user) return;
+
+      try {
+        // Load all lists for this user
+        const { data: listsData, error: listsError } = await supabase
+          .from('lists')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('name');
+
+        if (listsError) {
+          console.error("Error loading lists:", listsError);
+          return;
+        }
+
+        setLists(listsData || []);
+
+        // Find which list this company belongs to
+        const { data: listCompanyData, error: listCompanyError } = await supabase
+          .from('list_companies_new')
+          .select('list_id')
+          .eq('company_id', company.id)
+          .single();
+
+        if (listCompanyError && listCompanyError.code !== 'PGRST116') {
+          console.error("Error finding company list:", listCompanyError);
+          return;
+        }
+
+        if (listCompanyData) {
+          setCurrentListId(listCompanyData.list_id);
+        }
+      } catch (error) {
+        console.error("Exception loading lists:", error);
+      }
+    };
+
+    loadLists();
+  }, [user, company.id]);
+
+  const handleListChange = async (newListId: string) => {
+    if (!user || newListId === currentListId) return;
+
+    setIsUpdating(true);
+
     try {
-      // Split the input by commas and clean up whitespace
-      const newTags = tagInput
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0)
-        .filter(tag => !tags.includes(tag)); // Avoid duplicates
-      
-      if (newTags.length === 0) {
+      const result = await moveCompanyToList(company.id, currentListId, newListId);
+
+      if (result.success) {
+        setCurrentListId(newListId);
         toast({
-          title: "No new tags",
-          description: "All tags already exist or input is empty.",
-          variant: "destructive",
+          title: "List Updated",
+          description: "Company has been moved to the new list successfully.",
         });
-        return;
+      } else {
+        throw result.error;
       }
-      
-      const updatedTags = [...tags, ...newTags];
-      
-      // Update in Supabase
-      const { error } = await supabase
-        .from('companies')
-        .update({ tags: updatedTags })
-        .eq('id', company.id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Update local state
-      const updatedCompany = {
-        ...company,
-        tags: updatedTags
-      };
-      
-      onCompanyUpdate(updatedCompany);
-      setTagInput("");
-      
-      toast({
-        title: "Tags Added",
-        description: `Added ${newTags.length} new tag(s) to ${company.name}.`,
-      });
     } catch (error) {
-      console.error("Error adding tags:", error);
+      console.error("Error updating company list:", error);
       toast({
         title: "Error",
-        description: "Failed to add tags. Please try again.",
+        description: "Failed to update company list. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
-  const handleRemoveTag = async (tagToRemove: string) => {
-    setIsLoading(true);
+  const handleTagUpdate = async (newTags: string[]) => {
     try {
-      const updatedTags = tags.filter(tag => tag !== tagToRemove);
-      
-      // Update in Supabase
       const { error } = await supabase
         .from('companies')
-        .update({ tags: updatedTags })
+        .update({ 
+          tags: newTags,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', company.id);
-      
+
       if (error) {
         throw error;
       }
-      
-      // Update local state
-      const updatedCompany = {
-        ...company,
-        tags: updatedTags
-      };
-      
+
+      // Update the local company object
+      const updatedCompany = { ...company, tags: newTags };
       onCompanyUpdate(updatedCompany);
-      
+
       toast({
-        title: "Tag Removed",
-        description: `Removed "${tagToRemove}" from ${company.name}.`,
+        title: "Tags Updated",
+        description: "Company tags have been updated successfully.",
       });
     } catch (error) {
-      console.error("Error removing tag:", error);
+      console.error("Error updating tags:", error);
       toast({
         title: "Error",
-        description: "Failed to remove tag. Please try again.",
+        description: "Failed to update company tags. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  const addTag = (newTag: string) => {
+    if (!newTag.trim()) return;
+    
+    const currentTags = company.tags || [];
+    if (!currentTags.includes(newTag.trim())) {
+      handleTagUpdate([...currentTags, newTag.trim()]);
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    const currentTags = company.tags || [];
+    handleTagUpdate(currentTags.filter(tag => tag !== tagToRemove));
+  };
+
+  const currentList = lists.find(list => list.id === currentListId);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Tags</CardTitle>
-        <CardDescription>
-          Add tags to categorize and organize {company.name}
-        </CardDescription>
+        <CardTitle>Lists & Tags</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Enter tags separated by commas (e.g., tech, startup, b2b)"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAddTags();
-              }
-            }}
-            className="flex-1"
-          />
-          <Button 
-            onClick={handleAddTags} 
-            disabled={isLoading || !tagInput.trim()}
-            size="sm"
+        {/* List Selection */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Current List</label>
+          <Select
+            value={currentListId || ""}
+            onValueChange={handleListChange}
+            disabled={isUpdating}
           >
-            <Plus className="h-4 w-4 mr-1" />
-            Add
-          </Button>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a list" />
+            </SelectTrigger>
+            <SelectContent>
+              {lists.map((list) => (
+                <SelectItem key={list.id} value={list.id}>
+                  {list.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {currentList && (
+            <p className="text-sm text-muted-foreground">
+              Currently in: <span className="font-medium">{currentList.name}</span>
+            </p>
+          )}
         </div>
-        
-        <div className="flex flex-wrap gap-2">
-          {tags.length === 0 ? (
-            <p className="text-sm text-gray-500">No tags added yet.</p>
-          ) : (
-            tags.map((tag, index) => (
-              <Badge 
-                key={index} 
-                variant="secondary" 
-                className="flex items-center gap-1"
-              >
+
+        {/* Tags */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Tags</label>
+          <div className="flex flex-wrap gap-2">
+            {company.tags?.map((tag, index) => (
+              <Badge key={index} variant="secondary" className="flex items-center gap-1">
                 {tag}
                 <button
-                  onClick={() => handleRemoveTag(tag)}
-                  disabled={isLoading}
-                  className="ml-1 hover:bg-gray-200 rounded-full p-1"
+                  onClick={() => removeTag(tag)}
+                  className="ml-1 hover:bg-red-100 rounded-full p-0.5"
                 >
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
-            ))
-          )}
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const newTag = prompt("Enter new tag:");
+                if (newTag) addTag(newTag);
+              }}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add Tag
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
