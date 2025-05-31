@@ -1,324 +1,196 @@
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  searchForLeads, 
-  transformApifyResults,
-  SearchType,
-  getAppSettings,
-  PeopleSearchResult,
-  CompanySearchResult
-} from "@/services/apifyService";
+import { SearchResult as Result } from "@/components/leads/search/SearchResults";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
 
-// Result types
+export interface SearchParams {
+  searchType: SearchType;
+  keywords: string[];
+  location: string;
+  industry?: string;
+  personTitles?: string[];
+  companyTypes?: string[];
+  companySize?: string;
+  companyRevenue?: string;
+  technologies?: string[];
+  fundingRounds?: string[];
+  employeeCountRange?: string;
+  yearFoundedRange?: string;
+  limit: number;
+}
+
+export interface ApifyResult {
+    [key: string]: any;
+}
+
 export interface SearchResult {
   id: string;
   type: 'person' | 'company';
   name: string;
   title?: string;
   company?: string;
-  industry?: string;
   location?: string;
   website?: string;
   linkedin_url?: string;
   email?: string;
   phone?: string;
-  description?: string;
+  industry?: string;
+  selected?: boolean;
+  archived?: boolean;
+  raw_data?: any;
+  apolloContactId?: string; // Add this to store the Apollo contact ID
+}
+
+export enum SearchType {
+  PEOPLE = 'people',
+  COMPANIES = 'companies',
+}
+
+export type PeopleSearchResult = {
+  type: 'person';
+  name: string;
+  title: string;
+  company: string;
+  location: string;
+  linkedin_url: string;
+  email: string;
+  phone: string;
+  industry: string;
+  website: string;
   selected: boolean;
   archived: boolean;
-  // Additional data for detailed view
   raw_data: any;
-}
+};
 
-export interface SearchParams {
-  keywords: string[];
+export type CompanySearchResult = {
+  type: 'company';
+  name: string;
+  industry: string;
   location: string;
-  emailStatus: string[];
-  departments: string[];
-  seniorities: string[];
-  employeeRanges: string[];
-  resultCount: number;
-  organizationLocations: string[];
-  keywordFields: string[];
-  personTitles: string[];
-}
+  website: string;
+  linkedin_url: string;
+  email: string;
+  phone: string;
+  selected: boolean;
+  archived: boolean;
+  raw_data: any;
+};
 
-// Interface for company data
-interface CompanyData {
-  name?: string;
-  industry?: string;
-  location?: string;
-  website?: string;
-  description?: string;
-  linkedin_url?: string;
-  size?: string;
-}
-
-// Interface for contact data
-interface ContactData {
-  firstName?: string;
-  lastName?: string;
-  title?: string;
-  email?: string;
-  phone?: string;
-  linkedin_url?: string;
-}
-
-export const handleSearch = async (searchParams: SearchParams, user: any, toast: any) => {
-  // Get settings from Supabase
-  const settings = await getAppSettings();
-  console.log("Search page retrieved settings:", settings);
-  
-  // Check for Apollo API key
-  const apiKey = settings.apolloApiKey || null;
-  console.log(`Using Apollo API key:`, apiKey ? `[Present, length: ${apiKey.length}]` : "Missing");
-  
-  if (!apiKey) {
-    toast({
-      title: "API Key Not Configured",
-      description: `Please set up your Apollo API key in API Settings`,
-      variant: "destructive",
-    });
+export const transformApifyResults = (results: any[], searchType: 'people' | 'companies'): SearchResult[] => {
+  if (!results || !Array.isArray(results)) {
+    console.warn("Invalid results format:", results);
     return [];
   }
-  
-  // Build search parameters for the API
-  const apiParams = {
-    searchType: SearchType.PEOPLE,
-    keywords: searchParams.keywords,
-    location: searchParams.location,
-    departments: searchParams.departments,
-    seniorities: searchParams.seniorities,
-    emailStatus: searchParams.emailStatus,
-    employeeRanges: searchParams.employeeRanges,
-    limit: searchParams.resultCount,
-    personTitles: searchParams.personTitles,
-    organizationLocations: searchParams.organizationLocations,
-    keywordFields: searchParams.keywordFields || ['tags', 'name'] // Default keyword fields
-  };
-  
-  console.log("Final API search parameters:", apiParams);
-  
-  // Save search history to Supabase if user is authenticated
-  let searchHistoryId = null;
-  if (user) {
-    try {
-      const { data: searchHistory, error } = await supabase
-        .from('search_history')
-        .insert({
-          user_id: user.id,
-          search_type: 'people',
-          search_params: apiParams as any,
-          person_titles: searchParams.personTitles || [],
-          result_count: 0 // Will be updated after results are received
-        })
-        .select('id')
-        .single();
 
-      if (error) {
-        console.error("Error saving search history:", error);
-      } else if (searchHistory) {
-        searchHistoryId = searchHistory.id;
+  const transformedResults: SearchResult[] = [];
+
+  results.forEach((result, index) => {
+    try {
+      // Handle the response structure - look for contacts array
+      let contactsArray = [];
+      
+      if (result.contacts && Array.isArray(result.contacts)) {
+        contactsArray = result.contacts;
+      } else if (Array.isArray(result)) {
+        contactsArray = result;
+      } else {
+        contactsArray = [result];
+      }
+
+      contactsArray.forEach((contact, contactIndex) => {
+        if (!contact) return;
+
+        // Extract Apollo contact ID from the contact data
+        const apolloContactId = contact.id || contact.person_id;
+        
+        const transformedResult: SearchResult = {
+          id: `${index}-${contactIndex}-${Date.now()}`,
+          type: searchType === 'people' ? 'person' : 'company',
+          name: contact.name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown',
+          title: contact.title || contact.headline || '',
+          company: contact.organization_name || contact.organization?.name || '',
+          location: contact.present_raw_address || contact.city || contact.state || '',
+          website: contact.organization?.website_url || contact.organization?.primary_domain || '',
+          linkedin_url: contact.linkedin_url || '',
+          email: contact.email || '',
+          phone: contact.phone || contact.organization?.phone || '',
+          industry: contact.organization?.industry || '',
+          selected: false,
+          archived: false,
+          raw_data: contact,
+          apolloContactId: apolloContactId // Store the Apollo contact ID
+        };
+
+        transformedResults.push(transformedResult);
+      });
+    } catch (error) {
+      console.error(`Error transforming result ${index}:`, error);
+    }
+  });
+
+  console.log(`Transformed ${transformedResults.length} results from ${searchType} search`);
+  return transformedResults;
+};
+
+export const handleSearch = async (
+  searchParams: SearchParams,
+  user: any,
+  toast: any
+): Promise<SearchResult[]> => {
+  try {
+    // Dynamically import the search service based on the search type
+    const { searchForLeads } = await import('@/services/apifyService');
+    const { saveSearchHistory, updateSearchResultCount, archiveSearchResults } = await import('@/services/leadStorageService');
+    
+    // Save search history to Supabase if user is authenticated
+    let searchHistoryId = null;
+    if (user) {
+      searchHistoryId = await saveSearchHistory(
+        user.id,
+        searchParams.searchType,
+        searchParams,
+        searchParams.personTitles
+      );
+      
+      if (searchHistoryId) {
         console.log("Search history saved with ID:", searchHistoryId);
       }
-    } catch (err) {
-      console.error("Error in search history save:", err);
     }
-  }
-  
-  try {
-    // Call the search service with the parameters
-    const results = await searchForLeads(apiParams);
     
-    console.log("Raw search results:", results);
-    console.log("Results type:", Array.isArray(results) ? `Array with ${results.length} items` : typeof results);
+    // Perform the search
+    const results = await searchForLeads(searchParams);
     
-    if (results && Array.isArray(results) && results.length > 0) {
-      console.log("First result sample:", JSON.stringify(results[0]).substring(0, 200));
+    console.log("Search results:", results);
+    if (results && results.length > 0) {
+      console.log("First result sample:", JSON.stringify(results[0]).substring(0, 300));
     }
     
     // Transform results
-    const transformedLeads = transformApifyResults(results, 'people');
+    const transformedLeads = transformApifyResults(results, searchParams.searchType);
     
     console.log("Transformed leads:", transformedLeads);
-    
-    if (!transformedLeads || transformedLeads.length === 0) {
-      return [];
+    if (transformedLeads && transformedLeads.length > 0) {
+      console.log("First transformed lead:", JSON.stringify(transformedLeads[0]).substring(0, 300));
     }
-    
+
     // Update search history with result count
     if (user && searchHistoryId) {
-      try {
-        await supabase
-          .from('search_history')
-          .update({ result_count: transformedLeads.length })
-          .eq('id', searchHistoryId);
-      } catch (err) {
-        console.error("Error updating search history:", err);
-      }
+      await updateSearchResultCount(searchHistoryId, transformedLeads.length);
       
       // Save results to archive
       if (transformedLeads.length > 0) {
-        saveSearchResults(transformedLeads, searchHistoryId);
+        await archiveSearchResults(searchHistoryId, transformedLeads);
       }
     }
     
-    // Map transformed leads to search results format
-    return mapLeadsToSearchResults(transformedLeads);
-    
+    return transformedLeads;
   } catch (error) {
-    console.error("Search error in handleSearch:", error);
-    
-    // Provide user-friendly error messages
-    if (error instanceof Error) {
-      if (error.message.includes('webhook service') || error.message.includes('Unable to connect')) {
-        toast({
-          title: "Service Unavailable",
-          description: "The search service is currently unavailable. This may be temporary. Please try again in a few minutes.",
-          variant: "destructive",
-        });
-      } else if (error.message.includes('timeout')) {
-        toast({
-          title: "Search Timeout",
-          description: "The search took too long to complete. Try using fewer search parameters or try again later.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Search Failed",
-          description: error.message || "An unexpected error occurred during search.",
-          variant: "destructive",
-        });
-      }
-    } else {
-      toast({
-        title: "Search Failed",
-        description: "An unexpected error occurred during search.",
-        variant: "destructive",
-      });
-    }
-    
-    throw error; // Re-throw to be handled by calling component
-  }
-};
-
-// Save search results to archive
-const saveSearchResults = async (transformedLeads: any[], searchHistoryId: string) => {
-  try {
-    const archiveData = transformedLeads.map(lead => {
-      // Create a unique identifier to prevent duplicates
-      let uniqueId = "unknown-" + Date.now() + "-" + Math.random();
-      
-      // Type guard to check if this is a people search result
-      const peopleResult = lead as PeopleSearchResult;
-      
-      // If it has contact and company properties, it's a PeopleSearchResult
-      if (peopleResult && peopleResult.contact && peopleResult.company) {
-        uniqueId = `${peopleResult.company.name || ''}-${peopleResult.contact.firstName || ''}-${peopleResult.contact.lastName || ''}-${peopleResult.contact.title || ''}`;
-      }
-      
-      return {
-        search_id: searchHistoryId,
-        result_data: lead as any, // Cast to any for JSON compatibility
-        unique_identifier: uniqueId
-      };
+    console.error("Error in handleSearch:", error);
+    toast({
+      title: "Search Failed",
+      description: error instanceof Error ? error.message : "Failed to search for leads. Please try again later.",
+      variant: "destructive",
     });
-    
-    // Use upsert with onConflict to handle duplicates
-    if (archiveData.length > 0) {
-      const { error } = await supabase
-        .from('search_results_archive')
-        .upsert(archiveData, {
-          onConflict: 'unique_identifier',
-          ignoreDuplicates: true
-        });
-        
-      if (error) {
-        console.error("Error saving search results:", error);
-      }
-    }
-  } catch (err) {
-    console.error("Error in search results archive:", err);
-  }
-};
-
-// Map leads to search results format
-const mapLeadsToSearchResults = (transformedLeads: any[]): SearchResult[] => {
-  try {
-    return transformedLeads.map((item, index) => {
-      console.log(`Mapping result ${index} to SearchResult format`);
-      
-      try {
-        // Check if this is a people search result by checking if it has a contact property
-        const peopleResult = item as PeopleSearchResult;
-        const isPeopleResult = peopleResult && peopleResult.contact !== undefined;
-        
-        if (isPeopleResult) {
-          // This is a people search result
-          const contact = (peopleResult.contact || {}) as ContactData;
-          const company = (peopleResult.company || {}) as CompanyData;
-          
-          const firstName = contact.firstName || "";
-          const lastName = contact.lastName || "";
-          const fullName = `${firstName} ${lastName}`.trim() || "Unknown";
-          
-          console.log(`Creating SearchResult for person: ${fullName}, company: ${company?.name || "Unknown"}`);
-          
-          return {
-            id: `result-${Date.now()}-${index}`,
-            type: 'person' as const,
-            name: fullName,
-            title: contact.title || "N/A",
-            company: company?.name || "Unknown",
-            industry: company?.industry || "N/A",
-            location: company?.location || "N/A",
-            website: company?.website || "",
-            linkedin_url: contact.linkedin_url || "",
-            email: contact.email || "",
-            phone: contact.phone || "",
-            description: company?.description || "",
-            selected: false,
-            archived: false,
-            raw_data: item
-          };
-        } else {
-          // This is a company search result - should not occur now but keeping for backwards compatibility
-          const companyItem = item as CompanySearchResult;
-          const company = (companyItem.company || {}) as CompanyData;
-          
-          console.log(`Creating SearchResult for company: ${company?.name || "Unknown"}`);
-          
-          return {
-            id: `result-${Date.now()}-${index}`,
-            type: 'company' as const,
-            name: company?.name || "Unknown",
-            industry: company?.industry || "N/A",
-            location: company?.location || "N/A",
-            website: company?.website || "",
-            linkedin_url: company?.linkedin_url || "",
-            description: company?.description || "",
-            selected: false,
-            archived: false,
-            raw_data: item
-          };
-        }
-      } catch (error) {
-        console.error(`Error mapping result ${index}:`, error);
-        // Return a placeholder result on error
-        return {
-          id: `result-${Date.now()}-${index}`,
-          type: 'person' as const,
-          name: "Error Processing Result",
-          industry: "N/A",
-          location: "N/A",
-          website: "",
-          description: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          selected: false,
-          archived: false,
-          raw_data: {}
-        };
-      }
-    });
-  } catch (error) {
-    console.error("Error mapping search results:", error);
     return [];
   }
 };

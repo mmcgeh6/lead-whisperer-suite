@@ -57,12 +57,9 @@ export const saveSelectedLeads = async (
           
           // Check if this is a person search result with contact info
           if ((lead.type === 'person' || rawData.first_name) && companyId) {
-            // Extract the contact ID from the search results
-            // The contact ID should be the main ID from the Apollo contact data
-            const contactId = rawData.id || rawData.person_id;
-            console.log("Found person lead, extracting contact ID:", contactId);
-            console.log("Raw data keys:", Object.keys(rawData));
-            console.log("Full contact data for ID extraction:", JSON.stringify(rawData, null, 2));
+            // Use the stored Apollo contact ID from the search results
+            const contactId = lead.apolloContactId;
+            console.log("Found person lead, using stored Apollo contact ID:", contactId);
             
             if (contactId) {
               console.log("Calling enrichment webhook with contact ID:", contactId);
@@ -71,7 +68,7 @@ export const saveSelectedLeads = async (
               setTimeout(async () => {
                 try {
                   const enrichmentData = await callCompanyEnrichmentWebhook({
-                    contactId: contactId, // Use the correct contact ID from Apollo search results
+                    contactId: contactId, // Use the stored Apollo contact ID
                     firstName: rawData.first_name || "",
                     lastName: rawData.last_name || "",
                     companyName: companyData.name
@@ -89,7 +86,7 @@ export const saveSelectedLeads = async (
                 }
               }, 1000); // Delay by 1 second to ensure save completes first
             } else {
-              console.warn("No contact ID found in raw data for enrichment");
+              console.warn("No Apollo contact ID found in stored search result data");
             }
           }
         }
