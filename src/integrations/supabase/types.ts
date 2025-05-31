@@ -89,22 +89,29 @@ export type Database = {
       }
       companies: {
         Row: {
+          annual_revenue: number | null
+          annual_revenue_printed: string | null
           call_script: string | null
           city: string | null
           country: string | null
           created_at: string
           description: string | null
           email_script: string | null
+          estimated_num_employees: number | null
+          external_id: string | null
           facebook_url: string | null
+          founded_year: number | null
           id: string
           industry: string | null
           industry_vertical: string | null
+          keywords: string[] | null
           linkedin_url: string | null
           location: string | null
           logo_url: string | null
           name: string
           phone: string | null
           primary_domain: string | null
+          raw_address: string | null
           research_notes: string | null
           size: string | null
           social_dm_script: string | null
@@ -113,6 +120,7 @@ export type Database = {
           tags: string[] | null
           tech_stack_data: Json | null
           tech_stack_last_updated: string | null
+          technology_names: string[] | null
           text_script: string | null
           twitter_url: string | null
           updated_at: string
@@ -121,22 +129,29 @@ export type Database = {
           zip: string | null
         }
         Insert: {
+          annual_revenue?: number | null
+          annual_revenue_printed?: string | null
           call_script?: string | null
           city?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
           email_script?: string | null
+          estimated_num_employees?: number | null
+          external_id?: string | null
           facebook_url?: string | null
+          founded_year?: number | null
           id?: string
           industry?: string | null
           industry_vertical?: string | null
+          keywords?: string[] | null
           linkedin_url?: string | null
           location?: string | null
           logo_url?: string | null
           name: string
           phone?: string | null
           primary_domain?: string | null
+          raw_address?: string | null
           research_notes?: string | null
           size?: string | null
           social_dm_script?: string | null
@@ -145,6 +160,7 @@ export type Database = {
           tags?: string[] | null
           tech_stack_data?: Json | null
           tech_stack_last_updated?: string | null
+          technology_names?: string[] | null
           text_script?: string | null
           twitter_url?: string | null
           updated_at?: string
@@ -153,22 +169,29 @@ export type Database = {
           zip?: string | null
         }
         Update: {
+          annual_revenue?: number | null
+          annual_revenue_printed?: string | null
           call_script?: string | null
           city?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
           email_script?: string | null
+          estimated_num_employees?: number | null
+          external_id?: string | null
           facebook_url?: string | null
+          founded_year?: number | null
           id?: string
           industry?: string | null
           industry_vertical?: string | null
+          keywords?: string[] | null
           linkedin_url?: string | null
           location?: string | null
           logo_url?: string | null
           name?: string
           phone?: string | null
           primary_domain?: string | null
+          raw_address?: string | null
           research_notes?: string | null
           size?: string | null
           social_dm_script?: string | null
@@ -177,6 +200,7 @@ export type Database = {
           tags?: string[] | null
           tech_stack_data?: Json | null
           tech_stack_last_updated?: string | null
+          technology_names?: string[] | null
           text_script?: string | null
           twitter_url?: string | null
           updated_at?: string
@@ -264,6 +288,7 @@ export type Database = {
           created_at: string
           email: string | null
           email_status: string | null
+          external_id: string | null
           facebook_url: string | null
           first_name: string
           headline: string | null
@@ -282,7 +307,9 @@ export type Database = {
           mobile_phone: string | null
           notes: string | null
           phone: string | null
+          photo_url: string | null
           position: string | null
+          seniority: string | null
           twitter_url: string | null
           updated_at: string
         }
@@ -295,6 +322,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           email_status?: string | null
+          external_id?: string | null
           facebook_url?: string | null
           first_name: string
           headline?: string | null
@@ -313,7 +341,9 @@ export type Database = {
           mobile_phone?: string | null
           notes?: string | null
           phone?: string | null
+          photo_url?: string | null
           position?: string | null
+          seniority?: string | null
           twitter_url?: string | null
           updated_at?: string
         }
@@ -326,6 +356,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           email_status?: string | null
+          external_id?: string | null
           facebook_url?: string | null
           first_name?: string
           headline?: string | null
@@ -344,7 +375,9 @@ export type Database = {
           mobile_phone?: string | null
           notes?: string | null
           phone?: string | null
+          photo_url?: string | null
           position?: string | null
+          seniority?: string | null
           twitter_url?: string | null
           updated_at?: string
         }

@@ -1,7 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Company, Contact } from "@/types";
 import { SearchResult } from "./searchUtils";
+import { callCompanyEnrichmentWebhook, processEnrichmentData } from "@/services/enrichmentService";
 
 // Handle saving the selected leads to the database
 export const saveSelectedLeads = async (
@@ -73,7 +73,31 @@ export const saveSelectedLeads = async (
               notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
             };
             
-            await addContactToDatabase(contactData, companyId);
+            const contactId = await addContactToDatabase(contactData, companyId);
+            
+            // Call company enrichment webhook if we have contact data
+            if (contactId && contactData.firstName && contactData.lastName) {
+              console.log("Triggering company enrichment for:", contactData.firstName, contactData.lastName);
+              
+              try {
+                const enrichmentData = await callCompanyEnrichmentWebhook({
+                  firstName: contactData.firstName,
+                  lastName: contactData.lastName,
+                  companyName: companyData.name,
+                  linkedin_url: contactData.linkedin_url
+                });
+                
+                if (enrichmentData) {
+                  await processEnrichmentData(enrichmentData, contactId, companyId);
+                  console.log("Successfully processed enrichment data");
+                } else {
+                  console.log("No enrichment data returned");
+                }
+              } catch (enrichmentError) {
+                console.error("Error during enrichment process:", enrichmentError);
+                // Don't fail the entire save process if enrichment fails
+              }
+            }
           }
         }
       }
@@ -133,8 +157,8 @@ export const saveSelectedLeads = async (
   }
   
   toast({
-    title: "Leads Saved",
-    description: `${selectedLeads.length} leads have been saved to your database and added to the selected list.`
+    title: "Leads Saved & Enriched",
+    description: `${selectedLeads.length} leads have been saved to your database, added to the selected list, and enriched with additional data.`
   });
   
   return savedCompanyIds.length > 0;
@@ -202,40 +226,6 @@ async function addCompanyAndGetId(companyData: Partial<Company>, userId: string 
   } catch (error) {
     console.error("Error in addCompanyAndGetId:", error);
     return null;
-  }
-}
-
-// New function to add contact directly to the database
-async function addContactToDatabase(contactData: Partial<Contact>, companyId: string): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('contacts')
-      .insert({
-        first_name: contactData.firstName || '',
-        last_name: contactData.lastName || '',
-        email: contactData.email || '',
-        phone: contactData.phone || '',
-        position: contactData.title || '',
-        linkedin_url: contactData.linkedin_url || '',
-        twitter_url: contactData.twitter_url || '',
-        facebook_url: contactData.facebook_url || '',
-        headline: contactData.headline || '',
-        email_status: contactData.email_status || '',
-        company_id: companyId,
-        notes: contactData.notes || '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
-    if (error) {
-      console.error("Error inserting contact:", error);
-      throw error;
-    }
-
-    console.log("Successfully created contact");
-  } catch (error) {
-    console.error("Error in addContactToDatabase:", error);
-    throw error;
   }
 }
 
@@ -336,3 +326,40 @@ export const handleEditCompany = async (
     return null;
   }
 };
+
+// Updated function to add contact directly to the database and return contact ID
+async function addContactToDatabase(contactData: Partial<Contact>, companyId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .insert({
+        first_name: contactData.firstName || '',
+        last_name: contactData.lastName || '',
+        email: contactData.email || '',
+        phone: contactData.phone || '',
+        position: contactData.title || '',
+        linkedin_url: contactData.linkedin_url || '',
+        twitter_url: contactData.twitter_url || '',
+        facebook_url: contactData.facebook_url || '',
+        headline: contactData.headline || '',
+        email_status: contactData.email_status || '',
+        company_id: companyId,
+        notes: contactData.notes || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error("Error inserting contact:", error);
+      throw error;
+    }
+
+    console.log("Successfully created contact with ID:", data.id);
+    return data.id;
+  } catch (error) {
+    console.error("Error in addContactToDatabase:", error);
+    return null;
+  }
+}
