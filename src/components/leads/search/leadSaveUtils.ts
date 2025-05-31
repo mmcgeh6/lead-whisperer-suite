@@ -66,7 +66,8 @@ export const saveSelectedLeads = async (
                   contactId: rawData.id, // Use contact ID from search results
                   firstName: rawData.first_name || "",
                   lastName: rawData.last_name || "",
-                  companyName: companyData.name
+                  companyName: companyData.name,
+                  companyId: companyId // Pass the company ID
                 });
                 
                 if (enrichmentData) {
