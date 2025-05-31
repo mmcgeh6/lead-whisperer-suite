@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdvancedSearch } from "@/components/leads/search/AdvancedSearch";
@@ -31,7 +30,7 @@ export const SearchContainer = () => {
 
   const { user } = useAuth();
 
-  const handleSearchSubmit = async (searchParams: SearchParams) => {
+  const handleSearchSubmit = async (searchParams: SearchParams): Promise<void> => {
     if (!searchParams.keywords || searchParams.keywords.length === 0) {
       toast({
         title: "Search query required",
