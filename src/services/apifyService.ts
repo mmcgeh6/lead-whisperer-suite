@@ -120,6 +120,80 @@ const searchApollo = async (params: any, apiKey: string) => {
   }
 };
 
+// Helper function to extract current company from employment history
+const getCurrentCompanyFromEmployment = (employment: any[]): any => {
+  if (!employment || !Array.isArray(employment)) {
+    return null;
+  }
+  
+  // Find the current employment entry
+  const currentJob = employment.find(job => job.current === true);
+  
+  if (currentJob && currentJob.organization) {
+    console.log("Found current employment:", currentJob.organization);
+    return currentJob.organization;
+  }
+  
+  return null;
+};
+
+// Helper function to get the best company information
+const getBestCompanyInfo = (person: any) => {
+  // Start with the primary organization
+  let companyInfo = {
+    name: person.organization?.name || person.organization_name || "",
+    industry: person.organization?.industry || "",
+    location: person.city ? `${person.city}${person.state ? `, ${person.state}` : ""}` : "",
+    website: person.organization?.website_url || person.organization?.primary_domain || "",
+    description: person.organization?.short_description || "",
+    linkedin_url: person.organization?.linkedin_url || "",
+    size: person.organization?.estimated_num_employees || ""
+  };
+
+  // If we don't have a company name, or if the company name looks like an industry, 
+  // try to get it from employment history
+  const hasValidCompanyName = companyInfo.name && 
+    companyInfo.name.length > 0 && 
+    !isIndustryName(companyInfo.name);
+
+  if (!hasValidCompanyName && person.employment) {
+    console.log("Primary company info missing or invalid, checking employment history for:", person.first_name, person.last_name);
+    
+    const currentCompany = getCurrentCompanyFromEmployment(person.employment);
+    if (currentCompany) {
+      // Update company info with employment data
+      companyInfo = {
+        name: currentCompany.name || companyInfo.name,
+        industry: currentCompany.industry || companyInfo.industry,
+        location: currentCompany.location || companyInfo.location,
+        website: currentCompany.website_url || currentCompany.primary_domain || companyInfo.website,
+        description: currentCompany.short_description || companyInfo.description,
+        linkedin_url: currentCompany.linkedin_url || companyInfo.linkedin_url,
+        size: currentCompany.estimated_num_employees || companyInfo.size
+      };
+      console.log("Updated company info from employment:", companyInfo);
+    }
+  }
+
+  return companyInfo;
+};
+
+// Helper function to detect if a string looks like an industry name rather than a company name
+const isIndustryName = (name: string): boolean => {
+  if (!name) return false;
+  
+  const industryKeywords = [
+    'roofing', 'construction', 'technology', 'healthcare', 'finance', 'marketing',
+    'software', 'consulting', 'real estate', 'insurance', 'education', 'retail',
+    'manufacturing', 'telecommunications', 'automotive', 'agriculture', 'energy',
+    'entertainment', 'hospitality', 'logistics', 'media', 'nonprofit', 'pharmaceutical',
+    'transportation', 'utilities', 'banking', 'legal', 'accounting', 'engineering'
+  ];
+  
+  const lowerName = name.toLowerCase();
+  return industryKeywords.some(keyword => lowerName.includes(keyword) && lowerName.length < 30);
+};
+
 // Transform results based on search type
 export const transformApifyResults = (results: any, searchType: string): any[] => {
   if (!results || !Array.isArray(results)) {
@@ -131,6 +205,11 @@ export const transformApifyResults = (results: any, searchType: string): any[] =
   
   if (searchType === SearchType.PEOPLE) {
     return results.map(person => {
+      console.log("Processing person:", person.first_name, person.last_name, "with organization:", person.organization?.name);
+      
+      // Get the best company information using our helper function
+      const companyInfo = getBestCompanyInfo(person);
+      
       // Transform Apollo API person result to our standard format
       return {
         contact: {
@@ -141,15 +220,7 @@ export const transformApifyResults = (results: any, searchType: string): any[] =
           phone: person.phone_number || person.mobile_phone || "",
           linkedin_url: person.linkedin_url || ""
         },
-        company: {
-          name: person.organization?.name || person.organization_name || "",
-          industry: person.organization?.industry || "",
-          location: person.city ? `${person.city}${person.state ? `, ${person.state}` : ""}` : "",
-          website: person.organization?.website_url || "",
-          description: person.organization?.short_description || "",
-          linkedin_url: person.organization?.linkedin_url || "",
-          size: person.organization?.estimated_num_employees || ""
-        }
+        company: companyInfo
       };
     });
   } 
