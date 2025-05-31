@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -158,6 +157,53 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
   const getTypeIcon = (type: 'person' | 'company') => {
     return type === 'person' ? <User className="h-4 w-4 text-blue-500" /> : <Building2 className="h-4 w-4 text-purple-500" />;
   };
+
+  // Function to render company name with website link
+  const renderCompanyCell = (result: SearchResult) => {
+    if (result.type === 'person' && result.company) {
+      // For people results, check if company has website data
+      const companyWebsite = result.website || (result as any).company?.primary_domain;
+      
+      if (companyWebsite) {
+        const websiteUrl = companyWebsite.startsWith('http') 
+          ? companyWebsite 
+          : `https://${companyWebsite}`;
+        
+        return (
+          <a 
+            href={websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 flex items-center"
+          >
+            {result.company} <ExternalLink className="h-3 w-3 ml-1" />
+          </a>
+        );
+      }
+      return result.company || 'N/A';
+    } else if (result.type === 'company') {
+      // For company results
+      const websiteUrl = result.website 
+        ? (result.website.startsWith('http') ? result.website : `https://${result.website}`)
+        : null;
+        
+      if (websiteUrl) {
+        return (
+          <a 
+            href={websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 flex items-center"
+          >
+            {result.name} <ExternalLink className="h-3 w-3 ml-1" />
+          </a>
+        );
+      }
+      return result.name;
+    }
+    
+    return 'N/A';
+  };
   
   return (
     <div className="space-y-4">
@@ -262,18 +308,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
                   {result.type === 'person' ? result.title : result.industry || 'N/A'}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  {result.type === 'person' ? result.company || 'N/A' : (
-                    result.website ? (
-                      <a 
-                        href={result.website.startsWith('http') ? result.website : `https://${result.website}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 flex items-center"
-                      >
-                        {result.name} <ExternalLink className="h-3 w-3 ml-1" />
-                      </a>
-                    ) : result.name
-                  )}
+                  {renderCompanyCell(result)}
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
                   {result.location || 'N/A'}
