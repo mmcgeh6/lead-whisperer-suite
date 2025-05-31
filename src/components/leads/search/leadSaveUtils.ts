@@ -79,24 +79,21 @@ export const saveSelectedLeads = async (
             if (contactId && contactData.firstName && contactData.lastName) {
               console.log("Triggering company enrichment for:", contactData.firstName, contactData.lastName);
               
-              try {
-                const enrichmentData = await callCompanyEnrichmentWebhook({
-                  firstName: contactData.firstName,
-                  lastName: contactData.lastName,
-                  companyName: companyData.name,
-                  linkedin_url: contactData.linkedin_url
-                });
-                
+              // Don't await this so it doesn't block the save process
+              callCompanyEnrichmentWebhook({
+                firstName: contactData.firstName,
+                lastName: contactData.lastName,
+                companyName: companyData.name,
+                linkedin_url: contactData.linkedin_url
+              }).then(enrichmentData => {
                 if (enrichmentData) {
-                  await processEnrichmentData(enrichmentData, contactId, companyId);
-                  console.log("Successfully processed enrichment data");
-                } else {
-                  console.log("No enrichment data returned");
+                  console.log("Processing enrichment data...");
+                  return processEnrichmentData(enrichmentData, contactId, companyId);
                 }
-              } catch (enrichmentError) {
+              }).catch(enrichmentError => {
                 console.error("Error during enrichment process:", enrichmentError);
                 // Don't fail the entire save process if enrichment fails
-              }
+              });
             }
           }
         }
@@ -157,8 +154,8 @@ export const saveSelectedLeads = async (
   }
   
   toast({
-    title: "Leads Saved & Enriched",
-    description: `${selectedLeads.length} leads have been saved to your database, added to the selected list, and enriched with additional data.`
+    title: "Leads Saved & Enrichment Started",
+    description: `${selectedLeads.length} leads have been saved to your database and added to the selected list. Enrichment is running in the background.`
   });
   
   return savedCompanyIds.length > 0;
@@ -330,6 +327,8 @@ export const handleEditCompany = async (
 // Updated function to add contact directly to the database and return contact ID
 async function addContactToDatabase(contactData: Partial<Contact>, companyId: string): Promise<string | null> {
   try {
+    console.log("Saving contact data:", contactData);
+    
     const { data, error } = await supabase
       .from('contacts')
       .insert({

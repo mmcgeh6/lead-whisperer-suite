@@ -61,7 +61,9 @@ export const getCompanyEnrichmentWebhookUrl = async (): Promise<string> => {
     }
     
     // Return stored webhook or default
-    return data?.companyenrichmentwebhook || "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90";
+    const webhookUrl = data?.companyenrichmentwebhook || "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90";
+    console.log("Using webhook URL:", webhookUrl);
+    return webhookUrl;
   } catch (error) {
     console.error("Error getting company enrichment webhook URL:", error);
     return "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90";
@@ -74,6 +76,7 @@ export const callCompanyEnrichmentWebhook = async (contactData: any): Promise<En
     const webhookUrl = await getCompanyEnrichmentWebhookUrl();
     
     console.log("Calling company enrichment webhook for:", contactData.firstName, contactData.lastName);
+    console.log("Webhook URL:", webhookUrl);
     
     const requestData = {
       firstName: contactData.firstName,
@@ -81,6 +84,8 @@ export const callCompanyEnrichmentWebhook = async (contactData: any): Promise<En
       companyName: contactData.companyName,
       linkedinUrl: contactData.linkedin_url
     };
+
+    console.log("Request data:", requestData);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
@@ -96,7 +101,12 @@ export const callCompanyEnrichmentWebhook = async (contactData: any): Promise<En
 
     clearTimeout(timeoutId);
 
+    console.log("Webhook response status:", response.status);
+
     if (!response.ok) {
+      console.error(`Enrichment webhook failed with status: ${response.status}`);
+      const errorText = await response.text();
+      console.error("Error response:", errorText);
       throw new Error(`Enrichment webhook failed with status: ${response.status}`);
     }
 
@@ -121,6 +131,8 @@ export const processEnrichmentData = async (
   try {
     const person = enrichmentData.person;
     const organization = person.organization;
+
+    console.log("Processing enrichment data for contact:", contactId, "and company:", companyId);
 
     // Update contact with enrichment data
     const contactUpdateData = {
@@ -147,6 +159,8 @@ export const processEnrichmentData = async (
 
     if (contactError) {
       console.error("Error updating contact with enrichment data:", contactError);
+    } else {
+      console.log("Successfully updated contact with enrichment data");
     }
 
     // Update company with enrichment data
@@ -180,6 +194,8 @@ export const processEnrichmentData = async (
 
       if (companyError) {
         console.error("Error updating company with enrichment data:", companyError);
+      } else {
+        console.log("Successfully updated company with enrichment data");
       }
     }
 
