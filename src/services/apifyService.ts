@@ -129,9 +129,17 @@ const getCurrentCompanyFromEmployment = (employment: any[]): any => {
   // Find the current employment entry
   const currentJob = employment.find(job => job.current === true);
   
-  if (currentJob && currentJob.organization) {
-    console.log("Found current employment:", currentJob.organization);
-    return currentJob.organization;
+  if (currentJob) {
+    console.log("Found current employment:", currentJob);
+    return {
+      name: currentJob.organization_name || currentJob.organization?.name || "",
+      industry: currentJob.organization?.industry || "",
+      location: currentJob.organization?.location || "",
+      website_url: currentJob.organization?.website_url || currentJob.organization?.primary_domain || "",
+      short_description: currentJob.organization?.short_description || "",
+      linkedin_url: currentJob.organization?.linkedin_url || "",
+      estimated_num_employees: currentJob.organization?.estimated_num_employees || ""
+    };
   }
   
   return null;
@@ -161,12 +169,12 @@ const getBestCompanyInfo = (person: any) => {
     
     const currentCompany = getCurrentCompanyFromEmployment(person.employment);
     if (currentCompany) {
-      // Update company info with employment data
+      // Update company info with employment data, prioritizing employment name over primary org
       companyInfo = {
         name: currentCompany.name || companyInfo.name,
         industry: currentCompany.industry || companyInfo.industry,
         location: currentCompany.location || companyInfo.location,
-        website: currentCompany.website_url || currentCompany.primary_domain || companyInfo.website,
+        website: currentCompany.website_url || companyInfo.website,
         description: currentCompany.short_description || companyInfo.description,
         linkedin_url: currentCompany.linkedin_url || companyInfo.linkedin_url,
         size: currentCompany.estimated_num_employees || companyInfo.size
