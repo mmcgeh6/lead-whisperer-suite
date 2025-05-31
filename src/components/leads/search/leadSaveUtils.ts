@@ -57,13 +57,16 @@ export const saveSelectedLeads = async (
           
           // Check if this is a person search result with contact info
           if ((lead.type === 'person' || rawData.first_name) && companyId) {
-            console.log("Found person lead, calling enrichment webhook with contact ID:", rawData.id);
+            // Extract the correct contact ID from the search results
+            // The contact ID should be in rawData.id (the main contact ID from Apollo)
+            const contactId = rawData.id;
+            console.log("Found person lead, calling enrichment webhook with contact ID:", contactId);
             
             // Call company enrichment webhook immediately with contact ID from search results
             setTimeout(async () => {
               try {
                 const enrichmentData = await callCompanyEnrichmentWebhook({
-                  contactId: rawData.id, // Use contact ID from search results
+                  contactId: contactId, // Use the correct contact ID from Apollo search results
                   firstName: rawData.first_name || "",
                   lastName: rawData.last_name || "",
                   companyName: companyData.name
@@ -71,7 +74,7 @@ export const saveSelectedLeads = async (
                 
                 if (enrichmentData) {
                   console.log("Processing enrichment data for contact and company...");
-                  await processEnrichmentData(enrichmentData, rawData.id, companyId);
+                  await processEnrichmentData(enrichmentData, contactId, companyId);
                   console.log("Enrichment completed successfully");
                 } else {
                   console.log("No enrichment data returned");
