@@ -60,13 +60,13 @@ export const getCompanyEnrichmentWebhookUrl = async (): Promise<string> => {
       console.warn("Error fetching company enrichment webhook URL:", error);
     }
     
-    // Return stored webhook or default
-    const webhookUrl = data?.companyenrichmentwebhook || "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90";
-    console.log("Using webhook URL:", webhookUrl);
+    // Return stored webhook or default to the URL you specified
+    const webhookUrl = data?.companyenrichmentwebhook || "https://n8n-service-el78.onrender.com/webhook-test/ab4137c4-b90b-4bf8-9217-da587de82feb";
+    console.log("Using company enrichment webhook URL:", webhookUrl);
     return webhookUrl;
   } catch (error) {
     console.error("Error getting company enrichment webhook URL:", error);
-    return "https://n8n-service-el78.onrender.com/webhook-test/af95b526-404c-4a13-9ca2-2d918b7d4e90";
+    return "https://n8n-service-el78.onrender.com/webhook-test/ab4137c4-b90b-4bf8-9217-da587de82feb";
   }
 };
 

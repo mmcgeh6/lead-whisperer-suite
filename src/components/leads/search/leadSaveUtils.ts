@@ -56,44 +56,58 @@ export const saveSelectedLeads = async (
           savedCompanyIds.push(companyId);
           
           // Add contact if this is a person search result with contact info
-          if ((lead.type === 'person' || lead.raw_data.first_name) && companyId) {
-            console.log("Adding contact:", `${lead.raw_data.first_name || ""} ${lead.raw_data.last_name || ""}`);
+          if ((lead.type === 'person' || rawData.first_name) && companyId) {
+            console.log("Adding contact:", `${rawData.first_name || ""} ${rawData.last_name || ""}`);
+            
             const contactData: Partial<Contact> = {
-              firstName: lead.raw_data.first_name || "",
-              lastName: lead.raw_data.last_name || "",
-              title: lead.raw_data.title || "",
-              email: lead.raw_data.email || "",
-              phone: lead.raw_data.sanitized_phone || lead.raw_data.phone || "",
-              linkedin_url: lead.raw_data.linkedin_url || "",
-              twitter_url: lead.raw_data.twitter_url || "",
-              facebook_url: lead.raw_data.facebook_url || "",
-              headline: lead.raw_data.headline || "",
-              email_status: lead.raw_data.email_status || lead.raw_data.contact_email_status || "",
+              firstName: rawData.first_name || "",
+              lastName: rawData.last_name || "",
+              title: rawData.title || "",
+              email: rawData.email || "",
+              phone: rawData.sanitized_phone || rawData.phone || "",
+              linkedin_url: rawData.linkedin_url || "",
+              twitter_url: rawData.twitter_url || "",
+              facebook_url: rawData.facebook_url || "",
+              headline: rawData.headline || "",
+              email_status: rawData.email_status || rawData.contact_email_status || "",
               companyId: companyId,
               notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
             };
             
+            console.log("Creating contact with data:", contactData);
             const contactId = await addContactToDatabase(contactData, companyId);
             
-            // Call company enrichment webhook if we have contact data
-            if (contactId && contactData.firstName && contactData.lastName) {
-              console.log("Triggering company enrichment for:", contactData.firstName, contactData.lastName);
+            if (contactId) {
+              console.log("Successfully created contact with ID:", contactId);
               
-              // Don't await this so it doesn't block the save process
-              callCompanyEnrichmentWebhook({
-                firstName: contactData.firstName,
-                lastName: contactData.lastName,
-                companyName: companyData.name,
-                linkedin_url: contactData.linkedin_url
-              }).then(enrichmentData => {
-                if (enrichmentData) {
-                  console.log("Processing enrichment data...");
-                  return processEnrichmentData(enrichmentData, contactId, companyId);
-                }
-              }).catch(enrichmentError => {
-                console.error("Error during enrichment process:", enrichmentError);
-                // Don't fail the entire save process if enrichment fails
-              });
+              // Call company enrichment webhook asynchronously
+              if (contactData.firstName && contactData.lastName) {
+                console.log("Triggering company enrichment for:", contactData.firstName, contactData.lastName);
+                
+                // Call enrichment in background without blocking the save process
+                setTimeout(async () => {
+                  try {
+                    const enrichmentData = await callCompanyEnrichmentWebhook({
+                      firstName: contactData.firstName,
+                      lastName: contactData.lastName,
+                      companyName: companyData.name,
+                      linkedin_url: contactData.linkedin_url
+                    });
+                    
+                    if (enrichmentData) {
+                      console.log("Processing enrichment data...");
+                      await processEnrichmentData(enrichmentData, contactId, companyId);
+                      console.log("Enrichment completed successfully");
+                    } else {
+                      console.log("No enrichment data returned");
+                    }
+                  } catch (enrichmentError) {
+                    console.error("Error during enrichment process:", enrichmentError);
+                  }
+                }, 1000); // Delay by 1 second to ensure save completes first
+              }
+            } else {
+              console.error("Failed to create contact");
             }
           }
         }
