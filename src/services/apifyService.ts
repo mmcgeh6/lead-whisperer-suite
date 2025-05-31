@@ -1,4 +1,3 @@
-
 import { apolloApiRequest, parseApolloResponse } from './apolloService';
 import { supabase } from "@/integrations/supabase/client";
 
@@ -176,20 +175,21 @@ const getBestCompanyInfo = (person: any) => {
     size: person.organization?.estimated_num_employees || ""
   };
 
-  // If we don't have a company name, or if the company name looks like an industry, 
-  // try to get it from employment history
+  // Check if the primary company name is missing, empty, or looks like an industry name
   const hasValidCompanyName = companyInfo.name && 
     companyInfo.name.length > 0 && 
     !isIndustryName(companyInfo.name);
 
-  if (!hasValidCompanyName && person.employment) {
+  // If we don't have a valid company name, try to get it from employment history
+  if (!hasValidCompanyName && person.employment_history) {
     console.log("Primary company info missing or invalid, checking employment history for:", person.first_name, person.last_name);
+    console.log("Primary organization name was:", companyInfo.name);
     
-    const currentCompany = getCurrentCompanyFromEmployment(person.employment);
-    if (currentCompany) {
-      // Update company info with employment data, prioritizing employment name over primary org
+    const currentCompany = getCurrentCompanyFromEmployment(person.employment_history);
+    if (currentCompany && currentCompany.name) {
+      // Update company info with employment data
       companyInfo = {
-        name: currentCompany.name || companyInfo.name,
+        name: currentCompany.name,
         industry: currentCompany.industry || companyInfo.industry,
         location: currentCompany.location || companyInfo.location,
         website: currentCompany.website_url || companyInfo.website,
