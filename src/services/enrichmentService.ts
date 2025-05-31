@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Interface for the enrichment webhook response
@@ -139,7 +138,7 @@ export const processEnrichmentData = async (
       first_name: person.first_name || "",
       last_name: person.last_name || "",
       email: person.email || null,
-      phone: null, // Will be filled from enrichment if available
+      phone: organization?.primary_phone?.sanitized_number || organization?.phone || null,
       position: person.title || "",
       linkedin_url: person.linkedin_url || "",
       external_id: person.id,
@@ -161,23 +160,20 @@ export const processEnrichmentData = async (
 
     console.log("Creating/updating contact with enrichment data:", contactData);
 
-    // Use upsert to create or update the contact
+    // Insert the contact directly (not upsert since we don't have conflicts expected)
     const { data: savedContact, error: contactError } = await supabase
       .from('contacts')
-      .upsert(contactData, { 
-        onConflict: 'external_id',
-        ignoreDuplicates: false 
-      })
+      .insert(contactData)
       .select('id')
       .single();
 
     if (contactError) {
-      console.error("Error creating/updating contact with enrichment data:", contactError);
+      console.error("Error creating contact with enrichment data:", contactError);
     } else {
-      console.log("Successfully created/updated contact with enrichment data:", savedContact);
+      console.log("Successfully created contact with enrichment data:", savedContact);
     }
 
-    // Update company with enrichment data
+    // Update company with enrichment data including all missing fields
     if (organization) {
       const companyUpdateData = {
         external_id: organization.id,
