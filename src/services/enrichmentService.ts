@@ -70,19 +70,19 @@ export const getCompanyEnrichmentWebhookUrl = async (): Promise<string> => {
   }
 };
 
-// Call the company enrichment webhook
+// Call the company enrichment webhook with contact ID
 export const callCompanyEnrichmentWebhook = async (contactData: any): Promise<EnrichmentResponse | null> => {
   try {
     const webhookUrl = await getCompanyEnrichmentWebhookUrl();
     
-    console.log("Calling company enrichment webhook for:", contactData.firstName, contactData.lastName);
+    console.log("Calling company enrichment webhook for contact ID:", contactData.contactId);
     console.log("Webhook URL:", webhookUrl);
     
     const requestData = {
+      contactId: contactData.contactId, // Pass contact ID instead of other fields
       firstName: contactData.firstName,
       lastName: contactData.lastName,
-      companyName: contactData.companyName,
-      linkedinUrl: contactData.linkedin_url
+      companyName: contactData.companyName
     };
 
     console.log("Request data:", requestData);
@@ -122,22 +122,27 @@ export const callCompanyEnrichmentWebhook = async (contactData: any): Promise<En
   }
 };
 
-// Process and save enrichment data
+// Process and save enrichment data - now creates contact if it doesn't exist
 export const processEnrichmentData = async (
   enrichmentData: EnrichmentResponse,
-  contactId: string,
+  searchContactId: string,
   companyId: string
 ): Promise<void> => {
   try {
     const person = enrichmentData.person;
     const organization = person.organization;
 
-    console.log("Processing enrichment data for contact:", contactId, "and company:", companyId);
+    console.log("Processing enrichment data for search contact ID:", searchContactId, "and company:", companyId);
 
-    // Update contact with enrichment data
-    const contactUpdateData = {
-      external_id: person.id,
+    // Create or update contact with enrichment data
+    const contactData = {
+      first_name: person.first_name || "",
+      last_name: person.last_name || "",
       email: person.email || null,
+      phone: null, // Will be filled from enrichment if available
+      position: person.title || "",
+      linkedin_url: person.linkedin_url || "",
+      external_id: person.id,
       email_status: person.email_status || null,
       photo_url: person.photo_url || null,
       twitter_url: person.twitter_url || null,
@@ -147,20 +152,29 @@ export const processEnrichmentData = async (
       country: person.country || null,
       seniority: person.seniority || null,
       linkedin_experience: person.employment_history || null,
-      last_enriched: new Date().toISOString()
+      company_id: companyId,
+      last_enriched: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      notes: `Imported from lead search and enriched on ${new Date().toLocaleDateString()}`
     };
 
-    console.log("Updating contact with enrichment data:", contactUpdateData);
+    console.log("Creating/updating contact with enrichment data:", contactData);
 
-    const { error: contactError } = await supabase
+    // Use upsert to create or update the contact
+    const { data: savedContact, error: contactError } = await supabase
       .from('contacts')
-      .update(contactUpdateData)
-      .eq('id', contactId);
+      .upsert(contactData, { 
+        onConflict: 'external_id',
+        ignoreDuplicates: false 
+      })
+      .select('id')
+      .single();
 
     if (contactError) {
-      console.error("Error updating contact with enrichment data:", contactError);
+      console.error("Error creating/updating contact with enrichment data:", contactError);
     } else {
-      console.log("Successfully updated contact with enrichment data");
+      console.log("Successfully created/updated contact with enrichment data:", savedContact);
     }
 
     // Update company with enrichment data

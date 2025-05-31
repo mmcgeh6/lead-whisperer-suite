@@ -55,60 +55,31 @@ export const saveSelectedLeads = async (
         if (companyId) {
           savedCompanyIds.push(companyId);
           
-          // Add contact if this is a person search result with contact info
+          // Check if this is a person search result with contact info
           if ((lead.type === 'person' || rawData.first_name) && companyId) {
-            console.log("Adding contact:", `${rawData.first_name || ""} ${rawData.last_name || ""}`);
+            console.log("Found person lead, calling enrichment webhook with contact ID:", rawData.id);
             
-            const contactData: Partial<Contact> = {
-              firstName: rawData.first_name || "",
-              lastName: rawData.last_name || "",
-              title: rawData.title || "",
-              email: rawData.email || "",
-              phone: rawData.sanitized_phone || rawData.phone || "",
-              linkedin_url: rawData.linkedin_url || "",
-              twitter_url: rawData.twitter_url || "",
-              facebook_url: rawData.facebook_url || "",
-              headline: rawData.headline || "",
-              email_status: rawData.email_status || rawData.contact_email_status || "",
-              companyId: companyId,
-              notes: `Imported from lead search on ${new Date().toLocaleDateString()}`
-            };
-            
-            console.log("Creating contact with data:", contactData);
-            const contactId = await addContactToDatabase(contactData, companyId);
-            
-            if (contactId) {
-              console.log("Successfully created contact with ID:", contactId);
-              
-              // Call company enrichment webhook asynchronously
-              if (contactData.firstName && contactData.lastName) {
-                console.log("Triggering company enrichment for:", contactData.firstName, contactData.lastName);
+            // Call company enrichment webhook immediately with contact ID from search results
+            setTimeout(async () => {
+              try {
+                const enrichmentData = await callCompanyEnrichmentWebhook({
+                  contactId: rawData.id, // Use contact ID from search results
+                  firstName: rawData.first_name || "",
+                  lastName: rawData.last_name || "",
+                  companyName: companyData.name
+                });
                 
-                // Call enrichment in background without blocking the save process
-                setTimeout(async () => {
-                  try {
-                    const enrichmentData = await callCompanyEnrichmentWebhook({
-                      firstName: contactData.firstName,
-                      lastName: contactData.lastName,
-                      companyName: companyData.name,
-                      linkedin_url: contactData.linkedin_url
-                    });
-                    
-                    if (enrichmentData) {
-                      console.log("Processing enrichment data...");
-                      await processEnrichmentData(enrichmentData, contactId, companyId);
-                      console.log("Enrichment completed successfully");
-                    } else {
-                      console.log("No enrichment data returned");
-                    }
-                  } catch (enrichmentError) {
-                    console.error("Error during enrichment process:", enrichmentError);
-                  }
-                }, 1000); // Delay by 1 second to ensure save completes first
+                if (enrichmentData) {
+                  console.log("Processing enrichment data for contact and company...");
+                  await processEnrichmentData(enrichmentData, rawData.id, companyId);
+                  console.log("Enrichment completed successfully");
+                } else {
+                  console.log("No enrichment data returned");
+                }
+              } catch (enrichmentError) {
+                console.error("Error during enrichment process:", enrichmentError);
               }
-            } else {
-              console.error("Failed to create contact");
-            }
+            }, 1000); // Delay by 1 second to ensure save completes first
           }
         }
       }
