@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Interface for the enrichment webhook response
@@ -79,11 +78,10 @@ export const callCompanyEnrichmentWebhook = async (contactData: any): Promise<En
     console.log("Webhook URL:", webhookUrl);
     
     const requestData = {
-      contactId: contactData.contactId, // Pass contact ID instead of other fields
+      contactId: contactData.contactId, // Pass contact ID from search results
       firstName: contactData.firstName,
       lastName: contactData.lastName,
-      companyName: contactData.companyName,
-      companyId: contactData.companyId // Add company ID to the request
+      companyName: contactData.companyName
     };
 
     console.log("Request data:", requestData);
