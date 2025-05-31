@@ -126,19 +126,37 @@ const getCurrentCompanyFromEmployment = (employment: any[]): any => {
     return null;
   }
   
-  // Find the current employment entry
+  // First try to find the current employment entry
   const currentJob = employment.find(job => job.current === true);
   
   if (currentJob) {
     console.log("Found current employment:", currentJob);
+    // Prioritize organization_name from employment history
+    const orgName = currentJob.organization_name || currentJob.organization?.name || "";
     return {
-      name: currentJob.organization_name || currentJob.organization?.name || "",
+      name: orgName,
       industry: currentJob.organization?.industry || "",
       location: currentJob.organization?.location || "",
       website_url: currentJob.organization?.website_url || currentJob.organization?.primary_domain || "",
       short_description: currentJob.organization?.short_description || "",
       linkedin_url: currentJob.organization?.linkedin_url || "",
       estimated_num_employees: currentJob.organization?.estimated_num_employees || ""
+    };
+  }
+  
+  // If no current job is marked, use the first employment entry (most recent)
+  if (employment.length > 0) {
+    const firstJob = employment[0];
+    console.log("No current job marked, using first employment entry:", firstJob);
+    const orgName = firstJob.organization_name || firstJob.organization?.name || "";
+    return {
+      name: orgName,
+      industry: firstJob.organization?.industry || "",
+      location: firstJob.organization?.location || "",
+      website_url: firstJob.organization?.website_url || firstJob.organization?.primary_domain || "",
+      short_description: firstJob.organization?.short_description || "",
+      linkedin_url: firstJob.organization?.linkedin_url || "",
+      estimated_num_employees: firstJob.organization?.estimated_num_employees || ""
     };
   }
   
