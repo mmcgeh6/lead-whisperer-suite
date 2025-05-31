@@ -180,24 +180,16 @@ const getBestCompanyInfo = (person: any) => {
     companyInfo.name.length > 0 && 
     !isIndustryName(companyInfo.name);
 
-  // If we don't have a valid company name, try to get it from employment history
+  // Only fall back to employment history if primary organization name is invalid
   if (!hasValidCompanyName && person.employment_history) {
-    console.log("Primary company info missing or invalid, checking employment history for:", person.first_name, person.last_name);
+    console.log("Primary organization name invalid, checking employment history for:", person.first_name, person.last_name);
     console.log("Primary organization name was:", companyInfo.name);
     
     const currentCompany = getCurrentCompanyFromEmployment(person.employment_history);
     if (currentCompany && currentCompany.name) {
-      // Update company info with employment data
-      companyInfo = {
-        name: currentCompany.name,
-        industry: currentCompany.industry || companyInfo.industry,
-        location: currentCompany.location || companyInfo.location,
-        website: currentCompany.website_url || companyInfo.website,
-        description: currentCompany.short_description || companyInfo.description,
-        linkedin_url: currentCompany.linkedin_url || companyInfo.linkedin_url,
-        size: currentCompany.estimated_num_employees || companyInfo.size
-      };
-      console.log("Updated company info from employment:", companyInfo);
+      // Only replace the name, keep other organization data
+      companyInfo.name = currentCompany.name;
+      console.log("Updated company name from employment history:", companyInfo.name);
     }
   }
 
