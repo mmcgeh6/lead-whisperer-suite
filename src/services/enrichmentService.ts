@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isIndustryName } from "@/lib/utils";
 
 // Interface for the enrichment webhook response
 export interface EnrichmentResponse {
@@ -173,10 +174,23 @@ export const processEnrichmentData = async (
       console.log("Successfully created contact with enrichment data:", savedContact);
     }
 
-    // Update company with enrichment data including all missing fields
+    // Update company with enrichment data including smart name handling
     if (organization) {
-      const companyUpdateData = {
-        external_id: organization.id,
+      // Fetch the current company name from the database
+      const { data: currentCompanyData, error: fetchError } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', companyId)
+        .single();
+
+      if (fetchError) {
+        console.warn("Error fetching current company data:", fetchError);
+      }
+
+      const existingCompanyName = currentCompanyData?.name;
+
+      const companyUpdateData: any = {
+        external_id: organization.id || null,
         website: organization.website_url || null,
         linkedin_url: organization.linkedin_url || null,
         facebook_url: organization.facebook_url || null,
@@ -195,17 +209,53 @@ export const processEnrichmentData = async (
         updated_at: new Date().toISOString()
       };
 
-      console.log("Updating company with enrichment data:", companyUpdateData);
+      // Smart logic for updating the company name
+      if (organization.name) {
+        const newNameIsGeneric = isIndustryName(organization.name);
+        const existingNameIsGeneric = existingCompanyName ? isIndustryName(existingCompanyName) : true;
 
-      const { error: companyError } = await supabase
-        .from('companies')
-        .update(companyUpdateData)
-        .eq('id', companyId);
+        console.log("Name update analysis:", {
+          newName: organization.name,
+          existingName: existingCompanyName,
+          newNameIsGeneric,
+          existingNameIsGeneric
+        });
 
-      if (companyError) {
-        console.error("Error updating company with enrichment data:", companyError);
+        if (!newNameIsGeneric) {
+          // New name is specific, use it
+          companyUpdateData.name = organization.name;
+          console.log("Using new specific name:", organization.name);
+        } else if (newNameIsGeneric && !existingNameIsGeneric) {
+          // New name is generic, existing is specific - keep existing
+          console.log("Keeping existing specific name:", existingCompanyName);
+          // Don't include name in update
+        } else {
+          // Both generic, or existing was generic/missing - use new name
+          companyUpdateData.name = organization.name;
+          console.log("Using new name (both generic or existing was generic):", organization.name);
+        }
+      }
+
+      // Filter out undefined properties before updating
+      const finalCompanyUpdateData = Object.fromEntries(
+        Object.entries(companyUpdateData).filter(([_, v]) => v !== undefined && v !== null)
+      );
+
+      console.log("Updating company with enrichment data:", finalCompanyUpdateData);
+
+      if (Object.keys(finalCompanyUpdateData).length > 1) { // Check if there's more than just updated_at
+        const { error: companyError } = await supabase
+          .from('companies')
+          .update(finalCompanyUpdateData)
+          .eq('id', companyId);
+
+        if (companyError) {
+          console.error("Error updating company with enrichment data:", companyError);
+        } else {
+          console.log("Successfully updated company with enrichment data");
+        }
       } else {
-        console.log("Successfully updated company with enrichment data");
+        console.log("No meaningful company data to update");
       }
     }
 
