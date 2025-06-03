@@ -34,6 +34,14 @@ export const CompanyBanner = ({ company, isEnriching, handleEnrichCompany }: Com
   // Set default primary contact (first contact added to company)
   const primaryContact = companyContacts.length > 0 ? companyContacts[0] : null;
 
+  // Helper function to format employee count
+  const formatEmployeeCount = (count: number | undefined) => {
+    if (!count) return "Unknown size";
+    if (count < 1000) return `${count} employees`;
+    if (count < 1000000) return `${(count / 1000).toFixed(1)}K employees`;
+    return `${(count / 1000000).toFixed(1)}M employees`;
+  };
+
   // Load CRM webhook URL from Supabase settings
   useEffect(() => {
     const loadCrmWebhook = async () => {
@@ -162,7 +170,7 @@ export const CompanyBanner = ({ company, isEnriching, handleEnrichCompany }: Com
               </div>
               <div className="flex items-center text-gray-600">
                 <Users className="h-4 w-4 mr-2" /> 
-                <span>{company.size || "Unknown size"}</span>
+                <span>{company.estimated_num_employees ? formatEmployeeCount(company.estimated_num_employees) : company.size || "Unknown size"}</span>
               </div>
               {company.phone && (
                 <div className="flex items-center text-gray-600">
