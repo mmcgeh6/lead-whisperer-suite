@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { useAppContext } from "@/context/AppContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Company } from "@/types";
 
 interface CrmExportDialogProps {
@@ -22,6 +23,35 @@ export const CrmExportDialog = ({ open, onOpenChange, selectedCompanies }: CrmEx
   const { contacts } = useAppContext();
   const [isExporting, setIsExporting] = useState(false);
   const [companyContactSelections, setCompanyContactSelections] = useState<Record<string, string[]>>({});
+  const [crmWebhook, setCrmWebhook] = useState<string>("");
+
+  // Load CRM webhook URL from Supabase settings
+  useEffect(() => {
+    const loadCrmWebhook = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('crm_export_webhook')
+          .eq('id', 'default')
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error loading CRM webhook:", error);
+          return;
+        }
+
+        if (data?.crm_export_webhook) {
+          setCrmWebhook(data.crm_export_webhook);
+        }
+      } catch (error) {
+        console.error("Exception loading CRM webhook:", error);
+      }
+    };
+
+    if (open) {
+      loadCrmWebhook();
+    }
+  }, [open]);
 
   const handleContactSelection = (companyId: string, contactId: string, isSelected: boolean) => {
     setCompanyContactSelections(prev => {
@@ -44,9 +74,7 @@ export const CrmExportDialog = ({ open, onOpenChange, selectedCompanies }: CrmEx
     setIsExporting(true);
     
     try {
-      const crmExportWebhook = localStorage.getItem('crm_export_webhook');
-      
-      if (!crmExportWebhook) {
+      if (!crmWebhook) {
         toast({
           title: "Configuration Error",
           description: "CRM export webhook URL not configured. Please check your settings.",
@@ -78,7 +106,7 @@ export const CrmExportDialog = ({ open, onOpenChange, selectedCompanies }: CrmEx
 
       console.log("Bulk exporting to CRM with payload:", payload);
 
-      const response = await fetch(crmExportWebhook, {
+      const response = await fetch(crmWebhook, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

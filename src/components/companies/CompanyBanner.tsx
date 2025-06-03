@@ -26,12 +26,41 @@ export const CompanyBanner = ({ company, isEnriching, handleEnrichCompany }: Com
   const [isExporting, setIsExporting] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [crmWebhook, setCrmWebhook] = useState<string>("");
 
   // Get contacts for this company
   const companyContacts = contacts.filter(contact => contact.companyId === company.id);
   
   // Set default primary contact (first contact added to company)
   const primaryContact = companyContacts.length > 0 ? companyContacts[0] : null;
+
+  // Load CRM webhook URL from Supabase settings
+  useEffect(() => {
+    const loadCrmWebhook = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('crm_export_webhook')
+          .eq('id', 'default')
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error loading CRM webhook:", error);
+          return;
+        }
+
+        if (data?.crm_export_webhook) {
+          setCrmWebhook(data.crm_export_webhook);
+        }
+      } catch (error) {
+        console.error("Exception loading CRM webhook:", error);
+      }
+    };
+
+    if (exportDialogOpen) {
+      loadCrmWebhook();
+    }
+  }, [exportDialogOpen]);
 
   const handleContactSelection = (contactId: string, isSelected: boolean) => {
     if (isSelected) {
@@ -45,10 +74,7 @@ export const CompanyBanner = ({ company, isEnriching, handleEnrichCompany }: Com
     setIsExporting(true);
     
     try {
-      // Get the CRM export webhook URL from localStorage
-      const crmExportWebhook = localStorage.getItem('crm_export_webhook');
-      
-      if (!crmExportWebhook) {
+      if (!crmWebhook) {
         toast({
           title: "Configuration Error",
           description: "CRM export webhook URL not configured. Please check your settings.",
@@ -69,7 +95,7 @@ export const CompanyBanner = ({ company, isEnriching, handleEnrichCompany }: Com
 
       console.log("Exporting to CRM with payload:", payload);
 
-      const response = await fetch(crmExportWebhook, {
+      const response = await fetch(crmWebhook, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

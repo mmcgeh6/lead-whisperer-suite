@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { CompanyList } from "@/components/leads/CompanyList";
@@ -220,15 +219,14 @@ const LeadsPage = () => {
             </p>
           </div>
           <div className="flex space-x-4">
-            {selectedCompanies.length > 0 && (
-              <Button 
-                variant="secondary"
-                onClick={() => setExportDialogOpen(true)}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export to CRM ({selectedCompanies.length})
-              </Button>
-            )}
+            <Button 
+              variant="secondary"
+              onClick={() => setExportDialogOpen(true)}
+              disabled={selectedCompanies.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export to CRM ({selectedCompanies.length})
+            </Button>
             <Button asChild>
               <Link to="/leads/company/new">
                 <Plus className="h-4 w-4 mr-2" />
