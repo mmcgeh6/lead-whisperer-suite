@@ -1,4 +1,3 @@
-
 import { Company } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,10 +6,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Building2, MapPin, Users, Globe, Phone, Briefcase, Hash, ExternalLink, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { useAppContext } from "@/context/AppContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CompanyBannerProps {
   company: Company;
