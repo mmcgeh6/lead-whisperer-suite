@@ -3,11 +3,14 @@ import { Company } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Building2, MapPin, Users, Globe, Phone, Briefcase, Hash, ExternalLink, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { useAppContext } from "@/context/AppContext";
 
 interface CompanyBannerProps {
   company: Company;
@@ -19,7 +22,24 @@ export const CompanyBanner = ({ company, isEnriching, handleEnrichCompany }: Com
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { contacts } = useAppContext();
   const [isExporting, setIsExporting] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+
+  // Get contacts for this company
+  const companyContacts = contacts.filter(contact => contact.companyId === company.id);
+  
+  // Set default primary contact (first contact added to company)
+  const primaryContact = companyContacts.length > 0 ? companyContacts[0] : null;
+
+  const handleContactSelection = (contactId: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedContacts(prev => [...prev, contactId]);
+    } else {
+      setSelectedContacts(prev => prev.filter(id => id !== contactId));
+    }
+  };
 
   const handleExportToCRM = async () => {
     setIsExporting(true);
@@ -37,9 +57,13 @@ export const CompanyBanner = ({ company, isEnriching, handleEnrichCompany }: Com
         return;
       }
 
+      // Use selected contacts or default to primary contact
+      const contactsToExport = selectedContacts.length > 0 ? selectedContacts : (primaryContact ? [primaryContact.id] : []);
+
       const payload = {
         company_id: company.id,
         company_name: company.name,
+        contact_ids: contactsToExport,
         user_email: user?.email
       };
 
@@ -59,13 +83,16 @@ export const CompanyBanner = ({ company, isEnriching, handleEnrichCompany }: Com
 
       toast({
         title: "Export Successful",
-        description: "Company has been exported to CRM successfully.",
+        description: `Company and ${contactsToExport.length} contact(s) exported to CRM successfully.`,
       });
+      
+      setExportDialogOpen(false);
+      setSelectedContacts([]);
     } catch (error) {
       console.error("Error exporting to CRM:", error);
       toast({
         title: "Export Failed",
-        description: "Failed to export company to CRM. Please try again.",
+        description: "Failed to export to CRM. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -153,20 +180,83 @@ export const CompanyBanner = ({ company, isEnriching, handleEnrichCompany }: Com
                 "Enrich Company"
               )}
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleExportToCRM}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Exporting...
-                </>
-              ) : (
-                "Export to CRM"
-              )}
-            </Button>
+            
+            <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  Export to CRM
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Export to CRM</DialogTitle>
+                </DialogHeader>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Company</h4>
+                    <p className="text-sm text-gray-600">{company.name}</p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium mb-2">Select Contacts to Export</h4>
+                    {companyContacts.length === 0 ? (
+                      <p className="text-sm text-gray-500">No contacts available for this company.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {companyContacts.map((contact) => (
+                          <div key={contact.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={contact.id}
+                              checked={selectedContacts.includes(contact.id)}
+                              onCheckedChange={(checked) => 
+                                handleContactSelection(contact.id, checked === true)
+                              }
+                            />
+                            <label htmlFor={contact.id} className="text-sm">
+                              {contact.firstName} {contact.lastName}
+                              {contact.id === primaryContact?.id && (
+                                <Badge variant="secondary" className="ml-2 text-xs">Primary</Badge>
+                              )}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {primaryContact && selectedContacts.length === 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Primary contact will be exported if none selected.
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2 pt-4">
+                    <Button 
+                      onClick={handleExportToCRM}
+                      disabled={isExporting}
+                      className="flex-1"
+                    >
+                      {isExporting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Exporting...
+                        </>
+                      ) : (
+                        "Export"
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setExportDialogOpen(false)}
+                      disabled={isExporting}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
             <Button onClick={() => navigate(`/leads/edit/${company.id}`)}>
               Edit Company
             </Button>

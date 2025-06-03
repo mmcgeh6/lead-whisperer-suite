@@ -3,10 +3,11 @@ import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { CompanyList } from "@/components/leads/CompanyList";
 import { SavedLists } from "@/components/leads/SavedLists";
+import { CrmExportDialog } from "@/components/leads/CrmExportDialog";
 import { Company } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -19,6 +20,7 @@ const LeadsPage = () => {
   const [companiesInSelectedList, setCompaniesInSelectedList] = useState<string[]>([]);
   const [filteredCompanies, setFilteredCompanies] = useState<Partial<Company>[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -193,6 +195,11 @@ const LeadsPage = () => {
     }
   };
 
+  // Get selected company objects for export
+  const selectedCompanyObjects = filteredCompanies.filter(company => 
+    selectedCompanies.includes(company.id || "")
+  ) as Company[];
+
   // Effect to load initial data when component mounts
   useEffect(() => {
     if (!selectedListId) {
@@ -213,6 +220,15 @@ const LeadsPage = () => {
             </p>
           </div>
           <div className="flex space-x-4">
+            {selectedCompanies.length > 0 && (
+              <Button 
+                variant="secondary"
+                onClick={() => setExportDialogOpen(true)}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export to CRM ({selectedCompanies.length})
+              </Button>
+            )}
             <Button asChild>
               <Link to="/leads/company/new">
                 <Plus className="h-4 w-4 mr-2" />
@@ -261,6 +277,13 @@ const LeadsPage = () => {
             )}
           </div>
         </div>
+        
+        {/* CRM Export Dialog */}
+        <CrmExportDialog
+          open={exportDialogOpen}
+          onOpenChange={setExportDialogOpen}
+          selectedCompanies={selectedCompanyObjects}
+        />
       </div>
     </Layout>
   );
