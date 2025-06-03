@@ -1,4 +1,3 @@
-
 export interface Company {
   id: string;
   name: string;
@@ -29,6 +28,12 @@ export interface Company {
   social_dm_script?: string;
   research_notes?: string;
   user_id?: string;
+  // Add the missing properties from the database
+  estimated_num_employees?: number;
+  founded_year?: number;
+  annual_revenue?: number;
+  annual_revenue_printed?: string;
+  technology_names?: string[];
 }
 
 export interface Contact {

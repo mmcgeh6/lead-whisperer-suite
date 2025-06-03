@@ -91,7 +91,15 @@ const CompanyDetailPage = () => {
             text_script: data.text_script,
             social_dm_script: data.social_dm_script,
             research_notes: data.research_notes,
-            user_id: data.user_id
+            user_id: data.user_id,
+            // Add the missing enrichment fields
+            estimated_num_employees: data.estimated_num_employees,
+            founded_year: data.founded_year,
+            annual_revenue: data.annual_revenue,
+            annual_revenue_printed: data.annual_revenue_printed,
+            technology_names: data.technology_names,
+            logo_url: data.logo_url,
+            primary_domain: data.primary_domain
           };
           setCompany(formattedCompany);
         } else {
@@ -171,7 +179,7 @@ const CompanyDetailPage = () => {
         {/* Module 1: About Company */}
         <CompanyAbout company={company} />
         
-        {/* Module 2: Contacts */}
+        {/* Module 2: Contacts - Remove the duplicate ContactDetailDialog that was in CompanyContacts */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Contacts</h2>
@@ -191,7 +199,7 @@ const CompanyDetailPage = () => {
           />
         </div>
 
-        {/* Contact Dialog - Shows when contact is selected */}
+        {/* Single Contact Dialog - Shows when contact is selected */}
         <ContactDetailDialog
           contact={selectedContact}
           open={contactDialogOpen}
