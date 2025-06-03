@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdvancedSearch } from "@/components/leads/search/AdvancedSearch";
@@ -8,7 +9,7 @@ import { useAppContext } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Company, Contact } from "@/types";
-import { SearchResult, SearchParams, handleSearch } from "@/components/leads/search/searchUtils";
+import { SearchResult, SearchParams as UtilsSearchParams, handleSearch, SearchType } from "@/components/leads/search/searchUtils";
 import { saveSelectedLeads } from "@/components/leads/search/leadSaveUtils";
 
 export const SearchContainer = () => {
@@ -30,7 +31,7 @@ export const SearchContainer = () => {
 
   const { user } = useAuth();
 
-  const handleSearchSubmit = async (searchParams: SearchParams): Promise<void> => {
+  const handleSearchSubmit = async (searchParams: any): Promise<void> => {
     if (!searchParams.keywords || searchParams.keywords.length === 0) {
       toast({
         title: "Search query required",
@@ -40,11 +41,18 @@ export const SearchContainer = () => {
       return;
     }
     
+    // Convert the search params to include required fields
+    const fullSearchParams: UtilsSearchParams = {
+      ...searchParams,
+      searchType: SearchType.PEOPLE, // Default to people search
+      limit: searchParams.limit || 50 // Default limit
+    };
+    
     setIsSearching(true);
-    console.log("Starting search with parameters:", searchParams);
+    console.log("Starting search with parameters:", fullSearchParams);
     
     try {
-      const results = await handleSearch(searchParams, user, toast);
+      const results = await handleSearch(fullSearchParams, user, toast);
       setSearchResults(results);
       
       if (results && results.length > 0) {
