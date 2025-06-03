@@ -7,6 +7,7 @@ import { ContactDetailsTab } from "./ContactDetailsTab";
 import { LinkedInInfoTab } from "./LinkedInInfoTab";
 import { NotesTab } from "./NotesTab";
 import { X } from "lucide-react";
+import { useAppContext } from "@/context/AppContext";
 
 interface ContactDetailDialogProps {
   contact: Contact | null;
@@ -29,14 +30,13 @@ export function ContactDetailDialog({
   isEnrichingContact,
   onEditContact
 }: ContactDetailDialogProps) {
+  const { companies } = useAppContext();
+  
   if (!contact) return null;
 
-  // Find the company for this contact (to pass to ContactDetailsTab)
-  const getCompanyForContact = () => {
-    return { id: contact.companyId, name: "" }; // Basic company object
-  };
-
-  const company = getCompanyForContact();
+  // Get the actual company name from the companies context
+  const company = companies.find(c => c.id === contact.companyId);
+  const companyName = company?.name || "Unknown Company";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -57,7 +57,7 @@ export function ContactDetailDialog({
         
         <div className="mb-4">
           <h2 className="text-2xl font-bold">{contact.firstName} {contact.lastName}</h2>
-          <p className="text-gray-600">{contact.title || contact.position} at {/* CompanyName */}</p>
+          <p className="text-gray-600">{contact.title} at {companyName}</p>
         </div>
         
         <div className="flex justify-between mb-4">
@@ -96,7 +96,7 @@ export function ContactDetailDialog({
           <TabsContent value="details">
             <ContactDetailsTab 
               contact={contact} 
-              company={company}
+              company={company ? { id: company.id, name: company.name, website: company.website } : null}
               isFindingEmail={isFindingEmail} 
               isEnriching={isEnrichingContact}
               onFindEmail={() => onFindEmail(contact)}
